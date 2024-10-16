@@ -1,7 +1,7 @@
 from django import forms
 from django.contrib.auth.models import User
 from django.contrib.auth.forms import UserCreationForm
-from .models import Upload
+from .models import Upload, Profile
 
 class UserRegisterForm(UserCreationForm):
     email = forms.EmailField()
@@ -17,3 +17,9 @@ class UploadForm(forms.ModelForm):
     class Meta:
         model = Upload
         fields = ['image', 'video', 'caption']
+
+
+class ProfileUpdateForm(forms.ModelForm):
+    class Meta:
+        model = Profile
+        fields = ['profession', 'location', 'profile_picture']

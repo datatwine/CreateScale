@@ -1,31 +1,51 @@
-<h3>Upload Media</h3>
+<h1>{{ user.username }}'s Profile</h1>
+
+<!-- Profile picture display -->
+{% if user.profile.profile_picture %}
+    <img src="{{ user.profile.profile_picture.url }}" alt="{{ user.username }}'s profile picture" style="max-width: 200px; height: auto;">
+{% else %}
+    <p>No profile picture uploaded yet.</p>
+{% endif %}
+
+<!-- Profile picture update form -->
 <form method="POST" enctype="multipart/form-data">
     {% csrf_token %}
-    {{ form.as_p }}
-    <button type="submit">Upload</button>
+    {{ profile_form.as_p }}
+    <button type="submit">Update Profile Picture</button>
 </form>
 
-<h3>Your Uploads</h3>
-<div class="uploads-list">
+<hr>
+
+<h2>Upload Media</h2>
+
+<!-- Media upload form -->
+<form method="POST" enctype="multipart/form-data">
+    {% csrf_token %}
+    {{ upload_form.as_p }}
+    <button type="submit">Upload Media</button>
+</form>
+
+<hr>
+
+<h2>Your Uploads</h2>
+<ul>
     {% for upload in uploads %}
-        <div class="upload-item">
-            <p>{{ upload.upload_date|date:"F d, Y" }}</p>
+        <li>
             <p>{{ upload.caption }}</p>
             {% if upload.image %}
-                <img src="{{ upload.image.url }}" alt="Image" style="max-width: 100%; height: auto;">
+                <img src="{{ upload.image.url }}" alt="Uploaded Image" style="max-width: 100%; height: auto;">
             {% elif upload.video %}
-                <video controls style="max-width: 100%;">
+                <video controls>
                     <source src="{{ upload.video.url }}" type="video/mp4">
                     Your browser does not support the video tag.
                 </video>
             {% endif %}
-        </div>
-    {% empty %}
-        <p>No uploads yet.</p>
+        </li>
     {% endfor %}
+</ul>
 
-    <form method="POST" action="{% url 'logout' %}">
-        {% csrf_token %}
-        <button type="submit">Logout</button>
-    </form>
-</div>
+
+<form method="POST" action="{% url 'logout' %}">
+    {% csrf_token %}
+    <button type="submit">Logout</button>
+</form>

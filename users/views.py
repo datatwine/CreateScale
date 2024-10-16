@@ -5,7 +5,7 @@ from django.shortcuts import render, redirect
 from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth import login, logout, authenticate
 from django.contrib import messages
-from .forms import UserRegisterForm, UploadForm
+from .forms import UserRegisterForm, UploadForm, ProfileUpdateForm
 from .models import Profile, Upload
 
 from django.http import HttpResponseRedirect  # Import the form for handling uploads
@@ -59,16 +59,29 @@ def profile(request):
     
     # Handle the form for uploading media (image/video) with caption
     if request.method == 'POST':
-        form = UploadForm(request.POST, request.FILES)
-        if form.is_valid():
-            upload = form.save(commit=False)
+        upload_form = UploadForm(request.POST, request.FILES)
+        profile_form = ProfileUpdateForm(request.POST, request.FILES, instance=user_profile)
+        
+        if upload_form.is_valid() and profile_form.is_valid():
+            # Handle media upload
+            upload = upload_form.save(commit=False)
             upload.profile = user_profile  # Associate the upload with the user's profile
             upload.save()  # Save the upload (image/video, caption, and upload date)
-            return HttpResponseRedirect(request.path_info)  # Refresh the page to display the new upload
+            
+            # Handle profile picture update
+            profile_form.save()  # Save the profile picture
+            
+            return HttpResponseRedirect(request.path_info)  # Refresh the page to display the new upload/profile picture
     else:
-        form = UploadForm()
+        upload_form = UploadForm()
+        profile_form = ProfileUpdateForm(instance=user_profile)
 
-    # Render the profile template with the user's data, uploads, and the upload form
-    return render(request, 'users/profile.html', {'user': request.user, 'uploads': uploads, 'form': form})
+    # Render the profile template with the user's data, uploads, the upload form, and profile update form
+    return render(request, 'users/profile.html', {
+        'user': request.user,
+        'uploads': uploads,
+        'upload_form': upload_form,
+        'profile_form': profile_form
+    })
 
 
