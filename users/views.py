@@ -1,5 +1,9 @@
 from django.shortcuts import render
 
+from .models import Profile
+
+from django.contrib.auth.decorators import login_required
+
 # Create your views here.
 from django.shortcuts import render, redirect
 from django.contrib.auth.forms import AuthenticationForm
@@ -84,4 +88,25 @@ def profile(request):
         'profile_form': profile_form
     })
 
+
+@login_required
+def global_feed(request):
+    # Fetch all profiles
+    profiles = Profile.objects.all().exclude(user=request.user)  # Exclude the logged-in user's profile
+    
+    # Render the global feed template with the profiles
+    return render(request, 'users/global_feed.html', {'profiles': profiles})
+
+
+from django.shortcuts import get_object_or_404
+
+@login_required
+def profile_detail(request, user_id):
+    # Get the profile for the clicked user
+    profile = get_object_or_404(Profile, user__id=user_id)
+    
+    # Access the user's uploads (use 'uploads' if you specified a related_name in the Upload model)
+    uploads = profile.uploads.all().order_by('-upload_date')  # Use profile.uploads if related_name is 'uploads'
+    
+    return render(request, 'users/profile_detail.html', {'profile': profile, 'uploads': uploads})
 

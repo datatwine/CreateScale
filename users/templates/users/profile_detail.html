@@ -1,0 +1,30 @@
+<h1>{{ profile.user.username }}'s Profile</h1>
+
+<!-- Profile Picture -->
+{% if profile.profile_picture %}
+    <img src="{{ profile.profile_picture.url }}" alt="{{ profile.user.username }}'s profile picture" style="max-width: 200px; height: auto;">
+{% else %}
+    <p>No profile picture available.</p>
+{% endif %}
+
+<!-- Profile Information -->
+<p><strong>Profession:</strong> {{ profile.profession }}</p>
+<p><strong>Location:</strong> {{ profile.location }}</p>
+
+<!-- User's Uploads -->
+<h2>Uploads</h2>
+<ul>
+    {% for upload in uploads %}
+        <li>
+            <p>{{ upload.caption }}</p>
+            {% if upload.image %}
+                <img src="{{ upload.image.url }}" alt="Uploaded Image" style="max-width: 100%; height: auto;">
+            {% elif upload.video %}
+                <video controls>
+                    <source src="{{ upload.video.url }}" type="video/mp4">
+                    Your browser does not support the video tag.
+                </video>
+            {% endif %}
+        </li>
+    {% endfor %}
+</ul>

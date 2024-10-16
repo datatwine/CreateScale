@@ -1,0 +1,18 @@
+{% load static %}
+<h1>Global Feed</h1>
+
+<div style="overflow-y: auto; max-height: 500px;"> <!-- Make the feed scrollable -->
+    <ul>
+        {% for profile in profiles %}
+            <li style="list-style-type: none; margin: 10px;">
+                <a href="{% url 'profile-detail' profile.user.id %}"> <!-- Link to the user's profile -->
+                    {% if profile.profile_picture %}
+                        <img src="{{ profile.profile_picture.url }}" alt="{{ profile.user.username }}'s profile picture" style="width: 100px; height: 100px; border-radius: 50%;">
+                    {% else %}
+                        <img src="{% static 'default_profile_pic.jpg' %}" alt="No Profile Picture" style="width: 100px; height: 100px; border-radius: 50%;">
+                    {% endif %}
+                </a>
+            </li>
+        {% endfor %}
+    </ul>
+</div>

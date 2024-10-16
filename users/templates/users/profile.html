@@ -1,5 +1,8 @@
 <h1>{{ user.username }}'s Profile</h1>
 
+<a href="{% url 'global-feed' %}">View Global Feed</a>
+
+
 <!-- Profile picture display -->
 {% if user.profile.profile_picture %}
     <img src="{{ user.profile.profile_picture.url }}" alt="{{ user.username }}'s profile picture" style="max-width: 200px; height: auto;">
