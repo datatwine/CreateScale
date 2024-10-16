@@ -1,0 +1,31 @@
+<h3>Upload Media</h3>
+<form method="POST" enctype="multipart/form-data">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit">Upload</button>
+</form>
+
+<h3>Your Uploads</h3>
+<div class="uploads-list">
+    {% for upload in uploads %}
+        <div class="upload-item">
+            <p>{{ upload.upload_date|date:"F d, Y" }}</p>
+            <p>{{ upload.caption }}</p>
+            {% if upload.image %}
+                <img src="{{ upload.image.url }}" alt="Image" style="max-width: 100%; height: auto;">
+            {% elif upload.video %}
+                <video controls style="max-width: 100%;">
+                    <source src="{{ upload.video.url }}" type="video/mp4">
+                    Your browser does not support the video tag.
+                </video>
+            {% endif %}
+        </div>
+    {% empty %}
+        <p>No uploads yet.</p>
+    {% endfor %}
+
+    <form method="POST" action="{% url 'logout' %}">
+        {% csrf_token %}
+        <button type="submit">Logout</button>
+    </form>
+</div>
