@@ -22,4 +22,4 @@ class UploadForm(forms.ModelForm):
 class ProfileUpdateForm(forms.ModelForm):
     class Meta:
         model = Profile
-        fields = ['profession', 'location', 'profile_picture']
+        fields = ['profession', 'location', 'profile_picture','bio']

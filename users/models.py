@@ -9,6 +9,7 @@ class Profile(models.Model):
     profession = models.CharField(max_length=100, blank=True)
     location = models.CharField(max_length=100, blank=True)
     profile_picture = models.ImageField(upload_to='profile_pics/', blank=True, null=True)
+    bio = models.CharField(max_length=140, blank=True)
 
     def __str__(self):
         return f'{self.user.username} Profile'

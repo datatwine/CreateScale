@@ -1,54 +1,47 @@
 <h1>{{ user.username }}'s Profile</h1>
 
-<a href="{% url 'global-feed' %}">View Global Feed</a>
-
-
-<!-- Profile picture display -->
+<!-- Display the profile picture if available -->
 {% if user.profile.profile_picture %}
-    <img src="{{ user.profile.profile_picture.url }}" alt="{{ user.username }}'s profile picture" style="max-width: 200px; height: auto;">
+    <img src="{{ user.profile.profile_picture.url }}" alt="Profile Picture" style="width: 150px; height: 150px; border-radius: 50%;">
 {% else %}
-    <p>No profile picture uploaded yet.</p>
+    <img src="{% static 'default_profile_pic.jpg' %}" alt="No Profile Picture" style="width: 150px; height: 150px; border-radius: 50%;">
 {% endif %}
 
-<!-- Profile picture update form -->
-<form method="POST" enctype="multipart/form-data">
+<!-- Display the bio -->
+<p><strong>Bio:</strong> {{ user.profile.bio }}</p>
+
+<!-- Profile Update Form (for bio and profile picture) -->
+<form method="post" enctype="multipart/form-data">
     {% csrf_token %}
     {{ profile_form.as_p }}
-    <button type="submit">Update Profile Picture</button>
+    <button type="submit">Update Profile</button>
 </form>
 
 <hr>
 
-<h2>Upload Media</h2>
+<h2>Uploads</h2>
+<!-- Display the uploads (images/videos with captions) -->
+{% for upload in uploads %}
+    <div>
+        {% if upload.file.url %}
+            <img src="{{ upload.file.url }}" alt="Uploaded Media" style="max-width: 300px;">
+        {% endif %}
+        <p>{{ upload.caption }}</p>
+        <p><small>{{ upload.upload_date }}</small></p>
+    </div>
+{% endfor %}
 
-<!-- Media upload form -->
-<form method="POST" enctype="multipart/form-data">
+<!-- Media Upload Form -->
+<h3>Upload Media</h3>
+<form method="post" enctype="multipart/form-data">
     {% csrf_token %}
     {{ upload_form.as_p }}
-    <button type="submit">Upload Media</button>
+    <button type="submit">Upload</button>
 </form>
 
 <hr>
-
-<h2>Your Uploads</h2>
-<ul>
-    {% for upload in uploads %}
-        <li>
-            <p>{{ upload.caption }}</p>
-            {% if upload.image %}
-                <img src="{{ upload.image.url }}" alt="Uploaded Image" style="max-width: 100%; height: auto;">
-            {% elif upload.video %}
-                <video controls>
-                    <source src="{{ upload.video.url }}" type="video/mp4">
-                    Your browser does not support the video tag.
-                </video>
-            {% endif %}
-        </li>
-    {% endfor %}
-</ul>
-
-
-<form method="POST" action="{% url 'logout' %}">
-    {% csrf_token %}
-    <button type="submit">Logout</button>
-</form>
+<div>
+    <a href="{% url 'global-feed' %}">Go to Global Feed</a>  <!-- Global Feed Link -->
+    <br>
+    <a href="{% url 'logout' %}">Logout</a>  <!-- Logout Button -->
+</div>

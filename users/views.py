@@ -54,33 +54,39 @@ from django.shortcuts import render
 from .models import Profile, Upload
 from .forms import UploadForm
 
+@login_required
 def profile(request):
     # Ensure the user's profile exists (create one if not)
     user_profile, created = Profile.objects.get_or_create(user=request.user)
     
     # Get all uploads related to this profile, ordered by upload_date (most recent first)
     uploads = Upload.objects.filter(profile=user_profile).order_by('-upload_date')
-    
-    # Handle the form for uploading media (image/video) with caption
+
     if request.method == 'POST':
+        # Handle media upload (images/videos with caption)
         upload_form = UploadForm(request.POST, request.FILES)
+        
+        # Handle profile update (bio, profile picture)
         profile_form = ProfileUpdateForm(request.POST, request.FILES, instance=user_profile)
         
+        # Check if both forms are valid
         if upload_form.is_valid() and profile_form.is_valid():
-            # Handle media upload
+            # Save the media upload (image/video)
             upload = upload_form.save(commit=False)
             upload.profile = user_profile  # Associate the upload with the user's profile
-            upload.save()  # Save the upload (image/video, caption, and upload date)
+            upload.save()  # Save the upload
             
-            # Handle profile picture update
-            profile_form.save()  # Save the profile picture
+            # Save the updated profile (bio, profile picture)
+            profile_form.save()
             
-            return HttpResponseRedirect(request.path_info)  # Refresh the page to display the new upload/profile picture
+            # Refresh the page to show the updates
+            return HttpResponseRedirect(request.path_info)
     else:
+        # Initialize forms if not a POST request
         upload_form = UploadForm()
         profile_form = ProfileUpdateForm(instance=user_profile)
 
-    # Render the profile template with the user's data, uploads, the upload form, and profile update form
+    # Render the profile template with the user's data, uploads, and the forms
     return render(request, 'users/profile.html', {
         'user': request.user,
         'uploads': uploads,
