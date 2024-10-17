@@ -23,3 +23,21 @@ class ProfileUpdateForm(forms.ModelForm):
     class Meta:
         model = Profile
         fields = ['profession', 'location', 'profile_picture','bio']
+
+
+from django import forms
+from .models import Profile
+
+class ProfessionFilterForm(forms.Form):
+    professions = forms.MultipleChoiceField(
+        choices=[],
+        widget=forms.CheckboxSelectMultiple,
+        required=False,
+        label="Filter by Profession"
+    )
+
+    def __init__(self, *args, **kwargs):
+        super(ProfessionFilterForm, self).__init__(*args, **kwargs)
+        # Dynamically generate profession choices from all profiles
+        all_professions = Profile.objects.values_list('profession', flat=True).distinct()
+        self.fields['professions'].choices = [(prof, prof) for prof in all_professions if prof]

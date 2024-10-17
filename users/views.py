@@ -95,13 +95,27 @@ def profile(request):
     })
 
 
+from django.db.models import Q
+from .models import Profile
+from .forms import ProfessionFilterForm
+
+
 @login_required
 def global_feed(request):
-    # Fetch all profiles
-    profiles = Profile.objects.all().exclude(user=request.user)  # Exclude the logged-in user's profile
-    
-    # Render the global feed template with the profiles
-    return render(request, 'users/global_feed.html', {'profiles': profiles})
+    # Fetch all profiles except the signed-in user's profile
+    profiles = Profile.objects.exclude(user=request.user)
+
+    # Handle filtering by profession
+    profession_filter_form = ProfessionFilterForm(request.GET or None)  # Form for profession filtering
+    if profession_filter_form.is_valid():
+        professions = profession_filter_form.cleaned_data.get('professions')
+        if professions:
+            profiles = profiles.filter(profession__in=professions)  # Filter profiles by selected professions
+
+    return render(request, 'users/global_feed.html', {
+        'profiles': profiles,
+        'profession_filter_form': profession_filter_form
+    })
 
 
 from django.shortcuts import get_object_or_404
