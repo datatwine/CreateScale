@@ -45,5 +45,8 @@
 <div>
     <a href="{% url 'global-feed' %}">Go to Global Feed</a>  <!-- Global Feed Link -->
     <br>
-    <a href="{% url 'logout' %}">Logout</a>  <!-- Logout Button -->
+    <form method="POST" action="{% url 'logout' %}">
+        {% csrf_token %}
+        <button type="submit">Logout</button>
+    </form>
 </div>
