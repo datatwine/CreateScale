@@ -1,0 +1,23 @@
+{% extends 'users/base.html' %}
+{% load static %}
+
+{% block content %}
+<h1>Inbox</h1>
+
+{% if messages %}
+    <ul>
+    {% for message in messages %}
+        <li>
+            <strong>From: </strong> {{ message.sender.username }} <br>
+            <strong>Message: </strong> {{ message.content }} <br>
+            <small>Sent: {{ message.timestamp }}</small>
+            <a href="{% url 'message-thread' message.sender.id %}">
+                Reply
+            </a>
+        </li>
+    {% endfor %}
+    </ul>
+{% else %}
+    <p>No messages.</p>
+{% endif %}
+{% endblock %}

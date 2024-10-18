@@ -4,6 +4,8 @@ from .models import Profile
 
 from django.contrib.auth.decorators import login_required
 
+from django.contrib.auth.models import User
+
 # Create your views here.
 from django.shortcuts import render, redirect
 from django.contrib.auth.forms import AuthenticationForm
@@ -122,11 +124,90 @@ from django.shortcuts import get_object_or_404
 
 @login_required
 def profile_detail(request, user_id):
-    # Get the profile for the clicked user
-    profile = get_object_or_404(Profile, user__id=user_id)
+    # Get the profile of the user being viewed
+    user_profile = get_object_or_404(Profile, user__id=user_id)
     
-    # Access the user's uploads (use 'uploads' if you specified a related_name in the Upload model)
-    uploads = profile.uploads.all().order_by('-upload_date')  # Use profile.uploads if related_name is 'uploads'
-    
-    return render(request, 'users/profile_detail.html', {'profile': profile, 'uploads': uploads})
+    # Get uploads for the profile
+    uploads = Upload.objects.filter(profile=user_profile).order_by('-upload_date')
+
+    unread_messages = Message.objects.filter(recipient=request.user, is_read=False)
+
+    # Pass data to the template
+    return render(request, 'users/profile_detail.html', {
+        'profile': user_profile,
+        'uploads': uploads,
+        'unread_messages': unread_messages
+    })
+
+from .models import Message
+from .forms import MessageForm
+
+
+# Messaging view
+@login_required
+def send_message(request, recipient_id):
+    recipient = get_object_or_404(User, id=recipient_id)
+
+    # Prevent duplicate messages before a reply
+    existing_message = Message.objects.filter(sender=request.user, recipient=recipient, is_read=False).first()
+    if existing_message:
+        messages.error(request, "You have already sent a message to this user. Please wait for a reply.")
+        return redirect('message-thread', user_id=recipient_id)
+
+    if request.method == 'POST':
+        form = MessageForm(request.POST)
+        if form.is_valid():
+            message = form.save(commit=False)
+            message.sender = request.user
+            message.recipient = recipient
+            message.save()
+            messages.success(request, "Your message has been sent.")
+            return redirect('message-thread', user_id=recipient.id)
+    else:
+        form = MessageForm()
+
+    return render(request, 'users/send_message.html', {'form': form, 'recipient': recipient})
+
+# Inbox view
+def inbox(request):
+    user = request.user
+    received_messages = Message.objects.filter(recipient=user).order_by('-timestamp')
+
+    # Mark messages as read if they're accessed from the inbox
+    for message in received_messages:
+        if not message.is_read:
+            message.is_read = True
+            message.save()
+
+    return render(request, 'users/inbox.html', {'messages': received_messages})
+
+from django.db.models import Q
+
+def message_thread(request, user_id):
+    other_user = get_object_or_404(User, id=user_id)
+
+    # Fetch the messages between the current user and the other user
+    messages = Message.objects.filter(
+        (Q(sender=request.user) & Q(recipient=other_user)) | 
+        (Q(sender=other_user) & Q(recipient=request.user))
+    ).order_by('timestamp')
+
+    # Form for replying in the message thread
+    if request.method == 'POST':
+        form = MessageForm(request.POST)
+        if form.is_valid():
+            reply = form.save(commit=False)
+            reply.sender = request.user
+            reply.recipient = other_user
+            reply.save()
+            return redirect('message-thread', user_id=other_user.id)  # Redirect to the thread after sending reply
+    else:
+        form = MessageForm()
+
+    return render(request, 'users/message_thread.html', {
+        'other_user': other_user,
+        'messages': messages,
+        'form': form  # Passing the form to the template
+    })
+
 

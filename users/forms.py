@@ -1,7 +1,7 @@
 from django import forms
 from django.contrib.auth.models import User
 from django.contrib.auth.forms import UserCreationForm
-from .models import Upload, Profile
+from .models import Upload, Profile, Message
 
 class UserRegisterForm(UserCreationForm):
     email = forms.EmailField()
@@ -41,3 +41,13 @@ class ProfessionFilterForm(forms.Form):
         # Dynamically generate profession choices from all profiles
         all_professions = Profile.objects.values_list('profession', flat=True).distinct()
         self.fields['professions'].choices = [(prof, prof) for prof in all_professions if prof]
+
+
+
+class MessageForm(forms.ModelForm):
+    class Meta:
+        model = Message
+        fields = ['content']
+        widgets = {
+            'content': forms.Textarea(attrs={'rows': 3, 'placeholder': 'Write your message here...'})
+        }

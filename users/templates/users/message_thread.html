@@ -1,0 +1,21 @@
+{% extends 'users/base.html' %}
+
+{% block content %}
+<h1>Conversation with {{ other_user.username }}</h1>
+
+<!-- Display all messages in the thread -->
+<div class="message-thread">
+    {% for message in messages %}
+        <p><strong>{{ message.sender.username }}:</strong> {{ message.content }}</p>
+        <small>Sent: {{ message.timestamp }}</small>
+    {% endfor %}
+</div>
+
+<!-- Reply Form -->
+<form method="post" action="{% url 'message-thread' other_user.id %}">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit">Reply</button>
+</form>
+
+{% endblock %}

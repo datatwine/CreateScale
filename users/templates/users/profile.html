@@ -21,6 +21,12 @@
 
 <hr>
 
+{% if unread_messages %}
+    <a href="{% url 'inbox' %}">Inbox ({{ unread_messages.count }})</a>
+{% else %}
+    <a href="{% url 'inbox' %}">Inbox</a>
+{% endif %}
+
 <h2>Uploads</h2>
 <!-- Display the uploads (images/videos with captions) -->
 {% for upload in uploads %}
@@ -50,3 +56,6 @@
         <button type="submit">Logout</button>
     </form>
 </div>
+
+
+

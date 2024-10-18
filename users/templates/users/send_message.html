@@ -1,0 +1,17 @@
+{% extends 'users/base.html' %}
+{% load static %}
+
+
+{% block content %}
+<h2>Send a message to {{ recipient.username }}</h2>
+
+<form method="POST">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit">Send Message</button>
+</form>
+
+
+<a href="{% url 'profile-detail' recipient.id %}">Back to profile</a>
+
+{% endblock %}

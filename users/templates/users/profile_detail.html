@@ -13,6 +13,14 @@
 <p><strong>Profession:</strong> {{ profile.profession }}</p>
 <p><strong>Location:</strong> {{ profile.location }}</p>
 
+
+<!-- Message Icon: Display only if this is not the logged-in user's profile -->
+{% if request.user != profile.user %}
+    <a href="{% url 'send_message' profile.user.id %}">
+        <img src="{% static 'icons/message-icon.png' %}" alt="Send Message" class="message-icon">
+    </a>
+{% endif %}
+
 <!-- User's Uploads -->
 <h2>Uploads</h2>
 <ul>
