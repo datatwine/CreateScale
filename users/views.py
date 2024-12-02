@@ -167,6 +167,7 @@ def send_message(request, user_id):
 
 
 # Inbox view
+@login_required
 def inbox(request):
     user = request.user
     received_messages = Message.objects.filter(recipient=user).order_by('-timestamp')
@@ -181,6 +182,7 @@ def inbox(request):
 
 from django.db.models import Q
 
+@login_required
 def message_thread(request, user_id):
     other_user = get_object_or_404(User, id=user_id)
 
