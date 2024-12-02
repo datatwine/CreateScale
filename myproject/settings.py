@@ -128,3 +128,5 @@ MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 LOGOUT_REDIRECT_URL = 'login'  # Use the name of your sign-in URL pattern
+
+LOGIN_URL = '/users/login/'

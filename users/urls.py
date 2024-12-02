@@ -9,7 +9,7 @@ urlpatterns = [
     path('logout/', auth_views.LogoutView.as_view(next_page='login'), name='logout'),
     path('global-feed/', views.global_feed, name='global-feed'),
     path('profile/<int:user_id>/', views.profile_detail, name='profile-detail'),
-    path('send_message/<int:recipient_id>/', views.send_message, name='send_message'),
+    path('send_message/<int:user_id>/', views.send_message, name='send_message'),
     path('inbox/', views.inbox, name='inbox'),
     path('message_thread/<int:user_id>/', views.message_thread, name='message-thread'),
 ]

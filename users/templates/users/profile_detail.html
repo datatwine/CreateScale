@@ -12,14 +12,25 @@
 <!-- Profile Information -->
 <p><strong>Profession:</strong> {{ profile.profession }}</p>
 <p><strong>Location:</strong> {{ profile.location }}</p>
+<p><strong>Bio:</strong> {{ user.profile.bio }}</p>
 
 
-<!-- Message Icon: Display only if this is not the logged-in user's profile -->
+
 {% if request.user != profile.user %}
-    <a href="{% url 'send_message' profile.user.id %}">
-        <img src="{% static 'icons/message-icon.png' %}" alt="Send Message" class="message-icon">
-    </a>
+    <form action="{% url 'send_message' profile.user.id %}" method="post" style="margin-top: 10px;">
+        {% csrf_token %}
+        <textarea
+            name="content"
+            rows="3"
+            cols="40"
+            placeholder="Write your message here..."
+            style="width: 100%; margin-bottom: 5px;"></textarea>
+        <button type="submit" class="send-message-button">
+            Send Message
+        </button>
+    </form>
 {% endif %}
+
 
 <!-- User's Uploads -->
 <h2>Uploads</h2>

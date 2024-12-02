@@ -1,6 +1,3 @@
-from django.shortcuts import render
-
-from .models import Profile
 
 from django.contrib.auth.decorators import login_required
 
@@ -21,12 +18,17 @@ def signup(request):
     if request.method == 'POST':
         form = UserRegisterForm(request.POST)
         if form.is_valid():
-            user = form.save()  # Save the new user
+            user = form.save()  # Save the user instance
+            # Save additional fields in the Profile model
+            user.profile.profession = form.cleaned_data.get('profession')
+            user.profile.location = form.cleaned_data.get('location')
+            user.profile.save()  # Explicitly save the profile
             login(request, user)  # Log the user in
-            return redirect('profile')  # Redirect to profile page
+            return redirect('profile')  # Redirect to the profile page
     else:
         form = UserRegisterForm()
     return render(request, 'users/signup.html', {'form': form})
+
 
 # Login view
 def signin(request):
@@ -58,42 +60,35 @@ from .forms import UploadForm
 
 @login_required
 def profile(request):
-    # Ensure the user's profile exists (create one if not)
-    user_profile, created = Profile.objects.get_or_create(user=request.user)
-    
-    # Get all uploads related to this profile, ordered by upload_date (most recent first)
-    uploads = Upload.objects.filter(profile=user_profile).order_by('-upload_date')
+    user_profile = Profile.objects.get(user=request.user)  # Retrieve the current user's profile
 
     if request.method == 'POST':
-        # Handle media upload (images/videos with caption)
-        upload_form = UploadForm(request.POST, request.FILES)
-        
-        # Handle profile update (bio, profile picture)
         profile_form = ProfileUpdateForm(request.POST, request.FILES, instance=user_profile)
-        
-        # Check if both forms are valid
-        if upload_form.is_valid() and profile_form.is_valid():
-            # Save the media upload (image/video)
-            upload = upload_form.save(commit=False)
-            upload.profile = user_profile  # Associate the upload with the user's profile
-            upload.save()  # Save the upload
-            
-            # Save the updated profile (bio, profile picture)
-            profile_form.save()
-            
-            # Refresh the page to show the updates
-            return HttpResponseRedirect(request.path_info)
-    else:
-        # Initialize forms if not a POST request
-        upload_form = UploadForm()
-        profile_form = ProfileUpdateForm(instance=user_profile)
+        upload_form = UploadForm(request.POST, request.FILES)
 
-    # Render the profile template with the user's data, uploads, and the forms
+        if profile_form.is_valid() and upload_form.is_valid():
+            profile_form.save()  # Save profile updates
+            upload = upload_form.save(commit=False)
+            upload.profile = user_profile  # Associate the upload with the current user's profile
+            upload.save()
+            messages.success(request, "Profile updated and image uploaded successfully!")
+        else:
+            if not profile_form.is_valid():
+                messages.error(request, "Profile update failed. Please correct the errors below.")
+            if not upload_form.is_valid():
+                messages.error(request, "Image upload failed. Please correct the errors below.")
+    else:
+        profile_form = ProfileUpdateForm(instance=user_profile)
+        upload_form = UploadForm()
+
+    # Order uploads by `upload_date` in descending order to show the latest uploads first
+    uploads = Upload.objects.filter(profile=user_profile).order_by('-upload_date')
+
     return render(request, 'users/profile.html', {
-        'user': request.user,
-        'uploads': uploads,
+        'profile_form': profile_form,
         'upload_form': upload_form,
-        'profile_form': profile_form
+        'uploads': uploads,  # Pass uploads to the template
+        'profile': user_profile
     })
 
 
@@ -144,29 +139,32 @@ from .forms import MessageForm
 
 
 # Messaging view
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import get_object_or_404, redirect
+from django.contrib import messages
+from users.models import User, Message
+
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import get_object_or_404, redirect
+from django.contrib import messages
+from .models import Message, User
+
 @login_required
-def send_message(request, recipient_id):
-    recipient = get_object_or_404(User, id=recipient_id)
+def send_message(request, user_id):
+    receiver = get_object_or_404(User, id=user_id)
 
-    # Prevent duplicate messages before a reply
-    existing_message = Message.objects.filter(sender=request.user, recipient=recipient, is_read=False).first()
-    if existing_message:
-        messages.error(request, "You have already sent a message to this user. Please wait for a reply.")
-        return redirect('message-thread', user_id=recipient_id)
+    if request.method == "POST":
+        content = request.POST.get("content", "").strip()
+        if not content:
+            messages.error(request, "Message content cannot be empty.")
+            return redirect("profile-detail", user_id=receiver.id)
 
-    if request.method == 'POST':
-        form = MessageForm(request.POST)
-        if form.is_valid():
-            message = form.save(commit=False)
-            message.sender = request.user
-            message.recipient = recipient
-            message.save()
-            messages.success(request, "Your message has been sent.")
-            return redirect('message-thread', user_id=recipient.id)
-    else:
-        form = MessageForm()
+        Message.objects.create(sender=request.user, recipient=receiver, content=content)
+        messages.success(request, "Message sent successfully.")
+        return redirect("message-thread", user_id=receiver.id)
 
-    return render(request, 'users/send_message.html', {'form': form, 'recipient': recipient})
+    return redirect("profile-detail", user_id=receiver.id)
+
 
 # Inbox view
 def inbox(request):
@@ -209,5 +207,7 @@ def message_thread(request, user_id):
         'messages': messages,
         'form': form  # Passing the form to the template
     })
+
+
 
 
