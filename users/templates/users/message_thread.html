@@ -1,21 +1,46 @@
 {% extends 'users/base.html' %}
+{% load static %}
 
 {% block content %}
+<!-- Page heading showing the conversation participant -->
 <h1>Conversation with {{ other_user.username }}</h1>
 
-<!-- Display all messages in the thread -->
+<!-- Section displaying all messages in the conversation -->
 <div class="message-thread">
-    {% for message in messages %}
-        <p><strong>{{ message.sender.username }}:</strong> {{ message.content }}</p>
-        <small>Sent: {{ message.timestamp }}</small>
-    {% endfor %}
+    {% if error %}
+        <p>{{ error }}</p>
+    {% else %}
+        {% for message in messages %}
+            <div class="{% if message.sender == request.user %}sent-message{% else %}received-message{% endif %}">
+                <p>
+                    <strong>{{ message.sender.username }}:</strong> {{ message.content }}
+                </p>
+                <small>{{ message.timestamp|date:"M d, Y H:i" }}</small>
+            </div>
+        {% endfor %}
+    {% endif %}
 </div>
 
-<!-- Reply Form -->
+<!-- Form to send a reply in the message thread -->
 <form method="post" action="{% url 'message-thread' other_user.id %}">
     {% csrf_token %}
-    {{ form.as_p }}
+    <textarea
+        name="content"
+        cols="40"
+        rows="3"
+        placeholder="Write your message here..."
+        required
+        style="width: 100%; margin-top: 10px;">
+    </textarea>
     <button type="submit">Reply</button>
 </form>
 
+<!-- Debugging block to display raw message data for developers -->
+{% if messages %}
+    <ul style="display: none;">
+        {% for message in messages %}
+            <li>{{ message }}</li>
+        {% endfor %}
+    </ul>
+{% endif %}
 {% endblock %}

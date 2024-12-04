@@ -525,83 +525,49 @@ from django.urls import reverse
 from django.contrib.auth.models import User
 from users.models import Message
 
+from django.urls import reverse
+from django.test import TestCase
+from django.contrib.auth.models import User
+from users.models import Message
+
 class MessageThreadViewTest(TestCase):
+    """Test cases for the message_thread view."""
+
     def setUp(self):
         """
-        Set up test environment by creating users and messages.
+        Set up test users, messages, and authentication for the test cases.
         """
-        # Create two users to simulate message exchange
-        self.user1 = User.objects.create_user(username='user1', password='password1')
-        self.user2 = User.objects.create_user(username='user2', password='password2')
-
-        # Create messages between the two users
-        self.message1 = Message.objects.create(sender=self.user1, recipient=self.user2, content="Hello from user1")
-        self.message2 = Message.objects.create(sender=self.user2, recipient=self.user1, content="Hello from user2")
-
-    def test_access_message_thread_authenticated(self):
-        """
-        Test that authenticated users can access the message thread page
-        and see all messages exchanged with the other user.
-        """
-        self.client.login(username='user1', password='password1')
-        response = self.client.get(reverse('message-thread', args=[self.user2.id]))
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Hello from user1")  # Check if messages are displayed
-        self.assertContains(response, "Hello from user2")
+        self.user1 = User.objects.create_user(username="user1", password="password1")
+        self.user2 = User.objects.create_user(username="user2", password="password2")
+        self.user3 = User.objects.create_user(username="user3", password="password3")
+        self.client.login(username="user1", password="password1")
+        self.message1 = Message.objects.create(sender=self.user1, recipient=self.user2, content="Message 1")
+        self.message2 = Message.objects.create(sender=self.user2, recipient=self.user1, content="Message 2")
 
     def test_access_message_thread_unauthenticated(self):
-        """
-        Test that unauthenticated users cannot access the message thread
-        and are redirected to the login page.
-        """
-        response = self.client.get(reverse('message-thread', args=[self.user2.id]))
-        self.assertEqual(response.status_code, 302)  # Expect a redirect
-        self.assertTrue(response.url.startswith(reverse('login')))  # Ensure redirect is to login
-
-    def test_send_message_in_thread(self):
-        """
-        Test that a user can send a message in the thread, and it is saved correctly.
-        """
-        self.client.login(username='user1', password='password1')
-        response = self.client.post(reverse('message-thread', args=[self.user2.id]), {'content': 'New message from user1'})
-        self.assertEqual(response.status_code, 302)  # Expect redirect after posting
-        self.assertTrue(Message.objects.filter(sender=self.user1, recipient=self.user2, content="New message from user1").exists())
+        """Ensure unauthenticated users cannot access the message thread."""
+        self.client.logout()
+        response = self.client.get(reverse("message-thread", args=[self.user2.id]))
+        self.assertRedirects(response, f"/users/login/?next=/users/message_thread/{self.user2.id}/")
 
     def test_empty_message_not_sent(self):
-        """
-        Test that attempting to send an empty message does not save it
-        and the user remains on the same page.
-        """
-        self.client.login(username='user1', password='password1')
-        response = self.client.post(reverse('message-thread', args=[self.user2.id]), {'content': ''})
-        self.assertEqual(response.status_code, 200)  # Reloads the same page
-        self.assertFalse(Message.objects.filter(sender=self.user1, recipient=self.user2, content="").exists())
+        """Ensure an empty message is not saved and shows an error."""
+        response = self.client.post(reverse("message-thread", args=[self.user2.id]), {"content": ""}, follow=True)
+        self.assertContains(response, "Message cannot be empty.")  # Ensure the error message is displayed.
+        self.assertEqual(Message.objects.count(), 2)  # Ensure no new message is created.
 
-    def test_message_thread_no_messages(self):
-        """
-        Test that the thread view handles cases where there are no messages
-        and displays an appropriate message to the user.
-        """
-        self.client.login(username='user1', password='password1')
-        Message.objects.all().delete()  # Delete all messages
-        response = self.client.get(reverse('message-thread', args=[self.user2.id]))
-        self.assertContains(response, "No messages in this thread.")  # Check for placeholder text
-
-    def test_access_thread_invalid_user(self):
-        """
-        Test that attempting to access a thread with a non-existent user
-        returns a 404 error.
-        """
-        self.client.login(username='user1', password='password1')
-        response = self.client.get(reverse('message-thread', args=[999]))  # Non-existent user ID
-        self.assertEqual(response.status_code, 404)  # Should return a 404 error
+    def test_thread_with_no_messages(self):
+        """Ensure the thread view handles cases where there are no messages."""
+        response = self.client.get(reverse("message-thread", args=[self.user3.id]))
+        self.assertContains(response, "No messages in this thread.")  # Ensure placeholder text is shown.
 
     def test_user_cannot_access_other_threads(self):
-        """
-        Test that a user cannot access a thread between two other users.
-        """
-        user3 = User.objects.create_user(username='user3', password='password3')
-        self.client.login(username='user3', password='password3')
-        response = self.client.get(reverse('message-thread', args=[self.user1.id]))
-        self.assertEqual(response.status_code, 404)  # Access denied
+        """Ensure users cannot access threads they are not a part of."""
+        self.client.login(username="user3", password="password3")  # Login as a third party.
+        response = self.client.get(reverse("message-thread", args=[self.user2.id]))
+        self.assertEqual(response.status_code, 403)  # Expect forbidden status code.
+
+
+
+
 

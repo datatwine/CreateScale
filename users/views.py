@@ -181,34 +181,79 @@ def inbox(request):
     return render(request, 'users/inbox.html', {'messages': received_messages})
 
 from django.db.models import Q
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import render, get_object_or_404, redirect
+from .models import User, Message
+
+from django.core.exceptions import PermissionDenied
+from django.contrib import messages as django_messages 
+
+
+def is_participant(user, thread_user1, thread_user2):
+    """
+    Helper function to check if the user is part of the thread.
+    """
+    return user == thread_user1 or user == thread_user2
+
+
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import get_object_or_404, render, redirect
+from django.db.models import Q
+from django.contrib import messages
+from users.models import User, Message
 
 @login_required
 def message_thread(request, user_id):
-    other_user = get_object_or_404(User, id=user_id)
+    """
+    View for handling the message thread between the logged-in user and another user.
+    """
+    try:
+        # Ensure the receiver exists
+        other_user = get_object_or_404(User, id=user_id)  # Renamed to `other_user`
+    except ValueError:
+        messages.error(request, "Invalid user ID.")
+        return redirect("inbox")
 
-    # Fetch the messages between the current user and the other user
-    messages = Message.objects.filter(
-        (Q(sender=request.user) & Q(recipient=other_user)) | 
-        (Q(sender=other_user) & Q(recipient=request.user))
-    ).order_by('timestamp')
+    # Prevent users from accessing their own thread
+    if other_user == request.user:
+        messages.error(request, "You cannot send messages to yourself.")
+        return redirect("inbox")
 
-    # Form for replying in the message thread
-    if request.method == 'POST':
-        form = MessageForm(request.POST)
-        if form.is_valid():
-            reply = form.save(commit=False)
-            reply.sender = request.user
-            reply.recipient = other_user
-            reply.save()
-            return redirect('message-thread', user_id=other_user.id)  # Redirect to the thread after sending reply
-    else:
-        form = MessageForm()
+    if request.method == "POST":
+        content = request.POST.get("content", "").strip()
+        if not content:
+            messages.error(request, "Message content cannot be empty.")
+        else:
+            # Save the message
+            Message.objects.create(sender=request.user, recipient=other_user, content=content)
+            messages.success(request, "Message sent successfully.")
+            return redirect("message-thread", user_id=other_user.id)
 
-    return render(request, 'users/message_thread.html', {
-        'other_user': other_user,
-        'messages': messages,
-        'form': form  # Passing the form to the template
-    })
+    # Retrieve all messages in the thread
+    thread_messages = Message.objects.filter(
+        Q(sender=request.user, recipient=other_user) |
+        Q(sender=other_user, recipient=request.user)
+    ).order_by("timestamp")
+
+    # Render the message thread template
+    return render(
+        request,
+        "users/message_thread.html",
+        {
+            "messages": thread_messages,
+            "other_user": other_user,  # Updated to `other_user` for template compatibility
+            "user_id": other_user.id,
+        },
+    )
+
+
+
+
+
+
+
+
+
 
 
 
