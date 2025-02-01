@@ -12,11 +12,19 @@
     <link rel="stylesheet" href="{% static 'users/styles.css' %}">
 </head>
 <body>
+    
+    <main>
+        <!-- Centralized wrapper class for content -->
+        <div class="center-container">
+            {% block content %}
+            {% endblock %}
+        </div>
+    </main>
+
     <header>
-        <h1>Your Project Header</h1>
-        <!-- Add navigation links if needed -->
+        <h1 style="text-align:center">Navigation</h1>
         <nav>
-            <ul>
+            <ul class="nav-links">
                 <li><a href="{% url 'signup' %}">Sign Up</a></li>
                 <li><a href="{% url 'login' %}">Log In</a></li>
                 <li><a href="{% url 'global-feed' %}">Global Feed</a></li>
@@ -24,15 +32,9 @@
             </ul>
         </nav>
     </header>
-    
-    <main>
-        {% block content %}
-        <!-- This is where the content of child templates will be injected -->
-        {% endblock %}
-    </main>
 
-    <footer>
-        <p>&copy; 2024 Your Project Name</p>
+    <footer style="text-align:center">
+        <p>&copy; 2024 ArtKhoj</p>
     </footer>
 </body>
 </html>

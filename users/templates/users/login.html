@@ -1,8 +1,31 @@
-<h2>Login</h2>
-<form method="POST">
-    {% csrf_token %}
-    {{ form.as_p }}
-    <button type="submit">Login</button>
-</form>
+{% extends 'users/base.html' %}
+{% load static %}
 
-<p>Don't have an account? <a href="{% url 'signup' %}">Sign up here</a>.</p>
+{% block content %}
+<div class="top-right-logo">
+    <img src="{% static 'users/images/artkhojlogo.png' %}" alt="Brand Logo">
+</div>
+
+<div class="login-container">
+    <div class="background-slider">
+        <img src="{% static 'users/images/carry.webp' %}" class="slideshow-image active">
+        <img src="{% static 'users/images/mikeportnoy.jfif' %}" class="slideshow-image">
+        <img src="{% static 'users/images/gavin_harrison.jfif' %}" class="slideshow-image">
+    </div>
+
+    <div class="login-form">
+        <h2>Login into ArtKhoj</h2>
+        <form method="POST">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <button type="submit" class="styled-button">Login</button>
+        </form>
+        <p>Don't have an account? <a href="{% url 'signup' %}">Sign up here</a>.</p>
+    </div>
+</div>
+
+<!-- JavaScript for Slideshow -->
+<script src="{% static 'users/scripts/slideshow.js' %}"></script>
+
+{% endblock %}
+

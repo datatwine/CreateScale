@@ -1,0 +1,117 @@
+/* Central alignment for content */
+.center-container {
+    display: flex;
+    justify-content: center; /* Horizontally center */
+    align-items: center; /* Vertically center */
+    min-height: 100vh; /* Full viewport height */
+    text-align: center; /* Center text */
+}
+
+/* Login form container */
+.login-form {
+    background: #f8f8f8; /* Light gray background */
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+/* Styled button */
+.styled-button {
+    background-color: #e68a00; /* Orange color */
+    color: #000; /* Black text */
+    font-size: 1.2rem; /* Increased size */
+    padding: 12px 24px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    margin-top: 10px;
+    transition: background-color 0.3s ease-in-out;
+}
+
+.styled-button:hover {
+    background-color: #cc7700; /* Darker orange on hover */
+}
+
+/* Ensure navigation links are displayed horizontally */
+.nav-links {
+    list-style: none; /* Remove bullet points */
+    display: flex; /* Align items in a row */
+    justify-content: center; /* Center links across the page */
+    align-items: center;
+    padding: 0;
+    margin: 0;
+    gap: 40px; /* Space between links */
+    position: relative;
+    z-index: 10;
+}
+
+/* Style for each nav link */
+.nav-links li {
+    margin: 0;
+    padding: 0;
+}
+
+/* Styling for navigation links */
+.nav-links a {
+    text-decoration: none;
+    color: black;
+    font-size: 18px;
+    font-weight: bold;
+    padding: 10px 15px;
+    transition: color 0.3s ease-in-out;
+}
+
+/* Hover effect for navigation links */
+.nav-links a:hover {
+    color: #e68a00; /* Orange color on hover */
+}
+
+/* Background image slideshow */
+.background-slider {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100vh;
+    z-index: -1;
+    overflow: hidden;
+    pointer-events: none;
+}
+
+.background-slider img {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100vh;
+    object-fit: cover;
+    opacity: 0;
+    transition: opacity 2s ease-in-out;
+}
+
+/* Active image for fade-in effect */
+.background-slider img.active {
+    opacity: 1;
+}
+
+/* Adjust login form position over the background */
+.center-container {
+    position: relative;
+    z-index: 1;
+    background: rgba(255, 255, 255, 0.8); /* Light overlay to ensure readability */
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+}
+
+.top-right-logo {
+    position: fixed;  /* Stays in place when scrolling */
+    top: 10px;        /* Distance from the top */
+    right: 200px;      /* Distance from the right */
+    width: 80px;      /* Adjust image size */
+    height: auto;     /* Keeps aspect ratio */
+    z-index: 100;     /* Ensures it's always visible */
+    background: rgba(255, 255, 255, 0.6); /* Optional: Adds a translucent background */
+    padding: 5px; /* Optional: Adds spacing */
+    border-radius: 5px; /* Optional: Rounds corners */
+}
