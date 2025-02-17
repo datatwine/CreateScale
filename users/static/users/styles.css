@@ -115,3 +115,97 @@
     padding: 5px; /* Optional: Adds spacing */
     border-radius: 5px; /* Optional: Rounds corners */
 }
+
+/*Signup CSS 
+/* ✅ Overall Page Layout */
+.signup-page {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    padding: 0 10%;
+    position: relative;
+}
+
+/* ✅ Signup Form (Centered) */
+.signup-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 50%;
+}
+
+/* ✅ Rotating Text Properly Positioned */
+.rotating-text-container {
+    position: absolute;
+    right: 10%; /* Moves the text to the right third */
+    top: 50%;
+    transform: translateY(-50%);
+    width: 30%;
+    text-align: right;
+}
+
+/* ✅ Rotating Text Appearance */
+.rotating-text {
+    font-size: 2rem;
+    font-weight: bold;
+    color: #e68a00;
+    text-align: center;
+    width: 100%;
+    position: relative;
+}
+
+/* ✅ Individual Words Animation */
+.word {
+    position: absolute;
+    width: 100%;
+    opacity: 0;
+    animation: rotateWords 8s linear infinite;
+}
+
+/* ✅ Word Order & Placement */
+.word:nth-child(1) { animation-delay: 0s; top: 10%; }
+.word:nth-child(2) { animation-delay: 2s; top: 50%; }
+.word:nth-child(3) { animation-delay: 4s; top: 70%; }
+.word:nth-child(4) { animation-delay: 6s; top: 100%; }
+
+/* ✅ Keyframe Animation for Words */
+@keyframes rotateWords {
+    0% { opacity: 0; transform: translateY(-10px); }
+    10% { opacity: 1; transform: translateY(0px); } /* Fade in */
+    30% { opacity: 1; } /* Stay visible */
+    50% { opacity: 0; transform: translateY(10px); } /* Fade out */
+    100% { opacity: 0; }
+}
+
+/* ✅ Button Styling */
+.signup-btn {
+    background-color: #e68a00;
+    color: #000;
+    font-size: 1.2rem;
+    font-weight: bold;
+    padding: 15px 25px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease-in-out;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+}
+
+/* ✅ Button Hover Effect */
+.signup-btn:hover {
+    background-color: #d17700;
+    transform: scale(1.05);
+}
+
+
+
+/* ✅ Login Link 
+.login-link {
+    margin-top: 15px;
+    text-align: center;
+    font-size: 1rem;
+}

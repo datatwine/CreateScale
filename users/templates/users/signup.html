@@ -1,8 +1,36 @@
-<h2>Sign Up</h2>
-<form method="POST">
-    {% csrf_token %}
-    {{ form.as_p }}
-    <button type="submit">Sign Up</button>
-</form>
-<p>Already have an account? <a href="{% url 'login' %}">Sign in here</a>.</p>
+{% extends "users/base.html" %}
 
+{% load static %}
+
+{% block content %}
+<div class="signup-page">
+    <!-- ✅ Rotating Words -->
+    <div class="rotating-text-container">
+        <div class="rotating-text">
+            <span class="word">Learn.</span>
+            <span class="word">Perform.</span>
+            <span class="word">Earn.</span>
+            <span class="word">Live.</span>
+        </div>
+    </div>
+
+
+    <div class="signup-container">
+        <!-- ✅ Sign Up Form -->
+        <div class="signup-form">
+            <h2>Are you ready to dazzle? <span class="waving-hand">👋</span></h2>
+            <p class="subtext">Join a community of creators. Learn, grow, and showcase your skills!</p>
+
+            <form method="post">
+                {% csrf_token %}
+                {{ form.as_p }}
+                <button type="submit" class="signup-btn">
+                    Let's Go 🚀
+                </button>
+            </form>
+
+            <p class="login-link">Already have an account? <a href="{% url 'login' %}">Sign in here.</a></p>
+        </div>
+    </div>
+</div>
+{% endblock %}
