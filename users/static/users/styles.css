@@ -208,4 +208,200 @@
     margin-top: 15px;
     text-align: center;
     font-size: 1rem;
+} */
+
+/* User Profile CSS */
+
+/* Profile Page Container */
+.profile-page-container {
+    display: flex;
+    flex-direction: column;  /* Stack elements vertically */
+    align-items: center;  /* Center align contents */
+    width: 80%;
+    margin: 0 auto;
+}
+
+/* Profile Header Styling */
+
+
+
+.profile-header {
+    display: flex ;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 20px ;
+    background: #fff ;
+    box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    margin-bottom: 20px ;
+    justify-content: center;
+    width: 100%;
+}
+
+/* Profile Picture */
+.profile-picture img {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    object-fit: cover;
+    cursor: pointer;
+    transition: 0.3s ease-in-out;
+    border: 3px solid #e68a00;
+}
+
+.profile-picture img:hover {
+    transform: scale(1.05);
+}
+*/
+
+/* Bio and Location */
+.profile-info {
+    text-align: center;
+    font-family: 'Arial', sans-serif;
+    font-size: 1.1rem;
+    color: #333;
+    margin-top: 10px;
+}
+
+.profile-info p {
+    margin: 5px 0;
+}
+
+.profile-info strong {
+    color: #e68a00;
+}
+
+*/
+
+/* Edit Icon */
+.edit-icon {
+    cursor: pointer;
+    color: #e68a00;
+    margin-left: 5px;
+}
+
+/* Profile Separator */
+.profile-separator {
+    width: 80%;
+    margin: 20px auto;
+    border: none;
+    border-top: 2px solid #e68a00;
+}
+
+/* Button Styling */
+.styled-button {
+    background-color: #e68a00;
+    color: #fff;
+    font-size: 1.2rem;
+    font-weight: bold;
+    padding: 12px 24px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease-in-out;
+    border: none;
+    margin-top: 10px;
+}
+
+.styled-button:hover {
+    background-color: #d17700;
+    transform: scale(1.05);
+}
+
+/* Rest of the profile */
+/* Container for Uploads Section */
+
+.uploads-container-profile {
+    width: 80%;
+    margin: 20px auto;
+    padding: 20px;
+    background: #fff;
+    box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+}
+
+/* Upload Items */
+.upload-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    margin-bottom: 20px;
+    padding: 15px;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.upload-item img, .upload-item video {
+    max-width: 100%;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Upload Caption */
+.upload-caption {
+    font-size: 1rem;
+    color: #333;
+    margin-top: 8px;
+}
+
+/* Media Upload Form */
+.upload-form-profile {
+    width: 80%;
+    margin: 20px auto;
+    padding: 20px;
+    background: #fff;
+    box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    text-align: center;
+}
+
+.upload-form-profile button {
+    background-color: #e68a00;
+    color: white;
+    font-size: 1.1rem;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+.upload-form-profile button:hover {
+    background-color: #d17700;
+    transform: scale(1.05);
+}
+
+/* Inbox Icon CSS */
+.inbox-icon {
+    position: relative;
+    display: inline-block;
+    font-size: 40px; /* Make the icon bigger */
+}
+
+.mail-icon {
+    text-decoration: none;
+    transition: transform 0.3s ease-in-out;
+}
+
+.mail-icon:hover {
+    transform: scale(1.2);
+}
+
+.unread-count {
+    position: relative;
+    top: -5px;
+    right: -10px;
+    background: yellow;
+    color: black;
+    font-size: 70px;
+    font-weight: bold;
+    padding: 4px 8px;
+    border-radius: 50%;
+    z-index: 999;
+}
+
+.unread-count {
+    display: inline-block !important;
+    color: red;
+    font-weight: bold;
 }

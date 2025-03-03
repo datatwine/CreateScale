@@ -61,6 +61,7 @@ from .forms import UploadForm
 @login_required
 def profile(request):
     user_profile = Profile.objects.get(user=request.user)  # Retrieve the current user's profile
+    unread_messages = Message.objects.filter(recipient=request.user, is_read=False)  # Add this line
 
     if request.method == 'POST':
         profile_form = ProfileUpdateForm(request.POST, request.FILES, instance=user_profile)
@@ -82,13 +83,15 @@ def profile(request):
         upload_form = UploadForm()
 
     # Order uploads by `upload_date` in descending order to show the latest uploads first
-    uploads = Upload.objects.filter(profile=user_profile).order_by('-upload_date')
+    profile_pic_path = user_profile.profile_picture.name  # Get relative file path
+    uploads = Upload.objects.filter(profile=user_profile).exclude(image=profile_pic_path).order_by('-upload_date')
 
     return render(request, 'users/profile.html', {
         'profile_form': profile_form,
         'upload_form': upload_form,
         'uploads': uploads,  # Pass uploads to the template
-        'profile': user_profile
+        'profile': user_profile,
+        'unread_messages': unread_messages,
     })
 
 
