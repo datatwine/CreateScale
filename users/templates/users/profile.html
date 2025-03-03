@@ -1,50 +1,88 @@
+{% extends 'users/base.html' %}
 {% load static %} 
 
+
+
+
+{% block content %}
+<div class="profile-page-container">
 <h1>{{ user.username }}'s Profile</h1>
 
-<!-- Display the profile picture if available -->
-{% if user.profile.profile_picture %}
-    <img src="{{ user.profile.profile_picture.url }}" alt="Profile Picture" style="width: 150px; height: 150px; border-radius: 50%;">
-{% else %}
-    <img src="{% static 'default_profile_pic.jpg' %}" alt="No Profile Picture" style="width: 150px; height: 150px; border-radius: 50%;">
-{% endif %}
+<!-- Profile Header --> 
+<div class="profile-header">
+    <!-- Profile Picture -->
+    <div class="profile-picture">
+        <label for="profile-pic-upload">
+            {% if user.profile.profile_picture %}
+                <img id="profile-pic" src="{{ user.profile.profile_picture.url }}" alt="Profile Picture">
+            {% else %}
+                <img id="profile-pic" src="{% static 'default_profile_pic.jpg' %}" alt="No Profile Picture">
+            {% endif %}
+        </label>
+    </div>
 
-<!-- Display the bio -->
-<p><strong>Bio:</strong> {{ user.profile.bio }}</p>
+    <!-- Profile Update Form -->
+    <form id="profile-form" method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        
+        <!-- Hidden Profile Picture Upload Field -->
+        <input type="file" id="profile-pic-upload" name="profile_picture" style="display: none;">
+        
+        <!-- Bio and Location Fields -->
+        <div class="profile-info">
+            <p><strong>Bio:</strong> 
+                <span id="bio-text">{{ user.profile.bio }}</span>
+                <span class="edit-icon edit-bio">✎</span>
+            </p>
+            <input type="text" id="bio-input" name="bio" value="{{ user.profile.bio }}" style="display: none;">
+            
+            <p><strong>Location:</strong> 
+                <span id="location-text">{{ user.profile.location }}</span>
+                <span class="edit-icon edit-location">✎</span>
+            </p>
+            <input type="text" id="location-input" name="location" value="{{ user.profile.location }}" style="display: none;">
+        </div>
 
-<!-- Profile Update Form (for bio and profile picture) -->
-<form method="post" enctype="multipart/form-data">
-    {% csrf_token %}
-    {{ profile_form.as_p }}
-    <button type="submit">Update Profile</button>
-</form>
+        <button type="submit">Save Changes</button>
+    </form>
+</div>
 
 <hr>
 
-{% if unread_messages %}
-    <a href="{% url 'inbox' %}">Inbox ({{ unread_messages.count }})</a>
-{% else %}
-    <a href="{% url 'inbox' %}">Inbox</a>
-{% endif %}
 
+<!-- Inbox Icon Link -->
+<div class="inbox-icon">
+    <a href="{% url 'inbox' %}" class="mail-icon">📩</a>
+    {% if unread_messages.exists %}
+        <span class="unread-count">{{ unread_messages.count }}</span>
+    {% endif %}
+</div>
+
+<div class="uploads-container-profile">
 <h2>Uploads</h2>
-<!-- Display the uploads (images/videos with captions) -->
+<!-- Display Uploads -->
 {% for upload in uploads %}
-    <div>
-        <!-- Check if the upload is an image or video -->
-        {% if upload.image %}
+    {% if upload.image and upload.image.url != user.profile.profile_picture.url %}
+        <div class="upload-item">
             <img src="{{ upload.image.url }}" alt="Uploaded Image" style="max-width: 300px;">
-        {% elif upload.video %}
+            <p>{{ upload.caption }}</p>
+            <p><small>{{ upload.upload_date }}</small></p>
+        </div>
+    {% elif upload.video %}
+        <div class="upload-item">
             <video controls>
                 <source src="{{ upload.video.url }}" type="video/mp4">
                 Your browser does not support the video tag.
             </video>
-        {% endif %}
-        <p>{{ upload.caption }}</p>
-        <p><small>{{ upload.upload_date }}</small></p>
-    </div>
+            <p>{{ upload.caption }}</p>
+            <p><small>{{ upload.upload_date }}</small></p>
+        </div>
+    {% endif %}
 {% endfor %}
 
+</div>
+
+<div class="upload-form-profile">
 <!-- Media Upload Form -->
 <h3>Upload Media</h3>
 <form method="post" enctype="multipart/form-data">
@@ -52,10 +90,12 @@
     {{ upload_form.as_p }}
     <button type="submit">Upload</button>
 </form>
+</div>
 
 <hr>
+
 <div>
-    <a href="{% url 'global-feed' %}">Go to Global Feed</a>  <!-- Global Feed Link -->
+    <a href="{% url 'global-feed' %}">Go to Global Feed</a>
     <br>
     <form method="POST" action="{% url 'logout' %}">
         {% csrf_token %}
@@ -63,5 +103,10 @@
     </form>
 </div>
 
+<!-- Include external JavaScript -->
+<script src="{% static 'users/scripts/editProfile.js' %}"></script>
+
+</div>
+{% endblock %}
 
 
