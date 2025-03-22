@@ -1,27 +1,49 @@
+{% extends 'users/base.html' %}
 {% load static %}
+
+
+{% block content %}
+
+<div class="global-feed-container"> 
 
 <h1>Global Feed</h1>
 
 <!-- Filter Form -->
+<div class="filter-container">
 <form method="get" action="{% url 'global-feed' %}">
-    {{ profession_filter_form.as_p }}
+    <div class="dropdown-filter">
+    <label for="id_professions">Filter by Profession:</label>
+    <select name="professions" id="id_professions">
+        <option value="">-- All --</option>
+        {% for value, label in profession_filter_form.fields.professions.choices %}
+            <option value="{{ value }}" {% if value in profession_filter_form.cleaned_data.professions %}selected{% endif %}>
+                {{ label }}
+            </option>
+        {% endfor %}
+    </select>
+</div>
     <button type="submit">Apply Filter</button>
 </form>
+</div>
 
 <!-- Display Filtered Profiles -->
-<div class="profile-feed">
-    {% for profile in profiles %}
-        <div class="profile">
-            <a href="{% url 'profile-detail' profile.user.id %}">
-                <img src="{{ profile.profile_picture.url }}" alt="{{ profile.user.username }}'s profile picture" />
-                <p>{{ profile.user.username }}</p>
-                <p>{{ profile.profession }}</p>
-            </a>
-        </div>
-    {% empty %}
-        <p>No users found for the selected profession.</p>
-    {% endfor %}
+{% for profile in profiles %}
+<div class="profile-header-global">
+    <div class="profile-picture-container">
+        <a href="{% url 'profile-detail' profile.user.id %}" class="profile-link">
+            <img src="{{ profile.profile_picture.url }}" alt="{{ profile.user.username }}'s profile picture" />
+            <p><strong>{{ profile.user.username }}</strong></p>
+            <p>{{ profile.profession }}</p>
+        </a>
+    </div>
 </div>
+{% empty %}
+<p>No users found for the selected profession.</p>
+{% endfor %}
+
+</div>
+
+{% endblock %}
 
 
 

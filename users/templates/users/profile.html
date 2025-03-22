@@ -1,9 +1,6 @@
 {% extends 'users/base.html' %}
 {% load static %} 
 
-
-
-
 {% block content %}
 <div class="profile-page-container">
 <h1>{{ user.username }}'s Profile</h1>
@@ -41,6 +38,13 @@
                 <span class="edit-icon edit-location">✎</span>
             </p>
             <input type="text" id="location-input" name="location" value="{{ user.profile.location }}" style="display: none;">
+
+            <p><strong>Profession:</strong> 
+                <span id="profession-text">{{ user.profile.profession }}</span>
+                <span class="edit-icon edit-profession">✎</span>
+            </p>
+            <input type="text" id="profession-input" name="profession" value="{{ user.profile.profession }}" style="display: none;">
+            
         </div>
 
         <button type="submit">Save Changes</button>
