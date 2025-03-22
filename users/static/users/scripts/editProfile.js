@@ -56,4 +56,12 @@ document.addEventListener("DOMContentLoaded", function () {
             locationInput.style.display = "none";
         });
     }
+
+    document.querySelector(".edit-profession").addEventListener("click", function () {
+        document.getElementById("profession-text").style.display = "none";
+        document.getElementById("profession-input").style.display = "inline";
+    });
 });
+
+
+
