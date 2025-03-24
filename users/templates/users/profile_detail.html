@@ -1,22 +1,33 @@
+{% extends 'users/base.html' %}
 {% load static %}
 
+
+{% block content %}
+<div class="profile-page-container">
 <h1>{{ profile.user.username }}'s Profile</h1>
 
+<div class="profile-header">
 <!-- Profile Picture -->
-{% if profile.profile_picture %}
-    <img src="{{ profile.profile_picture.url }}" alt="{{ profile.user.username }}'s profile picture" style="max-width: 200px; height: auto;">
-{% else %}
-    <p>No profile picture available.</p>
-{% endif %}
+    <div class="profile-picture-detail">
+    {% if profile.profile_picture %}
+        <img src="{{ profile.profile_picture.url }}" alt="{{ profile.user.username }}'s profile picture" style="max-width: 200px; height: auto;">
+    {% else %}
+        <p>No profile picture available.</p>
+    {% endif %}
+    </div>
 
-<!-- Profile Information -->
-<p><strong>Profession:</strong> {{ profile.profession }}</p>
-<p><strong>Location:</strong> {{ profile.location }}</p>
-<p><strong>Bio:</strong> {{ profile.bio }}</p>
+    <div class="profile-info">
+        <!-- Profile Information -->
+        <p><strong>Profession:</strong> {{ profile.profession }}</p>
+        <p><strong>Location:</strong> {{ profile.location }}</p>
+        <p><strong>Bio:</strong> {{ profile.bio }}</p>
+        </div>
+</div>
 
 
 
 {% if request.user != profile.user %}
+<div class="message-form-container">
     <form action="{% url 'send_message' profile.user.id %}" method="post" style="margin-top: 10px;">
         {% csrf_token %}
         <textarea
@@ -25,27 +36,35 @@
             cols="40"
             placeholder="Write your message here..."
             style="width: 100%; margin-bottom: 5px;"></textarea>
-        <button type="submit" class="send-message-button">
-            Send Message
-        </button>
+            <button type="submit" class="styled-button">Send Message</button>
     </form>
+</div>
 {% endif %}
 
 
 <!-- User's Uploads -->
+<div class="uploads-container-profile">
 <h2>Uploads</h2>
-<ul>
-    {% for upload in uploads %}
-        <li>
+{% for upload in uploads %}
+    {% if upload.image and upload.image.url != profile.profile_picture.url %}
+        <div class="upload-item">
+            <img src="{{ upload.image.url }}" alt="Uploaded Image" style="max-width: 300px;">
             <p>{{ upload.caption }}</p>
-            {% if upload.image %}
-                <img src="{{ upload.image.url }}" alt="Uploaded Image" style="max-width: 100%; height: auto;">
-            {% elif upload.video %}
-                <video controls>
-                    <source src="{{ upload.video.url }}" type="video/mp4">
-                    Your browser does not support the video tag.
-                </video>
-            {% endif %}
-        </li>
-    {% endfor %}
-</ul>
+            <p><small>{{ upload.upload_date }}</small></p>
+        </div>
+    {% elif upload.video %}
+        <div class="upload-item">
+            <video controls>
+                <source src="{{ upload.video.url }}" type="video/mp4">
+                Your browser does not support the video tag.
+            </video>
+            <p>{{ upload.caption }}</p>
+            <p><small>{{ upload.upload_date }}</small></p>
+        </div>
+    {% endif %}
+{% empty %}
+    <p style="text-align:center;">No uploads yet.</p>
+{% endfor %}
+</div>
+</div>
+{% endblock %}
