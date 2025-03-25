@@ -1,4 +1,4 @@
-{% extends 'users/base.html' %} 
+{% extends 'users/base.html' %}
 {% load static %}
 
 {% block content %}
@@ -8,26 +8,37 @@
     {% if messages %}
         <div class="inbox-thread-list">
             {% for message in messages %}
-                <div class="message-row">
-                    <div class="message-info">
-                        <p class="message-user">
-                            {% if message.sender == request.user %}
-                                {{ message.recipient.username }}
-                            {% else %}
-                                {{ message.sender.username }}
-                            {% endif %}
-                        </p>
-                        <p class="message-snippet">{{ message.content|truncatewords:12 }}</p>
-                    </div>
-                    <div class="message-meta">
-                        <p class="timestamp">{{ message.timestamp|date:"M d, Y, h:i a" }}</p>
-                        {% if message.sender == request.user %}
-                            <a href="{% url 'message-thread' user_id=message.recipient.id %}" class="reply-button reply-link">View Thread</a>
-                        {% else %}
-                            <a href="{% url 'message-thread' user_id=message.sender.id %}" class="reply-button reply-link">View Thread</a>
-                        {% endif %}
-                    </div>
-                </div>
+                {% if message.sender == request.user %}
+                    {% with other_user=message.recipient %}
+                        <a href="{% url 'message-thread' user_id=other_user.id %}" class="message-row-link">
+                            <div class="message-row">
+                                <div class="message-info">
+                                    <p class="message-user">{{ other_user.username }}</p>
+                                    <p class="message-snippet">{{ message.content|truncatewords:12 }}</p>
+                                </div>
+                                <div class="message-meta">
+                                    <p class="timestamp">{{ message.timestamp|date:"M d, Y, h:i a" }}</p>
+                                    <span class="reply-button">View Thread</span>
+                                </div>
+                            </div>
+                        </a>
+                    {% endwith %}
+                {% else %}
+                    {% with other_user=message.sender %}
+                        <a href="{% url 'message-thread' user_id=other_user.id %}" class="message-row-link">
+                            <div class="message-row">
+                                <div class="message-info">
+                                    <p class="message-user">{{ other_user.username }}</p>
+                                    <p class="message-snippet">{{ message.content|truncatewords:12 }}</p>
+                                </div>
+                                <div class="message-meta">
+                                    <p class="timestamp">{{ message.timestamp|date:"M d, Y, h:i a" }}</p>
+                                    <span class="reply-button">View Thread</span>
+                                </div>
+                            </div>
+                        </a>
+                    {% endwith %}
+                {% endif %}
             {% endfor %}
         </div>
     {% else %}
