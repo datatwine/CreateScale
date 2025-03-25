@@ -513,9 +513,6 @@
 }
 
 
-
-/* Inbox view NEW CSS */
-
 /* Inbox view IMPROVED CSS */
 
 .inbox-container {
@@ -596,6 +593,60 @@
 
 .reply-link:hover {
     background-color: #cc7700;
+}
+
+/* CSS for Inbox clicking option */ 
+
+.message-row-link {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+.message-row-link:hover .message-row {
+    background-color: #fef5e7;
+    transform: scale(1.01);
+}
+
+.message-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: white;
+    border-bottom: 1px solid #ddd;
+    padding: 12px 20px;
+    transition: background-color 0.2s ease-in-out, transform 0.2s ease-in-out;
+}
+
+.message-info {
+    text-align: left;
+}
+
+.message-user {
+    font-weight: bold;
+    font-size: 1.1rem;
+    color: #333;
+}
+
+.message-snippet {
+    color: #555;
+    margin-top: 4px;
+}
+
+.message-meta {
+    text-align: right;
+}
+
+.reply-button {
+    color: #e68a00;
+    font-weight: bold;
+    cursor: pointer;
+    margin-top: 4px;
+}
+
+.timestamp {
+    font-size: 0.9rem;
+    color: #888;
 }
 
 
