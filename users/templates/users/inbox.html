@@ -1,23 +1,37 @@
-{% extends 'users/base.html' %}
+{% extends 'users/base.html' %} 
 {% load static %}
 
 {% block content %}
-<h1>Inbox</h1>
+<div class="inbox-container">
+    <h1 class="inbox-heading">Inbox</h1>
 
-{% if messages %}
-    <ul>
-    {% for message in messages %}
-        <li>
-            <strong>From: </strong> {{ message.sender.username }} <br>
-            <strong>Message: </strong> {{ message.content }} <br>
-            <small>Sent: {{ message.timestamp }}</small>
-            <a href="{% url 'message-thread' message.sender.id %}">
-                Reply
-            </a>
-        </li>
-    {% endfor %}
-    </ul>
-{% else %}
-    <p>No messages.</p>
-{% endif %}
+    {% if messages %}
+        <div class="inbox-thread-list">
+            {% for message in messages %}
+                <div class="message-row">
+                    <div class="message-info">
+                        <p class="message-user">
+                            {% if message.sender == request.user %}
+                                {{ message.recipient.username }}
+                            {% else %}
+                                {{ message.sender.username }}
+                            {% endif %}
+                        </p>
+                        <p class="message-snippet">{{ message.content|truncatewords:12 }}</p>
+                    </div>
+                    <div class="message-meta">
+                        <p class="timestamp">{{ message.timestamp|date:"M d, Y, h:i a" }}</p>
+                        {% if message.sender == request.user %}
+                            <a href="{% url 'message-thread' user_id=message.recipient.id %}" class="reply-button reply-link">View Thread</a>
+                        {% else %}
+                            <a href="{% url 'message-thread' user_id=message.sender.id %}" class="reply-button reply-link">View Thread</a>
+                        {% endif %}
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <p class="no-messages">No messages yet.</p>
+    {% endif %}
+</div>
 {% endblock %}

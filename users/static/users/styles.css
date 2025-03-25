@@ -513,3 +513,92 @@
 }
 
 
+
+/* Inbox view NEW CSS */
+
+/* Inbox view IMPROVED CSS */
+
+.inbox-container {
+    width: 100%;
+    max-width: none;
+    margin: 0 auto;
+    padding:  20px;
+}
+
+.inbox-heading {
+    text-align: center;
+    font-size: 2rem;
+    margin-bottom: 30px;
+    color: #000;
+}
+
+.inbox-thread-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    width: 100%;
+}
+
+.message-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: white;
+    border-bottom: 1px solid #e0e0e0;
+    padding: 20px 30px;
+    transition: background 0.2s ease;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.message-row:hover {
+    background-color: #fff5e6;
+}
+
+.message-info {
+    flex-grow: 1;
+    text-align: left; /* ✅ Force left alignment */
+}
+
+.message-user {
+    font-weight: bold;
+    font-size: 1rem;
+    margin: 0 0 4px 0;
+}
+
+.message-snippet {
+    font-size: 0.9rem;
+    color: #555;
+    margin: 0;
+}
+
+.message-meta {
+    text-align: right;
+    min-width: 160px;
+}
+
+.timestamp {
+    font-size: 0.8rem;
+    color: #888;
+    margin-bottom: 6px;
+}
+
+.reply-link {
+    background-color: #e68a00;
+    color: #fff;
+    padding: 6px 12px;
+    font-size: 0.85rem;
+    border-radius: 4px;
+    text-decoration: none;
+    display: inline-block;
+    transition: background 0.3s ease;
+}
+
+.reply-link:hover {
+    background-color: #cc7700;
+}
+
+
+
+
+

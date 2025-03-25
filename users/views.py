@@ -170,18 +170,33 @@ def send_message(request, user_id):
 
 
 # Inbox view
+from django.db.models import Max, Q
+from .models import Message
+
 @login_required
 def inbox(request):
     user = request.user
-    received_messages = Message.objects.filter(recipient=user).order_by('-timestamp')
 
-    # Mark messages as read if they're accessed from the inbox
-    for message in received_messages:
-        if not message.is_read:
-            message.is_read = True
-            message.save()
+    # Get all messages involving the user
+    all_messages = Message.objects.filter(Q(sender=user) | Q(recipient=user))
 
-    return render(request, 'users/inbox.html', {'messages': received_messages})
+    # Identify each unique conversation as a frozen set of (sender_id, recipient_id)
+    latest_by_pair = {}
+
+    for message in all_messages:
+        participants = frozenset([message.sender_id, message.recipient_id])
+        if participants not in latest_by_pair or message.timestamp > latest_by_pair[participants].timestamp:
+            latest_by_pair[participants] = message
+
+    # Sort the conversations by most recent timestamp
+    messages_to_display = sorted(latest_by_pair.values(), key=lambda m: m.timestamp, reverse=True)
+
+    return render(request, 'users/inbox.html', {'messages': messages_to_display})
+
+
+
+
+
 
 from django.db.models import Q
 from django.contrib.auth.decorators import login_required
