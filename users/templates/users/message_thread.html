@@ -1,46 +1,35 @@
 {% extends 'users/base.html' %}
-{% load static %}
-
 {% block content %}
-<!-- Page heading showing the conversation participant -->
-<h1>Conversation with {{ other_user.username }}</h1>
+<div class="thread-wrapper">
+<div class="message-thread-container">
+    <h2 class="thread-heading">Conversation with {{ other_user.username }}</h2>
 
-<!-- Section displaying all messages in the conversation -->
-<div class="message-thread">
-    {% if error %}
-        <p>{{ error }}</p>
-    {% else %}
-        {% for message in messages %}
-            <div class="{% if message.sender == request.user %}sent-message{% else %}received-message{% endif %}">
-                <p>
-                    <strong>{{ message.sender.username }}:</strong> {{ message.content }}
-                </p>
-                <small>{{ message.timestamp|date:"M d, Y H:i" }}</small>
-            </div>
-        {% endfor %}
-    {% endif %}
+    <div class="chat-window">
+        {% if messages %}
+            {% for message in messages %}
+                <div class="chat-bubble {% if message.sender == request.user %}chat-right{% else %}chat-left{% endif %}">
+                    <p class="chat-text">{{ message.content }}</p>
+                    <span class="chat-timestamp">{{ message.timestamp|date:"M d, H:i" }}</span>
+                </div>
+            {% endfor %}
+        {% else %}
+            <p class="no-messages">No messages yet.</p>
+        {% endif %}
+    </div>
+
+    
+    <form method="post" class="message-form" action="{% url 'message-thread' other_user.id %}">
+        {% csrf_token %}
+        <textarea
+            name="content"
+            cols="40"
+            rows="3"
+            placeholder="Write your message here..."
+            required
+            style="width: 100%; margin-top: 10px;">
+        </textarea>
+        <button class="styled-button" type="submit">Reply</button>
+    </form>
 </div>
-
-<!-- Form to send a reply in the message thread -->
-<form method="post" action="{% url 'message-thread' other_user.id %}">
-    {% csrf_token %}
-    <textarea
-        name="content"
-        cols="40"
-        rows="3"
-        placeholder="Write your message here..."
-        required
-        style="width: 100%; margin-top: 10px;">
-    </textarea>
-    <button type="submit">Reply</button>
-</form>
-
-<!-- Debugging block to display raw message data for developers -->
-{% if messages %}
-    <ul style="display: none;">
-        {% for message in messages %}
-            <li>{{ message }}</li>
-        {% endfor %}
-    </ul>
-{% endif %}
+</div>
 {% endblock %}
