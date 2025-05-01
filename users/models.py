@@ -31,6 +31,17 @@ class Message(models.Model):
     timestamp = models.DateTimeField(auto_now_add=True)
     is_read = models.BooleanField(default=False)
 
+        # New Hiring-specific fields
+    date = models.DateField(null=True, blank=True)
+    time = models.TimeField(null=True, blank=True)
+    location = models.CharField(max_length=255, null=True, blank=True)
+    hiring_status = models.CharField(max_length=10, choices=[
+        ('none', 'None'),
+        ('pending', 'Pending'),
+        ('accepted', 'Accepted'),
+        ('declined', 'Declined'),
+    ], default='none')
+
     def __str__(self):
         return f'Message from {self.sender} to {self.recipient}'
 

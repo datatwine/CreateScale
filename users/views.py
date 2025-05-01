@@ -222,47 +222,63 @@ from users.models import User, Message
 
 @login_required
 def message_thread(request, user_id):
-    """
-    View for handling the message thread between the logged-in user and another user.
-    """
-    try:
-        # Ensure the receiver exists
-        other_user = get_object_or_404(User, id=user_id)  # Renamed to `other_user`
-    except ValueError:
-        messages.error(request, "Invalid user ID.")
-        return redirect("inbox")
-
-    # Prevent users from accessing their own thread
-    if other_user == request.user:
-        messages.error(request, "You cannot send messages to yourself.")
-        return redirect("inbox")
+    other_user = get_object_or_404(User, id=user_id)
 
     if request.method == "POST":
-        content = request.POST.get("content", "").strip()
-        if not content:
-            messages.error(request, "Message content cannot be empty.")
+        if request.POST.get('hiring_action') in ['accept', 'decline']:
+            message_id = request.POST.get('message_id')
+            hire_message = get_object_or_404(Message, id=message_id, recipient=request.user)
+
+            if request.POST['hiring_action'] == 'accept':
+                hire_message.hiring_status = 'accepted'
+            elif request.POST['hiring_action'] == 'decline':
+                hire_message.hiring_status = 'declined'
+            hire_message.save()
+            messages.success(request, f"Hiring request {hire_message.hiring_status}.")
+            return redirect('message-thread', user_id=hire_message.sender.id)
+
+        elif request.POST.get('hiring_request') == 'true':
+            date = request.POST.get('date')
+            time = request.POST.get('time')
+            location = request.POST.get('location')
+
+            if not (date and time and location):
+                messages.error(request, "All hiring fields are required.")
+            else:
+                Message.objects.create(
+                    sender=request.user,
+                    recipient=other_user,
+                    content="Hiring Request",
+                    date=date,
+                    time=time,
+                    location=location,
+                    hiring_status='pending'
+                )
+                messages.success(request, "Hiring request sent successfully.")
+            return redirect('message-thread', user_id=other_user.id)
+
         else:
-            # Save the message
-            Message.objects.create(sender=request.user, recipient=other_user, content=content)
-            messages.success(request, "Message sent successfully.")
-            return redirect("message-thread", user_id=other_user.id)
+            content = request.POST.get("content", "").strip()
+            if not content:
+                messages.error(request, "Message content cannot be empty.")
+            else:
+                Message.objects.create(sender=request.user, recipient=other_user, content=content)
+                messages.success(request, "Message sent successfully.")
+            return redirect('message-thread', user_id=other_user.id)
 
-    # Retrieve all messages in the thread
-    thread_messages = Message.objects.filter(
-        Q(sender=request.user, recipient=other_user) |
-        Q(sender=other_user, recipient=request.user)
-    ).order_by("timestamp")
+    # 🛠️ THIS PART was missing: handling normal GET requests
+    messages_qs = Message.objects.filter(
+        sender__in=[request.user, other_user],
+        recipient__in=[request.user, other_user]
+    ).order_by('timestamp')
 
-    # Render the message thread template
-    return render(
-        request,
-        "users/message_thread.html",
-        {
-            "messages": thread_messages,
-            "other_user": other_user,  # Updated to `other_user` for template compatibility
-            "user_id": other_user.id,
-        },
-    )
+    return render(request, 'users/message_thread.html', {
+        'messages': messages_qs,
+        'other_user': other_user,
+    })
+
+
+
 
 
 
