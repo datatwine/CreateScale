@@ -6,30 +6,58 @@
 
     <div class="chat-window">
         {% if messages %}
-            {% for message in messages %}
-                <div class="chat-bubble {% if message.sender == request.user %}chat-right{% else %}chat-left{% endif %}">
-                    <p class="chat-text">{{ message.content }}</p>
-                    <span class="chat-timestamp">{{ message.timestamp|date:"M d, H:i" }}</span>
-                </div>
-            {% endfor %}
-        {% else %}
-            <p class="no-messages">No messages yet.</p>
-        {% endif %}
+        {% for message in messages %}
+        <div class="chat-bubble {% if message.sender == request.user %}chat-right{% else %}chat-left{% endif %}">
+            {% if message.hiring_status != 'none' %}
+                <p class="chat-text">
+                    <strong>Hiring Request</strong><br>
+                    📅 {{ message.date }} at 🕓 {{ message.time }} <br>
+                    📍 {{ message.location }} <br>
+                    {% if message.hiring_status == 'pending' and message.recipient == request.user %}
+                        <form method="post" style="margin-top:10px;">
+                            {% csrf_token %}
+                            <input type="hidden" name="message_id" value="{{ message.id }}">
+                            <button type="submit" name="hiring_action" value="accept" class="styled-button">Accept</button>
+                            <button type="submit" name="hiring_action" value="decline" class="styled-button">Decline</button>
+                        </form>
+                    {% else %}
+                        <strong>Status: {{ message.hiring_status|capfirst }}</strong>
+                    {% endif %}
+                </p>
+            {% else %}
+                <p class="chat-text">{{ message.content }}</p>
+            {% endif %}
+            <span class="chat-timestamp">{{ message.timestamp|date:"M d, H:i" }}</span>
+        </div>
+    {% endfor %}
+    {% endif %}
+    
+    
+    <div class="message-form">
+        <form method="post" action="{% url 'message-thread' other_user.id %}">
+            {% csrf_token %}
+            <textarea name="content" placeholder="Write your message here..." required></textarea>
+            <button type="submit" class="styled-button">Send Message</button>
+        </form>
     </div>
 
     
-    <form method="post" class="message-form" action="{% url 'message-thread' other_user.id %}">
-        {% csrf_token %}
-        <textarea
-            name="content"
-            cols="40"
-            rows="3"
-            placeholder="Write your message here..."
-            required
-            style="width: 100%; margin-top: 10px;">
-        </textarea>
-        <button class="styled-button" type="submit">Reply</button>
-    </form>
+    <div class="hire-form-container">
+        <h3 class="hire-form-heading">Hire {{ other_user.username }}</h3>
+        <form method="post" action="{% url 'message-thread' other_user.id %}" class="hire-form">
+            {% csrf_token %}
+            <input type="hidden" name="hiring_request" value="true">
+            <input type="date" name="date" required class="hire-input">
+            <input type="time" name="time" required class="hire-input">
+            <input type="text" name="location" placeholder="Enter Location" required class="hire-input">
+            <button type="submit" class="hire-submit-button">Send Hiring Request</button>
+        </form>
+    </div>
+
+
+    
+    
+</div>
 </div>
 </div>
 {% endblock %}
