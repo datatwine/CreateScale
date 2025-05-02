@@ -219,6 +219,8 @@ from django.shortcuts import get_object_or_404, render, redirect
 from django.db.models import Q
 from django.contrib import messages
 from users.models import User, Message
+from datetime import date
+today = date.today().isoformat()
 
 @login_required
 def message_thread(request, user_id):
@@ -285,6 +287,7 @@ def message_thread(request, user_id):
                     return render(request, 'users/message_thread.html', {
                         'messages_qs': messages_qs,
                         'other_user': other_user,
+                        'today_date': today,
                     })
 
                 # ✅ No conflict, allow creating new pending hiring
@@ -319,6 +322,7 @@ def message_thread(request, user_id):
     return render(request, 'users/message_thread.html', {
         'messages_qs': messages_qs,
         'other_user': other_user,
+        'today_date': today,
     })
 
 
