@@ -1,12 +1,22 @@
 {% extends 'users/base.html' %}
 {% block content %}
+
+{% if messages %}
+  <ul class="messages">
+    {% for message in messages %}
+      <li>{{ message }}</li>
+    {% endfor %}
+  </ul>
+{% endif %}
+
+
 <div class="thread-wrapper">
 <div class="message-thread-container">
     <h2 class="thread-heading">Conversation with {{ other_user.username }}</h2>
 
     <div class="chat-window">
-        {% if messages %}
-        {% for message in messages %}
+        {% if messages_qs %}
+        {% for message in messages_qs %}
         <div class="chat-bubble {% if message.sender == request.user %}chat-right{% else %}chat-left{% endif %}">
             {% if message.hiring_status != 'none' %}
                 <p class="chat-text">
