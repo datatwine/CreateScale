@@ -567,7 +567,153 @@ class MessageThreadViewTest(TestCase):
         response = self.client.get(reverse("message-thread", args=[self.user2.id]))
         self.assertEqual(response.status_code, 403)  # Expect forbidden status code.
 
+from django.utils import timezone
+from datetime import timedelta
+from users.models import Message  # Ensure you import Message
+
+class HiringRequestTestCase(TestCase):
+    def setUp(self):
+        # Setup three users: A, B (recipient), C
+        self.sender_a = User.objects.create_user(username="sender_a", password="password123")
+        self.sender_c = User.objects.create_user(username="sender_c", password="password123")
+        self.recipient_b = User.objects.create_user(username="recipient_b", password="password123")
+
+        self.hiring_date = timezone.now().date() + timedelta(days=1)  # Hiring for tomorrow
+
+    def login_as(self, user):
+        self.client.logout()
+        self.client.login(username=user.username, password="password123")
+
+    def test_hiring_acceptance_and_auto_decline(self):
+        # Sender A sends hiring request
+        self.login_as(self.sender_a)
+        response = self.client.post(
+            reverse("message-thread", args=[self.recipient_b.id]),
+            {"hiring_request": "true", "date": self.hiring_date, "time": "10:00", "location": "Cafe"}
+        )
+        self.assertRedirects(response, reverse("message-thread", args=[self.recipient_b.id]))
+
+        # Sender C sends another hiring request for same recipient/date
+        self.login_as(self.sender_c)
+        response = self.client.post(
+            reverse("message-thread", args=[self.recipient_b.id]),
+            {"hiring_request": "true", "date": self.hiring_date, "time": "11:00", "location": "Library"}
+        )
+        self.assertRedirects(response, reverse("message-thread", args=[self.recipient_b.id]))
+
+        # Assert both pending requests exist
+        self.assertEqual(Message.objects.filter(recipient=self.recipient_b, hiring_status="pending").count(), 2)
+
+        # Recipient B accepts Sender A's request
+        self.login_as(self.recipient_b)
+        hire_message = Message.objects.filter(sender=self.sender_a, recipient=self.recipient_b, hiring_status="pending").first()
+        response = self.client.post(
+            reverse("message-thread", args=[hire_message.sender.id]),
+            {"hiring_action": "accept", "message_id": hire_message.id}
+        )
+        self.assertRedirects(response, reverse("message-thread", args=[hire_message.sender.id]))
+
+        # Reload from DB
+        hire_message.refresh_from_db()
+        other_hire_message = Message.objects.filter(sender=self.sender_c, recipient=self.recipient_b).first()
+
+        # Assert accepted message is accepted
+        self.assertEqual(hire_message.hiring_status, "accepted")
+
+        # Assert conflicting pending requests are declined
+        self.assertEqual(other_hire_message.hiring_status, "declined")
+
+    def test_hiring_blocked_after_acceptance(self):
+        # Sender A sends hiring request
+        self.login_as(self.sender_a)
+        self.client.post(
+            reverse("message-thread", args=[self.recipient_b.id]),
+            {"hiring_request": "true", "date": self.hiring_date, "time": "10:00", "location": "Cafe"}
+        )
+
+        # Recipient B accepts Sender A's hiring
+        self.login_as(self.recipient_b)
+        hire_message = Message.objects.filter(sender=self.sender_a, recipient=self.recipient_b, hiring_status="pending").first()
+        self.client.post(
+            reverse("message-thread", args=[hire_message.sender.id]),
+            {"hiring_action": "accept", "message_id": hire_message.id}
+        )
+
+        # Sender C now tries to send another hiring for same date
+        self.login_as(self.sender_c)
+        response = self.client.post(
+            reverse("message-thread", args=[self.recipient_b.id]),
+            {"hiring_request": "true", "date": self.hiring_date, "time": "12:00", "location": "Park"},
+            follow=True
+        )
+
+        # Check for error message about already being hired
+        self.assertContains(response, "already hired for the selected date", status_code=200)
+
+        # Ensure no new pending hiring created
+        pending_hirings = Message.objects.filter(
+            sender=self.sender_c,
+            recipient=self.recipient_b,
+            date=self.hiring_date,
+            hiring_status="pending"
+        )
+        self.assertEqual(pending_hirings.count(), 0)
 
 
+
+
+from django.utils import timezone
+from datetime import timedelta
+from django.urls import reverse
+from django.contrib.auth.models import User
+from users.models import Message
+from django.test import TestCase
+
+class HiringRequestSelfConflictTestCase(TestCase):
+    def setUp(self):
+        # Setup two users: Sender (A) and Recipient (B)
+        self.sender_a = User.objects.create_user(username="sender_a", password="password123")
+        self.recipient_b = User.objects.create_user(username="recipient_b", password="password123")
+        self.hiring_date = timezone.now().date() + timedelta(days=1)
+
+    def login_as(self, user):
+        self.client.logout()
+        self.client.login(username=user.username, password="password123")
+
+    def test_sender_cannot_rehire_accepted_recipient_same_date(self):
+        # Sender A sends hiring request to Recipient B
+        self.login_as(self.sender_a)
+        self.client.post(
+            reverse("message-thread", args=[self.recipient_b.id]),
+            {"hiring_request": "true", "date": self.hiring_date, "time": "10:00", "location": "Cafe"}
+        )
+
+        # Recipient B accepts the hiring request
+        self.login_as(self.recipient_b)
+        hire_message = Message.objects.filter(sender=self.sender_a, recipient=self.recipient_b, hiring_status="pending").first()
+        self.client.post(
+            reverse("message-thread", args=[hire_message.sender.id]),
+            {"hiring_action": "accept", "message_id": hire_message.id}
+        )
+
+        # Now Sender A tries to send another hiring request for same date
+        self.login_as(self.sender_a)
+        response = self.client.post(
+            reverse("message-thread", args=[self.recipient_b.id]),
+            {"hiring_request": "true", "date": self.hiring_date, "time": "12:00", "location": "Park"},
+            follow=True
+        )
+
+        # Should block this second hiring
+        self.assertContains(response, "already hired for the selected date", status_code=200)
+
+        # Ensure no new pending hiring created
+        pending_hirings = Message.objects.filter(
+            sender=self.sender_a,
+            recipient=self.recipient_b,
+            date=self.hiring_date,
+            hiring_status="pending"
+        )
+        self.assertEqual(pending_hirings.count(), 0)
 
 

@@ -219,32 +219,78 @@ from django.shortcuts import get_object_or_404, render, redirect
 from django.db.models import Q
 from django.contrib import messages
 from users.models import User, Message
+from datetime import date
+today = date.today().isoformat()
 
 @login_required
 def message_thread(request, user_id):
+    """
+    View for handling the message thread between the logged-in user and another user.
+    Includes normal messaging and hiring requests.
+    """
     other_user = get_object_or_404(User, id=user_id)
 
     if request.method == "POST":
+
         if request.POST.get('hiring_action') in ['accept', 'decline']:
+            # Accept or Decline a Hiring Request
             message_id = request.POST.get('message_id')
             hire_message = get_object_or_404(Message, id=message_id, recipient=request.user)
 
-            if request.POST['hiring_action'] == 'accept':
+            action = request.POST['hiring_action']
+
+            if action == 'accept':
                 hire_message.hiring_status = 'accepted'
-            elif request.POST['hiring_action'] == 'decline':
+                hire_message.save()
+
+                # Auto-decline other pending hiring requests
+                Message.objects.filter(
+                    recipient=hire_message.recipient,
+                    date=hire_message.date,
+                    hiring_status='pending'
+                ).exclude(id=hire_message.id).update(hiring_status='declined')
+
+                messages.success(request, "Hiring request accepted. Other pending requests have been declined.")
+
+            elif action == 'decline':
                 hire_message.hiring_status = 'declined'
-            hire_message.save()
-            messages.success(request, f"Hiring request {hire_message.hiring_status}.")
+                hire_message.save()
+                messages.success(request, "Hiring request declined.")
+
             return redirect('message-thread', user_id=hire_message.sender.id)
 
         elif request.POST.get('hiring_request') == 'true':
+            # New Hiring Request Creation
             date = request.POST.get('date')
             time = request.POST.get('time')
             location = request.POST.get('location')
 
             if not (date and time and location):
-                messages.error(request, "All hiring fields are required.")
+                messages.error(request, "All fields are required for hiring.")
             else:
+                # 🔥 Corrected Conflict Check (Block if pending or accepted exists) 🔥
+                conflict = Message.objects.filter(
+                    recipient=other_user,
+                    date=date,
+                    hiring_status__in=['pending', 'accepted']
+                ).exists()
+
+                if conflict:
+                    messages.error(request, "This user is already hired or has a pending hiring request for the selected date.")
+
+                    # Re-render thread view if conflict
+                    messages_qs = Message.objects.filter(
+                        sender__in=[request.user, other_user],
+                        recipient__in=[request.user, other_user]
+                    ).order_by('timestamp')
+
+                    return render(request, 'users/message_thread.html', {
+                        'messages_qs': messages_qs,
+                        'other_user': other_user,
+                        'today_date': today,
+                    })
+
+                # ✅ No conflict, allow creating new pending hiring
                 Message.objects.create(
                     sender=request.user,
                     recipient=other_user,
@@ -255,9 +301,10 @@ def message_thread(request, user_id):
                     hiring_status='pending'
                 )
                 messages.success(request, "Hiring request sent successfully.")
-            return redirect('message-thread', user_id=other_user.id)
+                return redirect('message-thread', user_id=other_user.id)
 
         else:
+            # Regular Message
             content = request.POST.get("content", "").strip()
             if not content:
                 messages.error(request, "Message content cannot be empty.")
@@ -266,16 +313,24 @@ def message_thread(request, user_id):
                 messages.success(request, "Message sent successfully.")
             return redirect('message-thread', user_id=other_user.id)
 
-    # 🛠️ THIS PART was missing: handling normal GET requests
+    # GET request - Render chat window
     messages_qs = Message.objects.filter(
         sender__in=[request.user, other_user],
         recipient__in=[request.user, other_user]
     ).order_by('timestamp')
 
     return render(request, 'users/message_thread.html', {
-        'messages': messages_qs,
+        'messages_qs': messages_qs,
         'other_user': other_user,
+        'today_date': today,
     })
+
+
+
+
+
+
+
 
 
 

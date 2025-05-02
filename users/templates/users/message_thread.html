@@ -1,12 +1,22 @@
 {% extends 'users/base.html' %}
 {% block content %}
+
+{% if messages %}
+  <ul class="messages">
+    {% for message in messages %}
+      <li>{{ message }}</li>
+    {% endfor %}
+  </ul>
+{% endif %}
+
+
 <div class="thread-wrapper">
 <div class="message-thread-container">
     <h2 class="thread-heading">Conversation with {{ other_user.username }}</h2>
 
     <div class="chat-window">
-        {% if messages %}
-        {% for message in messages %}
+        {% if messages_qs %}
+        {% for message in messages_qs %}
         <div class="chat-bubble {% if message.sender == request.user %}chat-right{% else %}chat-left{% endif %}">
             {% if message.hiring_status != 'none' %}
                 <p class="chat-text">
@@ -47,7 +57,7 @@
         <form method="post" action="{% url 'message-thread' other_user.id %}" class="hire-form">
             {% csrf_token %}
             <input type="hidden" name="hiring_request" value="true">
-            <input type="date" name="date" required class="hire-input">
+            <input type="date" name="date" required class="hire-input" min="{{ today_date }}">
             <input type="time" name="time" required class="hire-input">
             <input type="text" name="location" placeholder="Enter Location" required class="hire-input">
             <button type="submit" class="hire-submit-button">Send Hiring Request</button>
