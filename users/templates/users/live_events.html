@@ -1,0 +1,22 @@
+{% extends 'users/base.html' %}
+{% block content %}
+
+<div class="global-feed-container">
+  {% for event in events %}
+    <div class="profile-header-global">
+      <div class="profile-picture-container">
+        <img src="{{ event.recipient.profile.profile_picture.url }}" alt="Profile Picture">
+      </div>
+      <div class="profile-info">
+        <p><strong>{{ event.recipient.username }}</strong> performing</p>
+        <p>📅 {{ event.date }} 🕓 {{ event.time }}</p>
+        <p>📍 {{ event.location }}</p>
+        <p>🎤 Booked by <em>{{ event.sender.username }}</em></p>
+      </div>
+    </div>
+  {% empty %}
+    <p style="text-align: center;">No upcoming live events.</p>
+  {% endfor %}
+</div>
+
+{% endblock %}
