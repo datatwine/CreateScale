@@ -327,6 +327,20 @@ def message_thread(request, user_id):
 
 
 
+from datetime import date
+from .models import Message
+
+@login_required
+def live_events(request):
+    events = Message.objects.filter(
+        hiring_status='accepted',
+        date__gte=date.today()
+    ).order_by('date', 'time')
+
+    return render(request, 'users/live_events.html', {'events': events})
+
+
+
 
 
 
