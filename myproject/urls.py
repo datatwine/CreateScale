@@ -23,6 +23,7 @@ from django.conf.urls.static import static
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('users/', include('users.urls')),  # Include the 'users' app's URLs
+    path('silk/', include('silk.urls', namespace='silk')),
 ]
 
 if settings.DEBUG:

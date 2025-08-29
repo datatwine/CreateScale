@@ -39,9 +39,11 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'users',
+    'silk',
 ]
 
 MIDDLEWARE = [
+    'silk.middleware.SilkyMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -131,3 +133,15 @@ LOGOUT_REDIRECT_URL = 'login'  # Use the name of your sign-in URL pattern
 
 LOGIN_URL = '/users/login/'
 
+# Optional: limit what Silk records (good for focus/less noise)
+SILKY_INTERCEPT_PERCENT = 100  # 100 = capture all requests (dev only)
+# Only profile certain paths (regexes); comment out if you want everything
+SILKY_WHITELIST_PATHS = [
+    r'^/users/profile',
+    r'^/users/global-feed/',
+
+]
+# If you have secrets in bodies, consider:
+# SILKY_MAX_REQUEST_BODY_SIZE = -1
+# SILKY_MAX_RESPONSE_BODY_SIZE = -1
+# SILKY_HIDE_SENSITIVE_KEYS = ['password', 'csrfmiddlewaretoken']
