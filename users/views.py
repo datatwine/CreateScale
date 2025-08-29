@@ -103,7 +103,9 @@ from .forms import ProfessionFilterForm
 @login_required
 def global_feed(request):
     # Fetch all profiles except the signed-in user's profile
-    profiles = Profile.objects.exclude(user=request.user)
+    profiles = (
+    Profile.objects.exclude(user=request.user).select_related('user')          # ← prevents N+1 on profile.user
+    )
 
     # Handle filtering by profession
     profession_filter_form = ProfessionFilterForm(request.GET or None)  # Form for profession filtering
@@ -178,7 +180,7 @@ def inbox(request):
     user = request.user
 
     # Get all messages involving the user
-    all_messages = Message.objects.filter(Q(sender=user) | Q(recipient=user))
+    all_messages = (Message.objects.filter(Q(sender=user) | Q(recipient=user)).select_related('sender','recipient'))
 
     # Identify each unique conversation as a frozen set of (sender_id, recipient_id)
     latest_by_pair = {}
@@ -279,10 +281,14 @@ def message_thread(request, user_id):
                     messages.error(request, "This user is already hired or has a pending hiring request for the selected date.")
 
                     # Re-render thread view if conflict
-                    messages_qs = Message.objects.filter(
-                        sender__in=[request.user, other_user],
-                        recipient__in=[request.user, other_user]
-                    ).order_by('timestamp')
+                    messages_qs = (
+                        Message.objects.filter(
+                            sender__in=[request.user, other_user],
+                            recipient__in=[request.user, other_user]
+                        )
+                        .select_related('sender', 'recipient')   # ← added
+                        .order_by('timestamp')
+                    )
 
                     return render(request, 'users/message_thread.html', {
                         'messages_qs': messages_qs,
@@ -314,10 +320,14 @@ def message_thread(request, user_id):
             return redirect('message-thread', user_id=other_user.id)
 
     # GET request - Render chat window
-    messages_qs = Message.objects.filter(
-        sender__in=[request.user, other_user],
-        recipient__in=[request.user, other_user]
-    ).order_by('timestamp')
+    messages_qs = (
+        Message.objects.filter(
+            sender__in=[request.user, other_user],
+            recipient__in=[request.user, other_user]
+        )
+        .select_related('sender', 'recipient')   # ← added
+        .order_by('timestamp')
+    )
 
     return render(request, 'users/message_thread.html', {
         'messages_qs': messages_qs,
@@ -335,6 +345,7 @@ def live_events(request):
     events = Message.objects.filter(
         hiring_status='accepted',
         date__gte=date.today()
+        
     ).order_by('date', 'time')
 
     return render(request, 'users/live_events.html', {'events': events})
