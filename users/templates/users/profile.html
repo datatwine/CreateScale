@@ -8,22 +8,23 @@
 <!-- Profile Header --> 
 <div class="profile-header">
     <!-- Profile Picture -->
+    
     <div class="profile-picture">
-        <label for="profile-pic-upload">
             {% if user.profile.profile_picture %}
                 <img id="profile-pic" src="{{ user.profile.profile_picture.url }}" alt="Profile Picture">
             {% else %}
                 <img id="profile-pic" src="{% static 'default_profile_pic.jpg' %}" alt="No Profile Picture">
             {% endif %}
-        </label>
     </div>
+    
 
     <!-- Profile Update Form -->
     <form id="profile-form" method="post" enctype="multipart/form-data">
         {% csrf_token %}
         
         <!-- Hidden Profile Picture Upload Field -->
-        <input type="file" id="profile-pic-upload" name="profile_picture" style="display: none;">
+        <input type="file" id="profile-pic-upload" name="profile_picture" accept="image/*" style="display:none;">
+
         
         <!-- Bio and Location Fields -->
         <div class="profile-info">
@@ -47,7 +48,7 @@
             
         </div>
 
-        <button type="submit">Save Changes</button>
+        <button name="profile_submit" value="1">Save Changes</button>
     </form>
 </div>
 
@@ -57,8 +58,8 @@
 <!-- Inbox Icon Link -->
 <div class="inbox-icon">
     <a href="{% url 'inbox' %}" class="mail-icon">📩</a>
-    {% if unread_messages.exists %}
-        <span class="unread-count">{{ unread_messages.count }}</span>
+    {% if unread_count %}
+        <span class="unread-count">{{ unread_count }}</span>
     {% endif %}
 </div>
 
@@ -66,7 +67,7 @@
 <h2>Uploads</h2>
 <!-- Display Uploads -->
 {% for upload in uploads %}
-    {% if upload.image and upload.image.url != user.profile.profile_picture.url %}
+    {% if upload.image %}
         <div class="upload-item">
             <img src="{{ upload.image.url }}" alt="Uploaded Image" style="max-width: 300px;">
             <p>{{ upload.caption }}</p>
@@ -92,7 +93,7 @@
 <form method="post" enctype="multipart/form-data">
     {% csrf_token %}
     {{ upload_form.as_p }}
-    <button type="submit">Upload</button>
+    <button type="submit" name="upload_submit" value="1">Upload</button>
 </form>
 </div>
 
@@ -109,6 +110,7 @@
 
 <!-- Include external JavaScript -->
 <script src="{% static 'users/scripts/editProfile.js' %}"></script>
+
 
 </div>
 {% endblock %}

@@ -10,9 +10,9 @@ document.addEventListener("DOMContentLoaded", function () {
             profilePicUpload.click();
         });
 
-        profilePicUpload.addEventListener("change", function () {
-            document.getElementById("profile-form").submit();
-        });
+        // profilePicUpload.addEventListener("change", function () {
+        //     document.getElementById("profile-form").submit();
+        // });
     }
 
     // Ensure bio editing elements exist
