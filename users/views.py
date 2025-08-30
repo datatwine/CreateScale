@@ -59,40 +59,66 @@ from .models import Profile, Upload
 from .forms import UploadForm
 
 @login_required
+@login_required
 def profile(request):
-    user_profile = Profile.objects.get(user=request.user)  # Retrieve the current user's profile
-    unread_messages = Message.objects.filter(recipient=request.user, is_read=False)  # Add this line
+    user_profile = Profile.objects.get(user=request.user)
+    unread_count = Message.objects.filter(recipient=request.user, is_read=False).count()
 
     if request.method == 'POST':
-        profile_form = ProfileUpdateForm(request.POST, request.FILES, instance=user_profile)
-        upload_form = UploadForm(request.POST, request.FILES)
+        if 'upload_submit' in request.POST:
+            # Handle only the upload form
+            profile_form = ProfileUpdateForm(instance=user_profile)   # unbound
+            upload_form = UploadForm(request.POST, request.FILES)
+            if upload_form.is_valid():
+                upload = upload_form.save(commit=False)
+                upload.profile = user_profile
+                upload.save()
+                messages.success(request, "Image/video uploaded successfully.")
+                return redirect('profile')
+            else:
+                messages.error(request, "Image/video upload failed. Please fix the errors below.")
 
-        if profile_form.is_valid() and upload_form.is_valid():
-            profile_form.save()  # Save profile updates
-            upload = upload_form.save(commit=False)
-            upload.profile = user_profile  # Associate the upload with the current user's profile
-            upload.save()
-            messages.success(request, "Profile updated and image uploaded successfully!")
-        else:
-            if not profile_form.is_valid():
+        elif 'profile_submit' in request.POST:
+            # Handle only the profile update form
+            profile_form = ProfileUpdateForm(request.POST, request.FILES, instance=user_profile)
+            upload_form = UploadForm()  # blank
+
+            if profile_form.is_valid():
+                profile_obj = profile_form.save(commit=False)
+
+                # <<< bullet-proof the avatar save, even if the form omits the field
+                if 'profile_picture' in request.FILES:
+                    profile_obj.profile_picture = request.FILES['profile_picture']
+                profile_obj.save()
+                # >>>
+
+                messages.success(request, "Profile updated successfully.")
+                return redirect('profile')
+            else:
                 messages.error(request, "Profile update failed. Please correct the errors below.")
-            if not upload_form.is_valid():
-                messages.error(request, "Image upload failed. Please correct the errors below.")
+
+        else:
+            # Fallback
+            profile_form = ProfileUpdateForm(instance=user_profile)
+            upload_form = UploadForm()
     else:
         profile_form = ProfileUpdateForm(instance=user_profile)
         upload_form = UploadForm()
 
-    # Order uploads by `upload_date` in descending order to show the latest uploads first
-    profile_pic_path = user_profile.profile_picture.name  # Get relative file path
-    uploads = Upload.objects.filter(profile=user_profile).exclude(image=profile_pic_path).order_by('-upload_date')
+    # Newest uploads first; hide the avatar file if it lives in Uploads too
+    uploads_qs = Upload.objects.filter(profile=user_profile).order_by('-upload_date')
+    if user_profile.profile_picture:
+        uploads_qs = uploads_qs.exclude(image=user_profile.profile_picture.name)
 
     return render(request, 'users/profile.html', {
         'profile_form': profile_form,
         'upload_form': upload_form,
-        'uploads': uploads,  # Pass uploads to the template
+        'uploads': uploads_qs,
         'profile': user_profile,
-        'unread_messages': unread_messages,
+        'unread_count': unread_count,
     })
+
+
 
 
 from django.db.models import Q
