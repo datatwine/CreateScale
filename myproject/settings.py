@@ -12,21 +12,46 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 
 from pathlib import Path
 import os
+from django.core.management.utils import get_random_secret_key
+from django.core.exceptions import ImproperlyConfigured
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
-BASE_DIR = Path(__file__).resolve().parent.parent
+try:
+    from dotenv import load_dotenv
+    BASE_DIR = Path(__file__).resolve().parent.parent
+    load_dotenv(BASE_DIR / ".env")
+except Exception:
+    pass
+
+def env_list(key, default=""):
+    raw = os.getenv(key, default)
+    return [x.strip() for x in raw.split(",") if x.strip()]
 
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-zdz#qvd0mcb9@omt58!o22@!a=6n5^&oa715l2wh1361vnf5+v'
+SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "dev_only_not_secret")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv("DJANGO_DEBUG", "1") == "1"
 
-ALLOWED_HOSTS = []
+if not SECRET_KEY:
+    if DEBUG:
+        # Dev convenience: generate an ephemeral key so you don't block runserver
+        SECRET_KEY = get_random_secret_key()
+    else:
+        # In prod, fail loudly if secret is missing
+        raise ImproperlyConfigured("DJANGO_SECRET_KEY is not set")
+
+
+
+ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1")
+
+CSRF_TRUSTED_ORIGINS = env_list("CSRF_TRUSTED_ORIGINS", "")
+TIME_ZONE = os.getenv("TIME_ZONE", "Asia/Kolkata")
+USE_TZ = True
 
 
 # Application definition
@@ -49,6 +74,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'users.middleware.EnsureProfileMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -78,10 +104,22 @@ WSGI_APPLICATION = 'myproject.wsgi.application'
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
 
 DATABASES = {
-    'default': {
+    'dev': {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': BASE_DIR / 'db.sqlite3',
+    },
+    
+    "default": {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": os.getenv("DB_NAME", "appdb"),
+        "USER": os.getenv("DB_USER", "appuser"),
+        "PASSWORD": os.getenv("DB_PASSWORD", "apppassword"),
+        "HOST": os.getenv("DB_HOST", "db"),
+        "PORT": os.getenv("DB_PORT", "5432"),
+        "CONN_MAX_AGE": 60,
     }
+    
+
 }
 
 
@@ -119,7 +157,14 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.0/howto/static-files/
 
-STATIC_URL = 'static/'
+from pathlib import Path
+# BASE_DIR = Path(__file__).resolve().parent.parent
+
+STATIC_URL = "/static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
+
+# 👇 add this line
+# STATICFILES_DIRS = [ BASE_DIR / "static" ]
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
@@ -127,7 +172,7 @@ STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 MEDIA_URL = '/media/'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+MEDIA_ROOT = BASE_DIR / "media"
 
 LOGOUT_REDIRECT_URL = 'login'  # Use the name of your sign-in URL pattern
 
@@ -138,10 +183,34 @@ SILKY_INTERCEPT_PERCENT = 100  # 100 = capture all requests (dev only)
 # Only profile certain paths (regexes); comment out if you want everything
 SILKY_WHITELIST_PATHS = [
     r'^/users/profile',
-    r'^/users/global-feed/',
+    r'^/users/global-feed/', 
 
 ]
 # If you have secrets in bodies, consider:
 # SILKY_MAX_REQUEST_BODY_SIZE = -1
 # SILKY_MAX_RESPONSE_BODY_SIZE = -1
 # SILKY_HIDE_SENSITIVE_KEYS = ['password', 'csrfmiddlewaretoken']
+
+
+#Sentry Logging below 
+
+import os
+
+SENTRY_DSN = os.getenv("SENTRY_DSN", "")
+
+if SENTRY_DSN:
+    import sentry_sdk
+    from sentry_sdk.integrations.django import DjangoIntegration
+
+    sentry_sdk.init(
+        dsn=SENTRY_DSN,
+        integrations=[DjangoIntegration()],
+        # keep tracing off until you want it
+        traces_sample_rate=0.0,
+        # good default (don’t ship user PII unless you intentionally enable it)
+        send_default_pii=False,
+        # label events by environment
+        environment=os.getenv("ENVIRONMENT", "production"),
+        # optional: show a version string in Sentry (e.g., short git SHA)
+        release=os.getenv("SENTRY_RELEASE") or None,
+    )
