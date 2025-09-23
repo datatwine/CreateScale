@@ -31,10 +31,15 @@
 <div class="profile-header-global">
     <div class="profile-picture-container">
         <a href="{% url 'profile-detail' profile.user.id %}" class="profile-link">
-            <img src="{{ profile.profile_picture.url }}" alt="{{ profile.user.username }}'s profile picture" />
+        {% if profile.profile_picture %}
+        <img src="{{ profile.profile_picture.url }}" alt="{{ profile.user.username }}'s profile picture" />
+        {% else %}
+        <img src="{% static 'users/images/default-avatar.png' %}" alt="{{ profile.user.username }}'s profile picture" />
+        {% endif %}
             <p><strong>{{ profile.user.username }}</strong></p>
             <p>{{ profile.profession }}</p>
         </a>
+
     </div>
 </div>
 {% empty %}
