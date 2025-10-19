@@ -21,6 +21,10 @@ services:
     user: "0:0" 
     env_file:
       - .env
+    environment:  # ← Add this block here
+      WEB_CONCURRENCY: "5"
+      WEB_THREADS: "2"
+      WEB_TIMEOUT: "30"
     depends_on:
       db:
         condition: service_healthy
