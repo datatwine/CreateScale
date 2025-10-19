@@ -24,8 +24,12 @@ su -s /bin/sh -c "python manage.py collectstatic --noinput" appuser
 
 # 4) Start Gunicorn as the unprivileged user (proper signal handling via exec, exec makes sure su and then gunicorn are PID 1)
 exec su -s /bin/sh -c "exec gunicorn myproject.wsgi:application \
-  --bind 0.0.0.0:8000  \ 
-  --workers 3  \ 
+  --bind 0.0.0.0:8000  \
+  --worker-class gthread \ 
+  --workers 5  \ 
+  --workers ${WEB_CONCURRENCY:-5} \
+  --threads  ${WEB_THREADS:-2} \
+  --timeout  ${WEB_TIMEOUT:-30} \
   --access-logfile - \
   --error-logfile - \
   --log-level info \
