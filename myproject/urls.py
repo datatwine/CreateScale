@@ -24,7 +24,9 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('users/', include('users.urls')),  # Include the 'users' app's URLs
     path('silk/', include('silk.urls', namespace='silk')),
+    path("accounts/", include("allauth.urls")),  # adds /accounts/google/login/ etc.
 ]
+
 
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

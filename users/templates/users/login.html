@@ -1,6 +1,6 @@
 {% extends 'users/base.html' %}
 {% load static %}
-
+{% load socialaccount %}
 {% block content %}
 <div class="top-right-logo">
     <img src="{% static 'users/images/artkhojlogo.png' %}" alt="Brand Logo">
@@ -20,6 +20,11 @@
             {{ form.as_p }}
             <button type="submit" class="styled-button">Login</button>
         </form>
+
+        
+        <a href="{% provider_login_url 'google' %}" class="btn">Continue with Google</a>
+
+
         <p>Don't have an account? <a href="{% url 'signup' %}">Sign up here</a>.</p>
     </div>
 </div>

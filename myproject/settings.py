@@ -47,9 +47,8 @@ if not SECRET_KEY:
 
 
 
-ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1")
+ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS")
 
-CSRF_TRUSTED_ORIGINS = env_list("CSRF_TRUSTED_ORIGINS", "")
 TIME_ZONE = os.getenv("TIME_ZONE", "Asia/Kolkata")
 USE_TZ = True
 
@@ -63,9 +62,43 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'users',
     'silk',
+    "allauth",
+    "allauth.account",
+    "allauth.socialaccount",
+    "allauth.socialaccount.providers.google",
+    "users.apps.UsersConfig",
 ]
+
+
+SITE_ID = 1
+
+#Below is the login/signup settings 
+
+# Django-allauth local environment settings
+ACCOUNT_DEFAULT_HTTP_PROTOCOL = "http"
+
+LOGIN_REDIRECT_URL = "/users/profile/"
+LOGOUT_REDIRECT_URL = "/"
+
+ACCOUNT_EMAIL_VERIFICATION = "none"
+ACCOUNT_AUTHENTICATION_METHOD = "username"
+ACCOUNT_EMAIL_REQUIRED = False
+
+CSRF_TRUSTED_ORIGINS = env_list("CSRF_TRUSTED_ORIGINS")
+
+SOCIALACCOUNT_PROVIDERS = {
+    "google": {
+        "APP": {
+            "client_id": os.getenv("GOOGLE_CLIENT_ID", ""),
+            "secret": os.getenv("GOOGLE_CLIENT_SECRET", ""),
+            "key": "",
+        },
+        # optional: if you want email scope, etc.
+        "SCOPE": ["email", "profile"],
+        "AUTH_PARAMS": {"access_type": "online"},
+    }
+}
 
 MIDDLEWARE = [
     'silk.middleware.SilkyMiddleware',
@@ -77,6 +110,12 @@ MIDDLEWARE = [
     'users.middleware.EnsureProfileMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    "allauth.account.middleware.AccountMiddleware",
+]
+
+AUTHENTICATION_BACKENDS = [
+    "django.contrib.auth.backends.ModelBackend",
+    "allauth.account.auth_backends.AuthenticationBackend",
 ]
 
 ROOT_URLCONF = 'myproject.urls'
@@ -177,6 +216,7 @@ MEDIA_ROOT = BASE_DIR / "media"
 LOGOUT_REDIRECT_URL = 'login'  # Use the name of your sign-in URL pattern
 
 LOGIN_URL = '/users/login/'
+
 
 # Optional: limit what Silk records (good for focus/less noise)
 SILKY_INTERCEPT_PERCENT = 100  # 100 = capture all requests (dev only)

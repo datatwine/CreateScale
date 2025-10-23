@@ -2,6 +2,8 @@
 
 {% load static %}
 
+{% load socialaccount %}
+
 {% block content %}
 <div class="signup-page">
     <!-- ✅ Rotating Words -->
@@ -28,6 +30,10 @@
                     Let's Go 🚀
                 </button>
             </form>
+            
+            <!-- Google signup/login button -->
+            <a href="{% provider_login_url 'google' %}" class="btn">Continue with Google</a>
+
 
             <p class="login-link">Already have an account? <a href="{% url 'login' %}">Sign in here.</a></p>
         </div>
