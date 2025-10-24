@@ -1,0 +1,4 @@
+# Always keep the version from the current branch for these files
+.env merge=ours
+.env.* merge=ours
+logs/* merge=ours
