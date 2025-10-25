@@ -4,3 +4,10 @@
 !.env.example
 logs/
 !logs/.gitkeep
+
+logs/
+*.log
+
+
+logs/
+!logs/.gitkeep
