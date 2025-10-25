@@ -51,6 +51,17 @@ services:
       - ./compose/nginx.conf:/etc/nginx/conf.d/default.conf:ro
       - ./logs/nginx:/var/log/nginx
 
+  nginxlog_exporter:
+    image: quay.io/martinhelmich/prometheus-nginxlog-exporter:v1.11.0
+    command: ["--config-file", "/config/nginxlog.yml"]
+    volumes:
+      - ./logs/nginx:/var/log/nginx:ro
+      - ./compose/nginxlog.yml:/config/nginxlog.yml:ro
+    ports:
+      - "4040:4040"   # exporter http endpoint
+    depends_on:
+      - nginx
+
   prometheus:
     image: prom/prometheus:v2.53.0
     volumes:
