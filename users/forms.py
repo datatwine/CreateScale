@@ -56,7 +56,17 @@ class UploadForm(forms.ModelForm):
 class ProfileUpdateForm(forms.ModelForm):
     class Meta:
         model = Profile
-        fields = ['profession', 'location', 'profile_picture','bio']
+        fields = [
+            "profession",
+            "location",
+            "profile_picture",
+            "bio",
+            "is_performer",
+            "is_potential_client",
+        ]
+        widgets = {
+            "bio": forms.Textarea(attrs={"rows": 3}),
+        }
 
 
 

@@ -1,0 +1,18 @@
+{% extends 'users/base.html' %}
+
+{% block content %}
+<div class="centered-form">
+    <h2>Hire {{ performer_profile.user.username }}</h2>
+    <p>Fill in the basic details for this engagement.</p>
+
+    <form method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit">Send hire request</button>
+    </form>
+
+    <p style="margin-top: 1rem;">
+        <a href="{% url 'profile-detail' performer_profile.user.id %}">Back to profile</a>
+    </p>
+</div>
+{% endblock %}

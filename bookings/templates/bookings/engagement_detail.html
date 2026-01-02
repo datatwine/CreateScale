@@ -1,0 +1,66 @@
+{% extends 'users/base.html' %}
+
+{% block content %}
+<div class="center-container">
+    <h2>Booking with {{ engagement.performer.username }} on {{ engagement.date }}</h2>
+
+    <p><strong>Time:</strong> {{ engagement.time }}</p>
+    <p><strong>Venue:</strong> {{ engagement.venue }}</p>
+    <p><strong>Occasion:</strong> {{ engagement.occasion }}</p>
+    <p><strong>Status:</strong> {{ engagement.get_status_display }}</p>
+    <p><strong>Client:</strong> {{ engagement.client.username }}</p>
+    <p><strong>Performer:</strong> {{ engagement.performer.username }}</p>
+
+    <hr>
+
+    {% if is_performer %}
+        <h3>Performer actions</h3>
+
+        {% if engagement.status == 'pending' %}
+            <form method="post" style="margin-bottom: 1rem;">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="accept">
+                <button type="submit">Accept booking</button>
+            </form>
+
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="decline">
+                <button type="submit">Decline booking</button>
+            </form>
+        {% endif %}
+
+        {% if engagement.status == 'pending' or engagement.status == 'accepted' %}
+            <h4>Cancel booking</h4>
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="cancel_performer">
+                {{ form.as_p }}
+                <button type="submit">Cancel as performer</button>
+            </form>
+        {% endif %}
+    {% endif %}
+
+    {% if is_client %}
+        <h3>Client actions</h3>
+
+        {% if engagement.status == 'pending' or engagement.status == 'accepted' %}
+            <h4>Cancel booking</h4>
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="cancel_client">
+                {{ form.as_p }}
+                <button type="submit">Cancel as client</button>
+            </form>
+        {% endif %}
+    {% endif %}
+
+    <p style="margin-top: 1rem;">
+        {% if is_client %}
+            <a href="{% url 'bookings:client-engagements' %}">Back to my bookings</a>
+        {% elif is_performer %}
+            <a href="{% url 'bookings:performer-engagements' %}">Back to my requests</a>
+        {% endif %}
+    </p>
+</div>
+{% endblock %}

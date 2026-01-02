@@ -1,0 +1,40 @@
+{% extends 'users/base.html' %}
+
+{% block content %}
+<div class="center-container">
+    <h2>My hire requests & bookings</h2>
+
+    {% if engagements %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Time</th>
+                    <th>Performer</th>
+                    <th>Venue</th>
+                    <th>Occasion</th>
+                    <th>Status</th>
+                    <th>Manage</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for e in engagements %}
+                    <tr>
+                        <td>{{ e.date }}</td>
+                        <td>{{ e.time }}</td>
+                        <td>{{ e.performer.username }}</td>
+                        <td>{{ e.venue }}</td>
+                        <td>{{ e.occasion }}</td>
+                        <td>{{ e.get_status_display }}</td>
+                        <td>
+                            <a href="{% url 'bookings:engagement-detail' e.id %}">View / update</a>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>You don't have any hire requests yet.</p>
+    {% endif %}
+</div>
+{% endblock %}

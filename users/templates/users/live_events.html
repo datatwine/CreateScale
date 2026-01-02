@@ -1,22 +1,22 @@
 {% extends 'users/base.html' %}
+
 {% block content %}
+<div class="center-container">
+    <h2>Upcoming live events</h2>
 
-<div class="global-feed-container">
-  {% for event in events %}
-    <div class="profile-header-global">
-      <div class="profile-picture-container">
-        <img src="{{ event.recipient.profile.profile_picture.url }}" alt="Profile Picture">
-      </div>
-      <div class="profile-info">
-        <p><strong>{{ event.recipient.username }}</strong> performing</p>
-        <p>📅 {{ event.date }} 🕓 {{ event.time }}</p>
-        <p>📍 {{ event.location }}</p>
-        <p>🎤 Booked by <em>{{ event.sender.username }}</em></p>
-      </div>
-    </div>
-  {% empty %}
-    <p style="text-align: center;">No upcoming live events.</p>
-  {% endfor %}
+    {% if events %}
+        <ul class="events-list">
+            {% for e in events %}
+                <li style="margin-bottom: 0.75rem;">
+                    <strong>{{ e.date }} {{ e.time }}</strong>
+                    — {{ e.occasion }} at {{ e.venue }}<br>
+                    Performer: {{ e.performer.username }} |
+                    Client: {{ e.client.username }}
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p>No upcoming events yet.</p>
+    {% endif %}
 </div>
-
 {% endblock %}
