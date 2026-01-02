@@ -10,6 +10,35 @@ class Profile(models.Model):
     profile_picture = models.ImageField(upload_to='profile_pics/', blank=True, null=True)
     bio = models.CharField(max_length=140, blank=True)
 
+    # --- Hiring system toggles / flags ---
+
+    # 2) Performer toggle – user decides if they are a performer
+    is_performer = models.BooleanField(
+        default=False,
+        help_text="Tick if you are available to be hired as a performer.",
+    )
+
+    # 3 & 4) Client toggle + admin approval
+    # User toggles this on profile; admin turns on client_approved in Django admin.
+    is_potential_client = models.BooleanField(
+        default=False,
+        help_text="Tick if you want to hire performers.",
+    )
+    client_approved = models.BooleanField(
+        default=False,
+        help_text="Set by admin. Only approved clients may send hire requests.",
+    )
+
+    # 15) Blacklists
+    performer_blacklisted = models.BooleanField(
+        default=False,
+        help_text="If true, this user cannot be hired as a performer.",
+    )
+    client_blacklisted = models.BooleanField(
+        default=False,
+        help_text="If true, this user cannot hire performers.",
+    )
+
     def __str__(self):
         return f'{self.user.username} Profile'
 

@@ -8,7 +8,7 @@
 
 <div class="profile-header">
 <!-- Profile Picture -->
-    <div class="profile-picture-detail">
+    <div class="profile-picture">
     {% if profile.profile_picture %}
         <img src="{{ profile.profile_picture.url }}" alt="{{ profile.user.username }}'s profile picture" style="max-width: 200px; height: auto;">
     {% else %}
@@ -21,8 +21,29 @@
         <p><strong>Profession:</strong> {{ profile.profession }}</p>
         <p><strong>Location:</strong> {{ profile.location }}</p>
         <p><strong>Bio:</strong> {{ profile.bio }}</p>
+        {% if profile.is_performer %}
+            <p><em>This user is available to be hired as a performer.</em></p>
+        {% endif %}
         </div>
 </div>
+
+
+<!-- Rule 5: hire button from profile_detail (for performers only) -->
+{% if request.user.is_authenticated and request.user != profile.user and profile.is_performer %}
+    <div class="hire-section" style="margin-top: 10px;">
+        {% if request.user.profile.client_blacklisted %}
+            <p>You are currently blocked from hiring performers.</p>
+        {% elif not request.user.profile.is_potential_client %}
+            <p><em>To hire performers, enable the "I hire performers" toggle on your own profile first.</em></p>
+        {% elif not request.user.profile.client_approved %}
+            <p><em>Your account is waiting for admin approval to hire performers.</em></p>
+        {% else %}
+            <a href="{% url 'bookings:create-hire' profile.user.id %}" class="styled-button">
+                Hire {{ profile.user.username }}
+            </a>
+        {% endif %}
+    </div>
+{% endif %}
 
 
 

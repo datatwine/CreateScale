@@ -25,6 +25,7 @@ urlpatterns = [
     path('users/', include('users.urls')),  # Include the 'users' app's URLs
     path('silk/', include('silk.urls', namespace='silk')),
     path("accounts/", include("allauth.urls")),  # adds /accounts/google/login/ etc.
+    path("bookings/", include("bookings.urls")),
     path("", include("django_prometheus.urls")),
 ]
 

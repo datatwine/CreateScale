@@ -366,15 +366,24 @@ def message_thread(request, user_id):
 from datetime import date
 from .models import Message
 
+from bookings.models import Engagement
+from datetime import date
+
 @login_required
 def live_events(request):
-    events = Message.objects.filter(
-        hiring_status='accepted',
-        date__gte=date.today()
-        
-    ).order_by('date', 'time')
+    """
+    Simple listing of upcoming accepted engagements.
+    """
+    events = (
+        Engagement.objects.filter(
+            status=Engagement.STATUS_ACCEPTED,
+            date__gte=date.today(),
+        )
+        .select_related("client", "performer")
+        .order_by("date", "time")
+    )
+    return render(request, "users/live_events.html", {"events": events})
 
-    return render(request, 'users/live_events.html', {'events': events})
 
 
 

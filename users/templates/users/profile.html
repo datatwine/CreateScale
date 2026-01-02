@@ -8,7 +8,6 @@
 <!-- Profile Header --> 
 <div class="profile-header">
     <!-- Profile Picture -->
-    
     <div class="profile-picture">
             {% if user.profile.profile_picture %}
                 <img id="profile-pic" src="{{ user.profile.profile_picture.url }}" alt="Profile Picture">
@@ -16,15 +15,13 @@
                 <img id="profile-pic" src="{% static 'default_profile_pic.jpg' %}" alt="No Profile Picture">
             {% endif %}
     </div>
-    
 
     <!-- Profile Update Form -->
     <form id="profile-form" method="post" enctype="multipart/form-data">
         {% csrf_token %}
         
         <!-- Hidden Profile Picture Upload Field -->
-        <input type="file" id="profile-pic-upload" name="profile_picture" accept="image/*" style="display:none;">
-
+        <input type="file" id="profile-pic-upload" name="profile_picture" style="display: none;">
         
         <!-- Bio and Location Fields -->
         <div class="profile-info">
@@ -45,6 +42,32 @@
                 <span class="edit-icon edit-profession">✎</span>
             </p>
             <input type="text" id="profession-input" name="profession" value="{{ user.profile.profession }}" style="display: none;">
+
+                        <!-- Rule 2: performer toggle -->
+            <p>
+                <label>
+                    <input type="checkbox" name="is_performer" {% if user.profile.is_performer %}checked{% endif %}>
+                    I am a performer available for hire
+                </label>
+            </p>
+
+            <!-- Rules 3 & 4: client toggle + admin approval -->
+            <p>
+                <label>
+                    <input type="checkbox" name="is_potential_client" {% if user.profile.is_potential_client %}checked{% endif %}>
+                    I hire performers
+                </label>
+                {% if user.profile.is_potential_client %}
+                    <br>
+                    <small>
+                        {% if user.profile.client_approved %}
+                            ✅ Approved by admin to hire performers.
+                        {% else %}
+                            ⏳ Waiting for admin approval to hire performers.
+                        {% endif %}
+                    </small>
+                {% endif %}
+            </p>
             
         </div>
 
@@ -98,6 +121,16 @@
 </div>
 
 <hr>
+
+<!-- Minimal links to hiring dashboards (Rules 16 & 17 basic versions) -->
+<div class="engagement-links">
+    {% if user.profile.is_potential_client %}
+        <p><a href="{% url 'bookings:client-engagements' %}">My hire requests & bookings</a></p>
+    {% endif %}
+    {% if user.profile.is_performer %}
+        <p><a href="{% url 'bookings:performer-engagements' %}">Requests for me to perform</a></p>
+    {% endif %}
+</div>
 
 <div>
     <a href="{% url 'global-feed' %}">Go to Global Feed</a>
