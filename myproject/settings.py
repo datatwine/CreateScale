@@ -214,8 +214,34 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-MEDIA_URL = '/media/'
-MEDIA_ROOT = BASE_DIR / "media"
+# ------------------------------------------------------------------------------
+# Media / file storage – local vs S3
+# ------------------------------------------------------------------------------
+
+USE_S3 = os.getenv("USE_S3", "1") == "1"
+
+if USE_S3:
+    # Make sure django-storages is available
+    INSTALLED_APPS.append("storages")
+
+    AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
+    AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
+    AWS_STORAGE_BUCKET_NAME = os.getenv("AWS_STORAGE_BUCKET_NAME")
+    AWS_S3_REGION_NAME = os.getenv("AWS_S3_REGION_NAME", "ap-south-1")  # Mumbai
+    AWS_S3_SIGNATURE_VERSION = "s3v4"
+
+    # Good defaults for user uploads
+    AWS_S3_FILE_OVERWRITE = False
+    AWS_DEFAULT_ACL = None
+    AWS_QUERYSTRING_AUTH = False  # clean, cacheable URLs
+
+    DEFAULT_FILE_STORAGE = "storages.backends.s3boto3.S3Boto3Storage"
+    MEDIA_URL = f"https://{AWS_STORAGE_BUCKET_NAME}.s3.{AWS_S3_REGION_NAME}.amazonaws.com/"
+    MEDIA_ROOT = None  # Not used with S3
+else:
+    # Local dev fallback
+    MEDIA_URL = "/media/"
+    MEDIA_ROOT = BASE_DIR / "media"
 
 LOGOUT_REDIRECT_URL = 'login'  # Use the name of your sign-in URL pattern
 
@@ -258,3 +284,26 @@ if SENTRY_DSN:
         # optional: show a version string in Sentry (e.g., short git SHA)
         release=os.getenv("SENTRY_RELEASE") or None,
     )
+
+
+# ------------------------------------------------------------------------------
+# Cache (Redis) and sessions
+# ------------------------------------------------------------------------------
+
+# Use a single Redis instance for cache + session cache
+REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379/1")
+
+CACHES = {
+    "default": {
+        # Use django-prometheus' Redis cache backend so cache metrics are wired in
+        "BACKEND": "django_prometheus.cache.backends.redis.RedisCache",
+        "LOCATION": REDIS_URL,
+        "OPTIONS": {
+            # You can add client options here later if needed.
+        },
+    },
+}
+
+# Sessions: DB + cache (so reads are fast but still durable in Postgres)
+SESSION_ENGINE = "django.contrib.sessions.backends.cached_db"
+SESSION_CACHE_ALIAS = "default"

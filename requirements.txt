@@ -23,3 +23,6 @@ PyJWT[crypto]>=2.8
 django-prometheus==2.3.1
 prometheus-client==0.20.0
 django-appointment>=3.9.1
+redis>=5.0
+django-storages[boto3]>=1.14
+boto3>=1.35
