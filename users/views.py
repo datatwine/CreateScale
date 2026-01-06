@@ -58,7 +58,7 @@ from django.shortcuts import render
 from .models import Profile, Upload
 from .forms import UploadForm
 
-@login_required
+
 @login_required
 def profile(request):
     user_profile = Profile.objects.get(user=request.user)
