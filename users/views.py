@@ -124,46 +124,70 @@ def profile(request):
 from django.db.models import Q
 from .models import Profile
 from .forms import ProfessionFilterForm
+from django.core.paginator import Paginator
 
 
 @login_required
 def global_feed(request):
     # Fetch all profiles except the signed-in user's profile
-    profiles = (
-    Profile.objects.exclude(user=request.user).select_related('user')          # ← prevents N+1 on profile.user
+    profiles_qs = (
+    Profile.objects.exclude(user=request.user).select_related("user")  # avoid N+1 on profile.user
+        .only("user__username", "profession", "profile_picture")  # trim payload
     )
 
     # Handle filtering by profession
     profession_filter_form = ProfessionFilterForm(request.GET or None)  # Form for profession filtering
+    
     if profession_filter_form.is_valid():
         professions = profession_filter_form.cleaned_data.get('professions')
         if professions:
-            profiles = profiles.filter(profession__in=professions)  # Filter profiles by selected professions
+            profiles_qs = profiles_qs.filter(profession__in=professions)  # Filter profiles by selected professions
 
-    return render(request, 'users/global_feed.html', {
-        'profiles': profiles,
-        'profession_filter_form': profession_filter_form
-    })
+    # Pagination
+    page_number = request.GET.get("page")
+    paginator = Paginator(profiles_qs, 20)  # 20 profiles per page
+    profiles_page = paginator.get_page(page_number)
 
+    # For keeping filter in pagination links
+    selected_profession = request.GET.get("professions", "")
+
+    return render(
+        request,
+        "users/global_feed.html",
+        {
+            "profiles": profiles_page,               # Page object (iterable in template)
+            "profession_filter_form": profession_filter_form,
+            "selected_profession": selected_profession,
+        },
+    )
 
 from django.shortcuts import get_object_or_404
 
 @login_required
 def profile_detail(request, user_id):
     # Get the profile of the user being viewed
-    user_profile = get_object_or_404(Profile, user__id=user_id)
+    user_profile = get_object_or_404(
+        Profile.objects.select_related("user"),
+        user__id=user_id,
+    )
     
-    # Get uploads for the profile
-    uploads = Upload.objects.filter(profile=user_profile).order_by('-upload_date')
+    # All uploads for this profile, newest first
+    uploads = (
+        Upload.objects
+        .filter(profile=user_profile)
+        .order_by("-upload_date")
+    )
 
     unread_messages = Message.objects.filter(recipient=request.user, is_read=False)
 
-    # Pass data to the template
-    return render(request, 'users/profile_detail.html', {
-        'profile': user_profile,
-        'uploads': uploads,
-        'unread_messages': unread_messages
-    })
+    return render(
+        request,
+        "users/profile_detail.html",
+        {
+            "profile": user_profile,
+            "uploads": uploads,
+        },
+    )
 
 from .models import Message
 from .forms import MessageForm
@@ -372,9 +396,10 @@ from datetime import date
 @login_required
 def live_events(request):
     """
-    Simple listing of upcoming accepted engagements.
+    Upcoming accepted engagements, optimized + paginated.
     """
-    events = (
+    # Query is already N+1-safe via select_related
+    events_qs = (
         Engagement.objects.filter(
             status=Engagement.STATUS_ACCEPTED,
             date__gte=date.today(),
@@ -382,7 +407,20 @@ def live_events(request):
         .select_related("client", "performer")
         .order_by("date", "time")
     )
-    return render(request, "users/live_events.html", {"events": events})
+
+    # 🔹 Pagination (tweak 10 if you want a different page size)
+    paginator = Paginator(events_qs, 10)
+    page_number = request.GET.get("page")
+    page_obj = paginator.get_page(page_number)
+
+    context = {
+        # Keep existing template variable name so `{% if events %}` and `{% for e in events %}`
+        # continue to work as before
+        "events": page_obj.object_list,
+        "page_obj": page_obj,
+    }
+    return render(request, "users/live_events.html", context)
+
 
 
 

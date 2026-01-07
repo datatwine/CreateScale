@@ -62,6 +62,18 @@ class Engagement(models.Model):
         ordering = ["date", "time", "performer"]
         # Uniqueness/limits enforced in clean() to keep it model-heavy
 
+            # High-value indexes for query patterns used across the app
+        indexes = [
+        # Client dashboards + "max 3 future bookings" checks
+        models.Index(fields=["client", "status", "date"]),
+
+        # Performer dashboards + "only one accepted per day" rules
+        models.Index(fields=["performer", "status", "date"]),
+
+        # Live events view: accepted future events ordered by date/time
+        models.Index(fields=["status", "date", "time"]),
+        ]
+
     def __str__(self) -> str:
         return f"{self.client} → {self.performer} on {self.date} @ {self.time} ({self.status})"
 
