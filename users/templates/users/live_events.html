@@ -18,5 +18,26 @@
     {% else %}
         <p>No upcoming events yet.</p>
     {% endif %}
+
+    {# 🔹 Simple pagination controls #}
+        {% if page_obj and page_obj.paginator.num_pages > 1 %}
+            <div class="pagination" style="margin-top: 1rem; text-align: center;">
+                {% if page_obj.has_previous %}
+                    <a href="?page={{ page_obj.previous_page_number }}">Previous</a>
+                {% endif %}
+
+                <span style="margin: 0 0.5rem;">
+                    Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+                </span>
+
+                {% if page_obj.has_next %}
+                    <a href="?page={{ page_obj.next_page_number }}">Next</a>
+                {% endif %}
+            </div>
+        {% endif %}
+    {% else %}
+        <p>No upcoming events yet.</p>
+    {% endif %}
+
 </div>
 {% endblock %}

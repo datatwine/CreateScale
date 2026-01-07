@@ -46,6 +46,25 @@
 <p>No users found for the selected profession.</p>
 {% endfor %}
 
+    <!-- Pagination controls -->
+    {% if profiles.paginator.num_pages > 1 %}
+        <div class="pagination">
+            {% if profiles.has_previous %}
+                <a href="?page={{ profiles.previous_page_number }}{% if selected_profession %}&professions={{ selected_profession }}{% endif %}">
+                    Previous
+                </a>
+            {% endif %}
+
+            <span>Page {{ profiles.number }} of {{ profiles.paginator.num_pages }}</span>
+
+            {% if profiles.has_next %}
+                <a href="?page={{ profiles.next_page_number }}{% if selected_profession %}&professions={{ selected_profession }}{% endif %}">
+                    Next
+                </a>
+            {% endif %}
+        </div>
+    {% endif %}
+
 </div>
 
 {% endblock %}
