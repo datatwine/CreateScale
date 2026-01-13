@@ -26,3 +26,4 @@ django-appointment>=3.9.1
 redis>=5.0
 django-storages[boto3]>=1.14
 boto3>=1.35
+django-redis
