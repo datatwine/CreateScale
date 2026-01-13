@@ -96,6 +96,49 @@ services:
     # optional: no persistence for pure cache/session use
     command: ["redis-server", "--save", "", "--appendonly", "no"]
 
+  glitchtip-web:
+    image: glitchtip/glitchtip:latest
+    depends_on:
+      - db
+      - redis
+    environment:
+      # Use your existing DB credentials, but point to the 'glitchtip' DB
+      DATABASE_URL: postgres://${DB_USER}:${DB_PASSWORD}@db:5432/glitchtip
+
+      # Any random string here (only for GlitchTip, not your app)
+      SECRET_KEY: "change_me_for_local_glitchtip"
+
+      # GlitchTip will listen on this port inside the container
+      PORT: 8000
+
+      # How GlitchTip should think of its own URL for links & DSNs
+      GLITCHTIP_DOMAIN: "http://localhost:8000"
+
+      # For now, just log emails instead of sending them
+      EMAIL_URL: "consolemail://"
+
+      # Optional, but fine to leave
+      DEFAULT_FROM_EMAIL: "[email protected]"
+    ports:
+      # Host port 8000 -> container port 8000
+      - "8000:8000"
+    restart: unless-stopped
+
+  glitchtip-worker:
+    image: glitchtip/glitchtip:latest
+    depends_on:
+      - db
+      - redis
+    environment:
+      DATABASE_URL: postgres://${DB_USER}:${DB_PASSWORD}@db:5432/glitchtip
+      SECRET_KEY: "change_me_for_local_glitchtip"
+      GLITCHTIP_DOMAIN: "http://localhost:8000"
+      EMAIL_URL: "consolemail://"
+      DEFAULT_FROM_EMAIL: "[email protected]"
+    command: ./bin/run-celery-with-beat.sh
+    restart: unless-stopped
+
+
 
 volumes:
   postgres_data:
