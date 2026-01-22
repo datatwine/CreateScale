@@ -125,9 +125,15 @@ from django.db.models import Q
 from .models import Profile
 from .forms import ProfessionFilterForm
 from django.core.paginator import Paginator
+from django.views.decorators.cache import cache_page
+from django.views.decorators.vary import vary_on_cookie
+
+
 
 
 @login_required
+@vary_on_cookie          # make cache key vary per browser/session cookie → per user
+@cache_page(60)          # cache for 60 seconds; tweak as you like
 def global_feed(request):
     # Fetch all profiles except the signed-in user's profile
     profiles_qs = (
@@ -394,6 +400,7 @@ from bookings.models import Engagement
 from datetime import date
 
 @login_required
+@cache_page(60)
 def live_events(request):
     """
     Upcoming accepted engagements, optimized + paginated.

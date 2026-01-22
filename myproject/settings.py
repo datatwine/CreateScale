@@ -204,7 +204,9 @@ from pathlib import Path
 # BASE_DIR = Path(__file__).resolve().parent.parent
 
 STATIC_URL = "/static/"
-STATIC_ROOT = BASE_DIR / "staticfiles"
+STATIC_ROOT = Path("/vol/static")
+
+STATICFILES_STORAGE = "django.contrib.staticfiles.storage.ManifestStaticFilesStorage"
 
 # 👇 add this line
 # STATICFILES_DIRS = [ BASE_DIR / "static" ]
@@ -241,7 +243,7 @@ if USE_S3:
 else:
     # Local dev fallback
     MEDIA_URL = "/media/"
-    MEDIA_ROOT = BASE_DIR / "media"
+    MEDIA_ROOT = Path("/vol/media")
 
 LOGOUT_REDIRECT_URL = 'login'  # Use the name of your sign-in URL pattern
 
@@ -291,6 +293,8 @@ if SENTRY_DSN:
 # ------------------------------------------------------------------------------
 
 # Use a single Redis instance for cache + session cache
+
+
 REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379/1")
 
 CACHES = {
