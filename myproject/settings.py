@@ -70,6 +70,8 @@ INSTALLED_APPS = [
     "allauth.socialaccount.providers.google",
     "users.apps.UsersConfig",
     "bookings",
+    "rest_framework",
+    "rest_framework.authtoken",
 ]
 
 
@@ -311,3 +313,16 @@ CACHES = {
 # Sessions: DB + cache (so reads are fast but still durable in Postgres)
 SESSION_ENGINE = "django.contrib.sessions.backends.cached_db"
 SESSION_CACHE_ALIAS = "default"
+
+REST_FRAMEWORK = {
+    # Token auth for Expo + Session auth for browsable API (nice for dev)
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework.authentication.TokenAuthentication",
+        "rest_framework.authentication.SessionAuthentication",
+    ],
+    # Match your site’s @login_required style by default
+    "DEFAULT_PERMISSION_CLASSES": [
+        "rest_framework.permissions.IsAuthenticated",
+    ],
+}
+

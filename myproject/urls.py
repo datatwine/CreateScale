@@ -27,6 +27,7 @@ urlpatterns = [
     path("accounts/", include("allauth.urls")),  # adds /accounts/google/login/ etc.
     path("bookings/", include("bookings.urls")),
     path("", include("django_prometheus.urls")),
+    path("api/", include("users.api.urls")),
 ]
 
 
