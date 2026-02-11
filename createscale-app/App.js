@@ -9,6 +9,7 @@ import { AuthProvider, AuthContext } from "./src/context/AuthContext";
 import LoginScreen from "./src/screens/LoginScreen";
 import SignupScreen from "./src/screens/SignupScreen";
 import ProfileScreen from "./src/screens/ProfileScreen";
+import GlobalFeedScreen from "./src/screens/GlobalFeedScreen";
 
 
 // Later: we'll add a "MainApp" or "Home" stack that includes GlobalFeed, etc.
@@ -52,10 +53,10 @@ function RootNavigator() {
       {token ? (
         // User is logged in -> show “app” stack
         <Stack.Navigator>
-        <>
-            {/* After login, go straight to the profile view */}
-            <Stack.Screen name="Profile" component={ProfileScreen} />
-        </>
+          {/* After login, go straight to the profile view */}
+          <Stack.Screen name="Profile" component={ProfileScreen} />
+          {/* GlobalFeed — navigated to from the "Global feed" pill in ProfileScreen */}
+          <Stack.Screen name="GlobalFeed" component={GlobalFeedScreen} />
         </Stack.Navigator>
       ) : (
         // User is not logged in -> show auth stack

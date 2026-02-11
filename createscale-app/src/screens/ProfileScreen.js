@@ -658,384 +658,366 @@ export default function ProfileScreen() {
     }
   };
 
+
   /**
-   * Future-ready navigation. This tries to navigate to the given route name
-   * if it exists in the navigation state. If not, we show a “Coming soon”
-   * alert instead of throwing or silently doing nothing.
-   *
-   * Later, once you register screens with names:
-   *  - "GlobalFeed"
-   *  - "LiveEvents"
-   *  - "Bookings"
-   * this will start working automatically without touching this file.
+   * Navigate to a route if registered, otherwise show "Coming soon".
+   * Uses direct navigate() because getState().routeNames is unreliable
+   * with createNativeStackNavigator.
    */
   const navigateIfAvailable = (routeName) => {
     try {
-      const state = navigation.getState?.();
-      const routeNames = state?.routeNames || [];
-
-      if (routeNames.includes(routeName)) {
-        navigation.navigate(routeName);
-      } else {
-        Alert.alert(
-          "Coming soon",
-          "This screen isn’t wired into the app yet."
-        );
-      }
+      navigation.navigate(routeName);
     } catch (err) {
-      console.warn(
-        "Navigation check failed, falling back to alert.",
-        err
-      );
+      console.warn("Route not available:", routeName, err);
       Alert.alert(
         "Coming soon",
-        "This screen isn’t wired into the app yet."
+        `The "${routeName}" screen isn't wired into the app yet.`
       );
     }
   };
 
-  // -------------------------------------------------------------------------
-  // Derived display helpers
-  // -------------------------------------------------------------------------
+// -------------------------------------------------------------------------
+// Derived display helpers
+// -------------------------------------------------------------------------
 
-  const profileInitial =
-    (profile?.username || "?").charAt(0).toUpperCase();
+const profileInitial =
+  (profile?.username || "?").charAt(0).toUpperCase();
 
-  const hasUploads = uploads && uploads.length > 0;
+const hasUploads = uploads && uploads.length > 0;
 
-  const approvalBadges = [];
-  if (isPotentialClient) {
-    approvalBadges.push(
-      <StatusBadge
-        key="potentialClient"
-        tone="warning"
-        label="Potential client"
-      />
-    );
-  }
-  if (profile?.client_approved) {
-    approvalBadges.push(
-      <StatusBadge
-        key="clientApproved"
-        tone="positive"
-        label="Client approved"
-      />
-    );
-  }
-  if (profile?.performer_blacklisted) {
-    approvalBadges.push(
-      <StatusBadge
-        key="performerBlacklisted"
-        tone="danger"
-        label="Performer blacklisted"
-      />
-    );
-  }
-  if (profile?.client_blacklisted) {
-    approvalBadges.push(
-      <StatusBadge
-        key="clientBlacklisted"
-        tone="danger"
-        label="Client blacklisted"
-      />
-    );
-  }
+const approvalBadges = [];
+if (isPotentialClient) {
+  approvalBadges.push(
+    <StatusBadge
+      key="potentialClient"
+      tone="warning"
+      label="Potential client"
+    />
+  );
+}
+if (profile?.client_approved) {
+  approvalBadges.push(
+    <StatusBadge
+      key="clientApproved"
+      tone="positive"
+      label="Client approved"
+    />
+  );
+}
+if (profile?.performer_blacklisted) {
+  approvalBadges.push(
+    <StatusBadge
+      key="performerBlacklisted"
+      tone="danger"
+      label="Performer blacklisted"
+    />
+  );
+}
+if (profile?.client_blacklisted) {
+  approvalBadges.push(
+    <StatusBadge
+      key="clientBlacklisted"
+      tone="danger"
+      label="Client blacklisted"
+    />
+  );
+}
 
-  // -------------------------------------------------------------------------
-  // Render
-  // -------------------------------------------------------------------------
+// -------------------------------------------------------------------------
+// Render
+// -------------------------------------------------------------------------
 
-  if (!token) {
-    // Should not normally happen – guarded by Auth flow – but nice to be safe.
-    return (
-      <View style={styles.loadingFullScreen}>
-        <ActivityIndicator size="large" color={COLORS.accent} />
-        <Text style={styles.loadingText}>
-          Please log in again.
-        </Text>
-      </View>
-    );
-  }
-
-  if (loadingProfile) {
-    return (
-      <View style={styles.loadingFullScreen}>
-        <ActivityIndicator size="large" color={COLORS.accent} />
-        <Text style={styles.loadingText}>
-          Loading your profile…
-        </Text>
-      </View>
-    );
-  }
-
-  if (!profile) {
-    return (
-      <View style={styles.loadingFullScreen}>
-        <Text style={styles.loadingText}>
-          No profile data available.
-        </Text>
-      </View>
-    );
-  }
-
+if (!token) {
+  // Should not normally happen – guarded by Auth flow – but nice to be safe.
   return (
-    <SafeAreaView style={styles.safeArea}>
-      {/* Split background (black / cream) */}
-      <View style={styles.splitBackground}>
-        <View style={styles.leftBackground} />
-        <View style={styles.rightBackground} />
+    <View style={styles.loadingFullScreen}>
+      <ActivityIndicator size="large" color={COLORS.accent} />
+      <Text style={styles.loadingText}>
+        Please log in again.
+      </Text>
+    </View>
+  );
+}
+
+if (loadingProfile) {
+  return (
+    <View style={styles.loadingFullScreen}>
+      <ActivityIndicator size="large" color={COLORS.accent} />
+      <Text style={styles.loadingText}>
+        Loading your profile…
+      </Text>
+    </View>
+  );
+}
+
+if (!profile) {
+  return (
+    <View style={styles.loadingFullScreen}>
+      <Text style={styles.loadingText}>
+        No profile data available.
+      </Text>
+    </View>
+  );
+}
+
+return (
+  <SafeAreaView style={styles.safeArea}>
+    {/* Split background (black / cream) */}
+    <View style={styles.splitBackground}>
+      <View style={styles.leftBackground} />
+      <View style={styles.rightBackground} />
+    </View>
+
+    <ScrollView
+      contentContainerStyle={styles.scrollContent}
+      showsVerticalScrollIndicator={false}
+    >
+      {/* Screen title */}
+      <View style={styles.headerRow}>
+        <Text style={styles.screenTitle}>Profile</Text>
+        {/* Room for small app-level badge / score later if you like */}
       </View>
 
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Screen title */}
-        <View style={styles.headerRow}>
-          <Text style={styles.screenTitle}>Profile</Text>
-          {/* Room for small app-level badge / score later if you like */}
-        </View>
-
-        {/* Main profile card */}
-        <View style={styles.profileCard}>
-          {/* Profile picture circle */}
-          <TouchableOpacity
-            onPress={handlePickProfilePicture}
-            style={styles.profilePictureContainer}
-            activeOpacity={0.8}
-          >
-            <View style={styles.profilePictureCircle}>
-              {/* Show whatever the backend sends: either a computed
+      {/* Main profile card */}
+      <View style={styles.profileCard}>
+        {/* Profile picture circle */}
+        <TouchableOpacity
+          onPress={handlePickProfilePicture}
+          style={styles.profilePictureContainer}
+          activeOpacity={0.8}
+        >
+          <View style={styles.profilePictureCircle}>
+            {/* Show whatever the backend sends: either a computed
                  profile_picture_url or the raw profile_picture field.
                  Style names must match the StyleSheet definitions. */}
-              {avatarUrl ? (
-                <Image source={{ uri: avatarUrl }} style={styles.profilePictureImage} />
-              ) : (
-                <View style={styles.profilePictureCircle}>
-                  <Text style={styles.profilePictureInitial}>
-                    {(profile?.username || "U").charAt(0).toUpperCase()}
-                  </Text>
-                </View>
-              )}
-            </View>
-
-            <Text style={styles.profilePictureHint}>
-              {updatingPicture
-                ? "Updating picture…"
-                : "Tap to change picture"}
-            </Text>
-          </TouchableOpacity>
-
-          {/* Name + profession */}
-          <View style={styles.nameBlock}>
-            <Text
-              style={styles.profileName}
-              numberOfLines={1}
-            >
-              {profile.username}
-            </Text>
-            <Text
-              style={styles.profileProfession}
-              numberOfLines={1}
-            >
-              {profession || "Profession not set yet"}
-            </Text>
-          </View>
-
-          {/* Role toggles row */}
-          <View style={styles.roleToggleRow}>
-            <TogglePill
-              active={isPotentialClient}
-              label="Potential client"
-              onPress={() =>
-                setIsPotentialClient((prev) => !prev)
-              }
-            />
-            <TogglePill
-              active={isPerformer}
-              label="Performer"
-              onPress={() =>
-                setIsPerformer((prev) => !prev)
-              }
-            />
-          </View>
-
-          {/* Status badges (approval / blacklists) */}
-          {approvalBadges.length > 0 && (
-            <View style={styles.badgeRow}>{approvalBadges}</View>
-          )}
-
-          {/* Editable BIO */}
-          <View style={styles.sectionBlock}>
-            <Text style={styles.sectionTitle}>BIO</Text>
-            <TextInput
-              style={styles.multiLineInput}
-              placeholder="You haven't added a bio yet."
-              placeholderTextColor={COLORS.textMuted}
-              multiline
-              value={bio}
-              onChangeText={setBio}
-            />
-          </View>
-
-          {/* Editable LOCATION with "Use my location" helper */}
-          <View style={styles.sectionBlock}>
-            <View style={styles.sectionHeaderRow}>
-              <Text style={styles.sectionTitle}>LOCATION</Text>
-              <TouchableOpacity
-                onPress={handleDetectLocation}
-              >
-                <Text style={styles.linkButtonText}>
-                  Use my location
-                </Text>
-              </TouchableOpacity>
-            </View>
-            <TextInput
-              style={styles.singleLineInput}
-              placeholder="City, Country"
-              placeholderTextColor={COLORS.textMuted}
-              value={location}
-              onChangeText={setLocation}
-            />
-          </View>
-
-          {/* Editable PROFESSION */}
-          <View style={styles.sectionBlock}>
-            <Text style={styles.sectionTitle}>PROFESSION</Text>
-            <TextInput
-              style={styles.singleLineInput}
-              placeholder="What do you do?"
-              placeholderTextColor={COLORS.textMuted}
-              value={profession}
-              onChangeText={setProfession}
-            />
-          </View>
-
-          {/* Explore links – future-ready navigation */}
-          <View style={styles.sectionBlock}>
-            <Text style={styles.sectionTitle}>EXPLORE</Text>
-            <View style={styles.exploreRow}>
-              <TouchableOpacity
-                style={styles.exploreButton}
-                onPress={() =>
-                  navigateIfAvailable("GlobalFeed")
-                }
-              >
-                <Text style={styles.exploreButtonText}>
-                  Global feed
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.exploreButton}
-                onPress={() =>
-                  navigateIfAvailable("LiveEvents")
-                }
-              >
-                <Text style={styles.exploreButtonText}>
-                  Live events
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.exploreButton}
-                onPress={() =>
-                  navigateIfAvailable("Bookings")
-                }
-              >
-                <Text style={styles.exploreButtonText}>
-                  Bookings
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {/* Uploads header + caption + add button */}
-          <View style={styles.uploadsHeader}>
-            <View>
-              <Text style={styles.uploadsTitle}>
-                Your uploads
-              </Text>
-              <Text style={styles.uploadsSubtitle}>
-                (max ~1 min video, 720p – enforced later)
-              </Text>
-            </View>
-            <TouchableOpacity
-              onPress={handleAddMedia}
-              style={styles.addMediaButton}
-              disabled={uploadingMedia}
-            >
-              <Text style={styles.addMediaText}>
-                {uploadingMedia ? "Uploading…" : "+ Add media"}
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          <TextInput
-            style={styles.singleLineInput}
-            placeholder="Caption for next upload (optional)"
-            placeholderTextColor={COLORS.textMuted}
-            value={newUploadCaption}
-            onChangeText={setNewUploadCaption}
-          />
-
-          {/* Uploads list */}
-          <View style={styles.uploadsListBlock}>
-            {loadingUploads ? (
-              <View style={styles.uploadsLoadingRow}>
-                <ActivityIndicator
-                  size="small"
-                  color={COLORS.accent}
-                />
-                <Text style={styles.uploadsLoadingText}>
-                  Loading your uploads…
-                </Text>
-              </View>
-            ) : hasUploads ? (
-              /* Vertical stack of full-width cards, newest first
-                 (backend already sorts by -upload_date) */
-              <View>
-                {uploads.map((u) => (
-                  <UploadCard key={u.id} upload={u} />
-                ))}
-              </View>
+            {avatarUrl ? (
+              <Image source={{ uri: avatarUrl }} style={styles.profilePictureImage} />
             ) : (
-              <View style={styles.noUploadsBlock}>
-                <Text style={styles.noUploadsText}>
-                  You haven’t uploaded anything yet.
-                </Text>
-                <Text style={styles.noUploadsHint}>
-                  Use the website for now, or Add media above for
-                  in-app uploads.
+              <View style={styles.profilePictureCircle}>
+                <Text style={styles.profilePictureInitial}>
+                  {(profile?.username || "U").charAt(0).toUpperCase()}
                 </Text>
               </View>
             )}
           </View>
 
-          {/* Save + Logout buttons */}
-          <View style={styles.actionsRow}>
+          <Text style={styles.profilePictureHint}>
+            {updatingPicture
+              ? "Updating picture…"
+              : "Tap to change picture"}
+          </Text>
+        </TouchableOpacity>
+
+        {/* Name + profession */}
+        <View style={styles.nameBlock}>
+          <Text
+            style={styles.profileName}
+            numberOfLines={1}
+          >
+            {profile.username}
+          </Text>
+          <Text
+            style={styles.profileProfession}
+            numberOfLines={1}
+          >
+            {profession || "Profession not set yet"}
+          </Text>
+        </View>
+
+        {/* Role toggles row */}
+        <View style={styles.roleToggleRow}>
+          <TogglePill
+            active={isPotentialClient}
+            label="Potential client"
+            onPress={() =>
+              setIsPotentialClient((prev) => !prev)
+            }
+          />
+          <TogglePill
+            active={isPerformer}
+            label="Performer"
+            onPress={() =>
+              setIsPerformer((prev) => !prev)
+            }
+          />
+        </View>
+
+        {/* Status badges (approval / blacklists) */}
+        {approvalBadges.length > 0 && (
+          <View style={styles.badgeRow}>{approvalBadges}</View>
+        )}
+
+        {/* Editable BIO */}
+        <View style={styles.sectionBlock}>
+          <Text style={styles.sectionTitle}>BIO</Text>
+          <TextInput
+            style={styles.multiLineInput}
+            placeholder="You haven't added a bio yet."
+            placeholderTextColor={COLORS.textMuted}
+            multiline
+            value={bio}
+            onChangeText={setBio}
+          />
+        </View>
+
+        {/* Editable LOCATION with "Use my location" helper */}
+        <View style={styles.sectionBlock}>
+          <View style={styles.sectionHeaderRow}>
+            <Text style={styles.sectionTitle}>LOCATION</Text>
             <TouchableOpacity
-              style={[
-                styles.primaryButton,
-                savingProfile && { opacity: 0.6 },
-              ]}
-              onPress={handleSaveProfile}
-              disabled={savingProfile}
+              onPress={handleDetectLocation}
             >
-              <Text style={styles.primaryButtonText}>
-                {savingProfile ? "Saving…" : "Save profile"}
+              <Text style={styles.linkButtonText}>
+                Use my location
               </Text>
             </TouchableOpacity>
           </View>
+          <TextInput
+            style={styles.singleLineInput}
+            placeholder="City, Country"
+            placeholderTextColor={COLORS.textMuted}
+            value={location}
+            onChangeText={setLocation}
+          />
+        </View>
 
+        {/* Editable PROFESSION */}
+        <View style={styles.sectionBlock}>
+          <Text style={styles.sectionTitle}>PROFESSION</Text>
+          <TextInput
+            style={styles.singleLineInput}
+            placeholder="What do you do?"
+            placeholderTextColor={COLORS.textMuted}
+            value={profession}
+            onChangeText={setProfession}
+          />
+        </View>
+
+        {/* Explore links – future-ready navigation */}
+        <View style={styles.sectionBlock}>
+          <Text style={styles.sectionTitle}>EXPLORE</Text>
+          <View style={styles.exploreRow}>
+            <TouchableOpacity
+              style={styles.exploreButton}
+              onPress={() =>
+                navigateIfAvailable("GlobalFeed")
+              }
+            >
+              <Text style={styles.exploreButtonText}>
+                Global feed
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.exploreButton}
+              onPress={() =>
+                navigateIfAvailable("LiveEvents")
+              }
+            >
+              <Text style={styles.exploreButtonText}>
+                Live events
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.exploreButton}
+              onPress={() =>
+                navigateIfAvailable("Bookings")
+              }
+            >
+              <Text style={styles.exploreButtonText}>
+                Bookings
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Uploads header + caption + add button */}
+        <View style={styles.uploadsHeader}>
+          <View>
+            <Text style={styles.uploadsTitle}>
+              Your uploads
+            </Text>
+            <Text style={styles.uploadsSubtitle}>
+              (max ~1 min video, 720p – enforced later)
+            </Text>
+          </View>
           <TouchableOpacity
-            style={styles.logoutButton}
-            onPress={logout}
+            onPress={handleAddMedia}
+            style={styles.addMediaButton}
+            disabled={uploadingMedia}
           >
-            <Text style={styles.logoutButtonText}>Log out</Text>
+            <Text style={styles.addMediaText}>
+              {uploadingMedia ? "Uploading…" : "+ Add media"}
+            </Text>
           </TouchableOpacity>
         </View>
-      </ScrollView>
-    </SafeAreaView>
-  );
+
+        <TextInput
+          style={styles.singleLineInput}
+          placeholder="Caption for next upload (optional)"
+          placeholderTextColor={COLORS.textMuted}
+          value={newUploadCaption}
+          onChangeText={setNewUploadCaption}
+        />
+
+        {/* Uploads list */}
+        <View style={styles.uploadsListBlock}>
+          {loadingUploads ? (
+            <View style={styles.uploadsLoadingRow}>
+              <ActivityIndicator
+                size="small"
+                color={COLORS.accent}
+              />
+              <Text style={styles.uploadsLoadingText}>
+                Loading your uploads…
+              </Text>
+            </View>
+          ) : hasUploads ? (
+            /* Vertical stack of full-width cards, newest first
+               (backend already sorts by -upload_date) */
+            <View>
+              {uploads.map((u) => (
+                <UploadCard key={u.id} upload={u} />
+              ))}
+            </View>
+          ) : (
+            <View style={styles.noUploadsBlock}>
+              <Text style={styles.noUploadsText}>
+                You haven’t uploaded anything yet.
+              </Text>
+              <Text style={styles.noUploadsHint}>
+                Use the website for now, or Add media above for
+                in-app uploads.
+              </Text>
+            </View>
+          )}
+        </View>
+
+        {/* Save + Logout buttons */}
+        <View style={styles.actionsRow}>
+          <TouchableOpacity
+            style={[
+              styles.primaryButton,
+              savingProfile && { opacity: 0.6 },
+            ]}
+            onPress={handleSaveProfile}
+            disabled={savingProfile}
+          >
+            <Text style={styles.primaryButtonText}>
+              {savingProfile ? "Saving…" : "Save profile"}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        <TouchableOpacity
+          style={styles.logoutButton}
+          onPress={logout}
+        >
+          <Text style={styles.logoutButtonText}>Log out</Text>
+        </TouchableOpacity>
+      </View>
+    </ScrollView>
+  </SafeAreaView>
+);
 }
 
 // ---------------------------------------------------------------------------

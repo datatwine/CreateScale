@@ -52,7 +52,8 @@ class GlobalFeedProfileSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Profile
-        fields = ["user_id", "username", "profession", "profile_picture_url", "is_performer"]
+        # bio included so mobile feed cards can show the blurb
+        fields = ["user_id", "username", "profession", "profile_picture_url", "is_performer", "bio"]
 
     def get_profile_picture_url(self, obj):
         return _abs_url(self.context.get("request"), obj.profile_picture)
