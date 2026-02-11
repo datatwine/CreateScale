@@ -18,31 +18,39 @@ import { API_BASE_URL } from "../config/api";
  */
 export async function loginWithUsernamePassword(username, password) {
   const url = `${API_BASE_URL}/auth/token/`;
+  console.log("Login: POST", url);
 
-  const response = await fetch(url, {
-    method: "POST",
-    headers: {
-      // Tell Django REST Framework we're sending JSON
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ username, password }),
-  });
+  let response;
+  try {
+    response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ username, password }),
+    });
+  } catch (err) {
+    // This is the place where "Network request failed" originates
+    console.log("Network error while calling auth/token:", err);
+    throw new Error(
+      "Network request failed – check API_BASE_URL and that your device can reach the backend."
+    );
+  }
 
   const data = await response.json();
 
   if (!response.ok) {
-    // Normalise the error so screens can show a friendly message.
     const detail = data.detail || "Login failed. Check your credentials.";
     throw new Error(detail);
   }
 
-  // At minimum backend should return a token.
   if (!data.token) {
     throw new Error("Login response did not contain a token.");
   }
 
-  return data; // e.g. { token: "...." }
+  return data;
 }
+
 
 /**
  * Get current user profile (optional for now).
@@ -86,4 +94,41 @@ export async function signupPlaceholder(payload) {
 
   // Return a simple object so screen can display a "success" message.
   return { message: "Signup simulated. Hook this up to real API later." };
+}
+
+// ---------------------------------------------
+// Fetch uploads for the currently authenticated user
+// API endpoint: GET /api/users/me/uploads/
+// Returns a list of uploads with fields like:
+//   { id, caption, upload_date, image_url, video_url }
+// ---------------------------------------------
+export async function fetchMyUploads(token) {
+  const url = `${API_BASE_URL}/users/me/uploads/`;
+
+  const response = await fetch(url, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+      // DRF Token authentication uses the format: "Token <key>"
+      Authorization: `Token ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    // Read the text so error messages from Django/DRF are at least visible
+    const errorText = await response.text();
+    console.error(
+      "[fetchMyUploads] Failed:",
+      response.status,
+      response.statusText,
+      errorText
+    );
+    throw new Error(
+      `Failed to fetch uploads (${response.status}): ${response.statusText}`
+    );
+  }
+
+  // This should be a JSON array ([])
+  const data = await response.json();
+  return data;
 }

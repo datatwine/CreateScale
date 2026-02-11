@@ -82,3 +82,41 @@ export function AuthProvider({ children }) {
     <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
   );
 }
+
+// ---------------------------------------------
+// Fetch uploads for the currently authenticated user
+// API endpoint: GET /api/users/me/uploads/
+// Returns a list of uploads with fields like:
+//   { id, caption, upload_date, image_url, video_url }
+// ---------------------------------------------
+export async function fetchMyUploads(token) {
+  const url = `${API_BASE_URL}/users/me/uploads/`;
+
+  const response = await fetch(url, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+      // DRF Token authentication uses the format: "Token <key>"
+      Authorization: `Token ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    // Read the text so error messages from Django/DRF are at least visible
+    const errorText = await response.text();
+    console.error(
+      "[fetchMyUploads] Failed:",
+      response.status,
+      response.statusText,
+      errorText
+    );
+    throw new Error(
+      `Failed to fetch uploads (${response.status}): ${response.statusText}`
+    );
+  }
+
+  // This should be a JSON array ([])
+  const data = await response.json();
+  return data;
+}
+

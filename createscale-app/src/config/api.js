@@ -1,19 +1,25 @@
 // src/config/api.js
 
-// IMPORTANT: This defines where your app talks to the Django API.
-// For dev on your laptop, you'll likely hit your local network IP.
-// Example: if your PC IP is 192.168.1.10 and Nginx listens at http://192.168.1.10/
-// and Django API is under /api/, then dev URL is "http://192.168.1.10/api".
+import { Platform } from "react-native";
 
-// TODO: Change this to your ACTUAL dev IP & port once you test from a phone.
-// If you run the app on an Android emulator on the same machine as backend,
-// you might use "http://10.0.2.2/api" instead.
-const DEV_API_BASE_URL = "http://192.168.56.1/api"; // <-- CHANGE ME
+// ⚠️ CHANGE THIS to your Windows machine's LAN IP.
+// Example: run `ipconfig` and look for something like 192.168.1.42
+// Then use: `http://192.168.1.42/api`
+const DEV_NATIVE_API_URL = "http://192.168.1.6/api";
 
-// This is where your AWS / EC2 / domain will live later.
-// Example: https://api.createscale.live/api
-const PROD_API_BASE_URL = "https://your-production-domain.com/api";
+// For Expo Web dev in a browser on the same machine, "localhost" is okay.
+const DEV_WEB_API_URL = "http://localhost/api";
 
-// __DEV__ is a React Native global boolean:
-// true in development, false in production builds.
-export const API_BASE_URL = __DEV__ ? DEV_API_BASE_URL : PROD_API_BASE_URL;
+// Later, when you deploy Django+NGINX on AWS/EC2 behind a domain,
+// just change this one line:
+const PROD_API_URL = "https://your-production-domain.com/api";
+
+// Decide which dev URL to use based on platform.
+const DEV_API_URL =
+  Platform.OS === "web" ? DEV_WEB_API_URL : DEV_NATIVE_API_URL;
+
+// __DEV__ is true in Expo dev builds, false in production builds.
+export const API_BASE_URL = __DEV__ ? DEV_API_URL : PROD_API_URL;
+
+
+
