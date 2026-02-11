@@ -8,6 +8,8 @@ import { AuthProvider, AuthContext } from "./src/context/AuthContext";
 // Screens
 import LoginScreen from "./src/screens/LoginScreen";
 import SignupScreen from "./src/screens/SignupScreen";
+import ProfileScreen from "./src/screens/ProfileScreen";
+
 
 // Later: we'll add a "MainApp" or "Home" stack that includes GlobalFeed, etc.
 // For now, we'll just make a placeholder.
@@ -50,11 +52,10 @@ function RootNavigator() {
       {token ? (
         // User is logged in -> show “app” stack
         <Stack.Navigator>
-          <Stack.Screen
-            name="Home"
-            component={PlaceholderHomeScreen}
-            options={{ headerShown: false }}
-          />
+        <>
+            {/* After login, go straight to the profile view */}
+            <Stack.Screen name="Profile" component={ProfileScreen} />
+        </>
         </Stack.Navigator>
       ) : (
         // User is not logged in -> show auth stack

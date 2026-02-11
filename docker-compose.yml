@@ -37,7 +37,7 @@ services:
     
     volumes:
       - static_volume:/app/staticfiles
-      - media_volume:/app/media
+      - media_volume:/vol/media
     expose:
       - "8000"
 
