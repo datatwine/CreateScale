@@ -261,22 +261,11 @@ export default function GlobalFeedScreen({ navigation }) {
         setLoadingMore(false);
     };
 
-    /** Tapping a card — future ProfileDetail screen */
+    /** Tapping a card → navigate to ProfileDetail (read-only view + hire) */
     const handleCardPress = (profile) => {
-        // Once a ProfileDetail screen is registered, the try-catch will
-        // automatically start navigating instead of alerting.
-        try {
-            const state = navigation.getState?.();
-            const routeNames = state?.routeNames || [];
-            if (routeNames.includes("ProfileDetail")) {
-                navigation.navigate("ProfileDetail", { userId: profile.user_id });
-                return;
-            }
-        } catch (_) {
-            // fall through
-        }
-        Alert.alert("Coming soon", "Profile detail view isn't wired up yet.");
+        navigation.navigate("ProfileDetail", { userId: profile.user_id });
     };
+
 
     // --- Render --------------------------------------------------------------
 
