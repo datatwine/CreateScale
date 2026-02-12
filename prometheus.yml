@@ -1,13 +1,42 @@
+# ---------------------------------------------------------------------------
+# Prometheus Configuration
+# WHAT: Tells Prometheus "where to scrape metrics from" and "how often."
+# HOW:  Every `scrape_interval` seconds, Prometheus sends an HTTP GET to each
+#       target's metrics endpoint, parses the response, and stores the data.
+#       Grafana then queries Prometheus to build dashboards.
+# ---------------------------------------------------------------------------
+
 global:
-  scrape_interval: 5s
-  evaluation_interval: 5s
+  scrape_interval: 5s        # How often to pull metrics from each target
+  evaluation_interval: 5s    # How often to evaluate alerting rules (none yet)
 
 scrape_configs:
+  # --- Django app metrics (via django-prometheus middleware) ---
+  # Provides: request count, latency histograms, error rates per view,
+  #           DB connection pool stats, cache hit/miss counters.
   - job_name: "django"
     metrics_path: /metrics
     static_configs:
-      - targets: ["web:8000"]   # scrape your Django web container over Docker network
+      - targets: ["web:8000"]
 
+  # --- Nginx access log metrics (via nginxlog-exporter) ---
+  # Provides: request count by status, request duration at the edge,
+  #           upstream response time (how long Gunicorn took).
   - job_name: "nginxlogs"
     static_configs:
       - targets: ["nginxlog_exporter:4040"]
+
+  # --- Container metrics (via cAdvisor) ---
+  # Provides: CPU %, memory usage, disk I/O, network I/O PER CONTAINER.
+  # WHY: During a load test, this answers "which container is starving?"
+  - job_name: "cadvisor"
+    static_configs:
+      - targets: ["cadvisor:8080"]
+
+  # --- PostgreSQL metrics (via postgres-exporter) ---
+  # Provides: active connections, cache hit ratio, tuples read/written,
+  #           lock waits, dead tuples (need vacuuming), query throughput.
+  # WHY: Tells you whether the DB is the bottleneck and exactly why.
+  - job_name: "postgres"
+    static_configs:
+      - targets: ["postgres_exporter:9187"]

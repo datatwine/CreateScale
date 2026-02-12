@@ -1,0 +1,23 @@
+# ---------------------------------------------------------------------------
+# Grafana Dashboard Provisioning
+# WHAT: Tells Grafana "load dashboard JSON files from this folder on startup."
+# WHY:  Without this file, Grafana doesn't know your artkhoj_observability.json
+#       exists. If someone restarts Grafana, any manually-imported dashboards
+#       disappear. This config makes dashboards persistent and automatic.
+# HOW:  Grafana reads this YAML on boot → finds the folder path below →
+#       loads every .json file in it as a dashboard.
+# ---------------------------------------------------------------------------
+apiVersion: 1
+providers:
+  - name: "ArtKhoj"
+    orgId: 1
+    folder: ""
+    type: file
+    disableDeletion: false
+    editable: true
+    options:
+      # This path is INSIDE the Grafana container — it's mapped via the
+      # volume mount in docker-compose.yml:
+      #   ./monitoring/grafana/dashboards:/etc/grafana/dashboards
+      path: /etc/grafana/dashboards
+      foldersFromFilesStructure: false
