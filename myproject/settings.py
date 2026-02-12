@@ -253,18 +253,23 @@ LOGOUT_REDIRECT_URL = 'login'  # Use the name of your sign-in URL pattern
 LOGIN_URL = '/users/login/'
 
 
-# Optional: limit what Silk records (good for focus/less noise)
-SILKY_INTERCEPT_PERCENT = 100  # 100 = capture all requests (dev only)
-# Only profile certain paths (regexes); comment out if you want everything
-SILKY_WHITELIST_PATHS = [
-    r'^/users/profile',
-    r'^/users/global-feed/', 
-
-]
-# If you have secrets in bodies, consider:
-# SILKY_MAX_REQUEST_BODY_SIZE = -1
-# SILKY_MAX_RESPONSE_BODY_SIZE = -1
-# SILKY_HIDE_SENSITIVE_KEYS = ['password', 'csrfmiddlewaretoken']
+# ---------------------------------------------------------------------------
+# Silk profiling — ONLY enabled in DEBUG mode
+# WHY: Silk records every request to the database (method, headers, query time).
+#      In production / load testing, this creates massive fake DB writes that
+#      skew performance results. With 200 concurrent users, Silk would try to
+#      write 200+ profiling records per second — making the DB look slow when
+#      it's actually Silk's overhead, not your app's real queries.
+# ---------------------------------------------------------------------------
+if DEBUG:
+    SILKY_INTERCEPT_PERCENT = 100  # Capture all requests in dev
+    SILKY_WHITELIST_PATHS = [
+        r'^/users/profile',
+        r'^/users/global-feed/',
+    ]
+else:
+    # Production: Silk middleware still loads but intercepts nothing (0%)
+    SILKY_INTERCEPT_PERCENT = 0
 
 
 #Sentry Logging below 

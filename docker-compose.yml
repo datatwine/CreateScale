@@ -138,6 +138,46 @@ services:
     command: ./bin/run-celery-with-beat.sh
     restart: unless-stopped
 
+  # ---------------------------------------------------------------------------
+  # cAdvisor — Container Advisor by Google
+  # WHAT: Reads Docker's internal metrics and exposes them to Prometheus.
+  # WHY:  Without this, you can't see CPU/RAM/disk/network usage PER CONTAINER
+  #       in Grafana. During a load test, this tells you "the DB container hit
+  #       95% CPU at 11:42 AM" — which is exactly when latency spiked.
+  # RESOURCE COST: ~50 MB RAM, negligible CPU. It just reads, never writes.
+  # NOTE: "privileged: true" gives cAdvisor permission to read Docker internals.
+  #       It's read-only — it can't modify your containers.
+  # ---------------------------------------------------------------------------
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    privileged: true
+    volumes:
+      - /:/rootfs:ro              # Read-only access to host filesystem (for disk metrics)
+      - /var/run:/var/run:ro      # Docker socket (to list running containers)
+      - /sys:/sys:ro              # Linux kernel metrics (CPU, memory counters)
+      - /var/lib/docker/:/var/lib/docker:ro  # Container layer sizes
+    ports:
+      - "8080:8080"               # Web UI + Prometheus scrape endpoint
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # Postgres Exporter — PostgreSQL metrics for Prometheus
+  # WHAT: Connects to your Postgres database and asks it internal questions:
+  #       "How many connections are active? What's the cache hit ratio?
+  #        Are there lock waits? How many tuples are being read/written?"
+  # WHY:  django-prometheus tells you "this view is slow" but can't tell you WHY.
+  #       Postgres Exporter is the X-ray — it shows you whether the DB is the
+  #       bottleneck (too many connections, low cache hit ratio, lock contention).
+  # RESOURCE COST: ~15 MB RAM. Runs a SQL query every few seconds. Negligible.
+  # NOTE: DATA_SOURCE_NAME uses the same DB credentials from your .env file.
+  # ---------------------------------------------------------------------------
+  postgres_exporter:
+    image: prometheuscommunity/postgres-exporter:v0.15.0
+    environment:
+      DATA_SOURCE_NAME: "postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}?sslmode=disable"
+    depends_on:
+      - db
+    restart: unless-stopped
 
 
 volumes:
