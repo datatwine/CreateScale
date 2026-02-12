@@ -125,3 +125,89 @@ class PublicProfileDetailSerializer(serializers.ModelSerializer):
         request = self.context.get("request")
         qs = Upload.objects.filter(profile=obj).order_by("-upload_date")
         return UploadSerializer(qs, many=True, context={"request": request}).data
+
+
+# ---------------------------------------------------------------------------
+# Signup serializer — mirrors users.forms.UserRegisterForm validation
+# ---------------------------------------------------------------------------
+
+import re
+from django.contrib.auth.models import User
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError as DjangoValidationError
+
+
+class SignupSerializer(serializers.Serializer):
+    """
+    POST /api/auth/signup/
+    Fields mirror UserRegisterForm: username, email, password1, password2.
+    Optional: profession, location (written to the auto-created Profile).
+    """
+    username = serializers.CharField(max_length=150)
+    email = serializers.EmailField()
+    password1 = serializers.CharField(write_only=True, min_length=8)
+    password2 = serializers.CharField(write_only=True, min_length=8)
+    # Optional profile fields — set on the Profile after user creation
+    profession = serializers.CharField(max_length=100, required=False, default="")
+    location = serializers.CharField(max_length=100, required=False, default="")
+
+    # -- Field-level validators --
+
+    def validate_username(self, value):
+        """Reject duplicate usernames (case-insensitive)."""
+        if User.objects.filter(username__iexact=value).exists():
+            raise serializers.ValidationError("A user with that username already exists.")
+        return value
+
+    def validate_email(self, value):
+        """
+        Same checks as UserRegisterForm.clean_email:
+        1. Regex format check
+        2. No 'spam' in the address
+        3. Reject duplicate emails
+        """
+        regex = r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$'
+        if not re.match(regex, value):
+            raise serializers.ValidationError("Enter a valid email address.")
+        if "spam" in value.lower():
+            raise serializers.ValidationError("Spam emails are not allowed.")
+        if User.objects.filter(email__iexact=value).exists():
+            raise serializers.ValidationError("An account with this email already exists.")
+        return value
+
+    # -- Object-level validators --
+
+    def validate(self, attrs):
+        """Password match + Django password strength validators."""
+        if attrs["password1"] != attrs["password2"]:
+            raise serializers.ValidationError({"password2": "Passwords do not match."})
+
+        # Run Django's AUTH_PASSWORD_VALIDATORS (length, common, numeric, etc.)
+        try:
+            validate_password(attrs["password1"])
+        except DjangoValidationError as exc:
+            raise serializers.ValidationError({"password1": list(exc.messages)})
+
+        return attrs
+
+    # -- Creation --
+
+    def create(self, validated_data):
+        """
+        1. Create the User (password is hashed automatically).
+        2. Profile is auto-created by the post_save signal in users.signals.
+        3. Set optional profession / location on the Profile.
+        """
+        user = User.objects.create_user(
+            username=validated_data["username"],
+            email=validated_data["email"],
+            password=validated_data["password1"],
+        )
+
+        # Profile already exists (thanks to the signal), so just update it
+        profile = user.profile
+        profile.profession = validated_data.get("profession", "")
+        profile.location = validated_data.get("location", "")
+        profile.save()
+
+        return user

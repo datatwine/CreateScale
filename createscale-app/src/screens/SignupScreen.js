@@ -9,7 +9,7 @@
 // `navigation.navigate("Login")` goes to your login screen.
 // ---------------------------
 
-import React, { useRef, useState } from "react";
+import React, { useContext, useRef, useState } from "react";
 import {
   Animated,          // React Native's animation primitive
   Dimensions,        // Used to get screen height, so we can force scrolling
@@ -22,6 +22,9 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+
+import { AuthContext } from "../context/AuthContext";
+import { signupWithCredentials } from "../api/auth";
 
 // ----- Theme constants (so you can reuse them later) -----
 const { height: WINDOW_HEIGHT } = Dimensions.get("window");
@@ -42,6 +45,9 @@ const introWords = [
 ];
 
 export default function SignupScreen({ navigation }) {
+  // Auth context — we call login() after signup so the user is auto-logged-in
+  const { login } = useContext(AuthContext);
+
   // This Animated value tracks vertical scroll position.
   // We mostly use it to detect "user has started scrolling" rather than
   // for fancy parallax.
@@ -64,12 +70,13 @@ export default function SignupScreen({ navigation }) {
   // 0 = hidden, 1 = fully visible + bounced.
   const secondLineAnim = useRef(new Animated.Value(0)).current;
 
-  // ---- Form state (simple for now; you’ll wire to backend later) ----
+  // ---- Form state ----
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password1, setPassword1] = useState("");
   const [password2, setPassword2] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState("");   // <-- shows backend validation errors
 
   // Called the first time the user scrolls a little bit.
   // Runs a staggered animation for each word, then the trampoline for line 2.
@@ -115,19 +122,36 @@ export default function SignupScreen({ navigation }) {
     }
   };
 
-  // Simplified submit handler for now — just a placeholder.
-  // Once you're happy with UI, you’ll replace this with a real call
-  // to your Django signup API.
+  // ---- Real signup handler ----
+  // Calls the Django API, then auto-logs the user in via AuthContext.
   const handleSubmit = async () => {
+    // Basic client-side guard before hitting the network
+    if (!username || !email || !password1 || !password2) {
+      setError("Please fill in all fields.");
+      return;
+    }
+    if (password1 !== password2) {
+      setError("Passwords do not match.");
+      return;
+    }
+
     if (isSubmitting) return;
     setIsSubmitting(true);
+    setError("");
+
     try {
-      // Fake network delay
-      await new Promise((resolve) => setTimeout(resolve, 800));
-      alert("Signup placeholder – wire this to the real Django endpoint later.");
+      // 1. Create account on the backend (returns {token, user_id, username})
+      const data = await signupWithCredentials({ username, email, password1, password2 });
+
+      // 2. Auto-login: use the returned token via AuthContext.login()
+      //    login() expects (username, password) and calls the token API internally,
+      //    so we just call it with the credentials we already have.
+      await login(username, password1);
+
+      // Navigation is automatic — AuthContext sets the token, and
+      // RootNavigator switches to the authenticated stack (ProfileScreen).
     } catch (err) {
-      console.error(err);
-      alert("Something went wrong. Please try again.");
+      setError(err.message || "Signup failed. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -265,6 +289,11 @@ export default function SignupScreen({ navigation }) {
                   onChangeText={setPassword2}
                   secureTextEntry
                 />
+
+                {/* Validation error message (from backend or client-side) */}
+                {error ? (
+                  <Text style={styles.errorText}>{error}</Text>
+                ) : null}
 
                 {/* Chunky dopamine button */}
                 <TouchableOpacity
@@ -406,6 +435,12 @@ const styles = StyleSheet.create({
     borderColor: "#333333",
     color: "#ffffff",
     marginBottom: 12,
+  },
+  errorText: {
+    color: "#ff6666",
+    fontSize: 13,
+    marginBottom: 8,
+    lineHeight: 18,
   },
   signupButton: {
     marginTop: 4,

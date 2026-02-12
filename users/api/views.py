@@ -19,6 +19,7 @@ from .serializers import (
     GlobalFeedProfileSerializer,
     PublicProfileDetailSerializer,
     UploadSerializer,
+    SignupSerializer,
 )
 
 
@@ -76,6 +77,32 @@ class TokenMeAPIView(APIView):
             "profile": MeProfileSerializer(profile, context={"request": request}).data,
         })
 
+
+class SignupAPIView(APIView):
+    """
+    POST /api/auth/signup/
+    Body: {"username", "email", "password1", "password2", "profession"?, "location"?}
+    Returns: {"token", "user_id", "username"}  (same shape as TokenLoginAPIView)
+
+    Mirrors the web signup view in users.views.signup but returns JSON + token
+    so the Expo app can auto-login immediately after registration.
+    """
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = SignupSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)  # 400 with field errors on failure
+
+        # Create User + Profile (signal-based)
+        user = serializer.save()
+
+        # Generate auth token for immediate login (exactly like TokenLoginAPIView)
+        token, _ = Token.objects.get_or_create(user=user)
+
+        return Response(
+            {"token": token.key, "user_id": user.id, "username": user.username},
+            status=status.HTTP_201_CREATED,
+        )
 
 # -------------------------------------------------------------------
 # USERS API
