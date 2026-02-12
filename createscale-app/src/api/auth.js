@@ -77,23 +77,59 @@ export async function fetchAuthMe(token) {
 }
 
 /**
- * Placeholder signup API call.
+ * Sign up a new user account.
  *
- * Right now your backend doesn't expose a JSON-based signup endpoint.
- * Eventually we want something like:
- *   POST /api/auth/signup/ -> creates user and returns token/user.
+ * POST /api/auth/signup/
+ * Body: { username, email, password1, password2 }
+ * Returns: { token, user_id, username }  (same shape as login)
  *
- * For now this just simulates a delay and "success".
- * We'll wire the real endpoint later when you add it in Django.
+ * On validation errors the backend returns 400 with DRF field errors, e.g.:
+ *   { "username": ["A user with that username already exists."] }
+ * We flatten those into a single human-readable string for the UI.
  */
-export async function signupPlaceholder(payload) {
-  // payload might contain { username, email, password1, password2, ... }
+export async function signupWithCredentials({ username, email, password1, password2 }) {
+  const url = `${API_BASE_URL}/auth/signup/`;
+  console.log("Signup: POST", url);
 
-  // Fake 1 second delay so UI can show loading.
-  await new Promise((resolve) => setTimeout(resolve, 1000));
+  let response;
+  try {
+    response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, email, password1, password2 }),
+    });
+  } catch (err) {
+    console.log("Network error while calling auth/signup:", err);
+    throw new Error(
+      "Network request failed – check API_BASE_URL and that your device can reach the backend."
+    );
+  }
 
-  // Return a simple object so screen can display a "success" message.
-  return { message: "Signup simulated. Hook this up to real API later." };
+  const data = await response.json();
+
+  if (!response.ok) {
+    // DRF returns field-level errors as { field: [messages] }
+    // Flatten them into one readable string for the UI.
+    const messages = [];
+    if (typeof data === "object" && data !== null) {
+      for (const [field, errors] of Object.entries(data)) {
+        const fieldErrors = Array.isArray(errors) ? errors.join(" ") : String(errors);
+        // "non_field_errors" is DRF's key for object-level validation errors
+        if (field === "non_field_errors" || field === "detail") {
+          messages.push(fieldErrors);
+        } else {
+          messages.push(`${field}: ${fieldErrors}`);
+        }
+      }
+    }
+    throw new Error(messages.join("\n") || "Signup failed. Please try again.");
+  }
+
+  if (!data.token) {
+    throw new Error("Signup response did not contain a token.");
+  }
+
+  return data; // { token, user_id, username }
 }
 
 // ---------------------------------------------

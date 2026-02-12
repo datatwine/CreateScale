@@ -6,6 +6,7 @@ from .views import (
     TokenLoginAPIView,
     TokenLogoutAPIView,
     TokenMeAPIView,
+    SignupAPIView,
     MeProfileAPIView,
     MyUploadsAPIView,
     MyUploadDeleteAPIView,
@@ -25,6 +26,7 @@ urlpatterns = [
     # AUTH (Token)
     # -------------------------
     path("auth/token/", TokenLoginAPIView.as_view(), name="api-auth-token"),
+    path("auth/signup/", SignupAPIView.as_view(), name="api-auth-signup"),
     path("auth/logout/", TokenLogoutAPIView.as_view(), name="api-auth-logout"),
     path("auth/me/", TokenMeAPIView.as_view(), name="api-auth-me"),
 
