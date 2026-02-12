@@ -12,6 +12,7 @@ import ProfileScreen from "./src/screens/ProfileScreen";
 import GlobalFeedScreen from "./src/screens/GlobalFeedScreen";
 import ProfileDetailScreen from "./src/screens/ProfileDetailScreen";
 import BookingsScreen from "./src/screens/BookingsScreen";
+import LiveEventsScreen from "./src/screens/LiveEventsScreen";
 
 
 // Later: we'll add a "MainApp" or "Home" stack that includes GlobalFeed, etc.
@@ -63,6 +64,8 @@ function RootNavigator() {
           <Stack.Screen name="ProfileDetail" component={ProfileDetailScreen} />
           {/* Bookings — engagement dashboard for client + performer */}
           <Stack.Screen name="Bookings" component={BookingsScreen} />
+          {/* LiveEvents — public accepted engagements, upcoming + past */}
+          <Stack.Screen name="LiveEvents" component={LiveEventsScreen} />
         </Stack.Navigator>
       ) : (
         // User is not logged in -> show auth stack

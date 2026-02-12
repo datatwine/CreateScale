@@ -224,14 +224,28 @@ class LiveEventsAPIView(_LenientPaginatorMixin, APIView):
     page_size = 10  # matches users.views.live_events page size :contentReference[oaicite:12]{index=12}
 
     def get(self, request):
-        qs = (
-            Engagement.objects.filter(
-                status=Engagement.STATUS_ACCEPTED,
-                date__gte=date.today(),
+        scope = request.query_params.get("scope", "upcoming")
+
+        if scope == "past":
+            # Past accepted events, newest first
+            qs = (
+                Engagement.objects.filter(
+                    status=Engagement.STATUS_ACCEPTED,
+                    date__lt=date.today(),
+                )
+                .select_related("client", "performer")
+                .order_by("-date", "-time")
             )
-            .select_related("client", "performer")
-            .order_by("date", "time")
-        )
+        else:
+            # Default: upcoming accepted events, soonest first
+            qs = (
+                Engagement.objects.filter(
+                    status=Engagement.STATUS_ACCEPTED,
+                    date__gte=date.today(),
+                )
+                .select_related("client", "performer")
+                .order_by("date", "time")
+            )
 
         paginator, page_obj = self.paginate_lenient(qs, request)
 
