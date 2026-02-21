@@ -149,13 +149,14 @@ services:
   #       It's read-only — it can't modify your containers.
   # ---------------------------------------------------------------------------
   cadvisor:
-    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    image: gcr.io/cadvisor/cadvisor:v0.50.0
     privileged: true
     volumes:
       - /:/rootfs:ro              # Read-only access to host filesystem (for disk metrics)
       - /var/run:/var/run:ro      # Docker socket (to list running containers)
       - /sys:/sys:ro              # Linux kernel metrics (CPU, memory counters)
       - /var/lib/docker/:/var/lib/docker:ro  # Container layer sizes
+      - /dev/kmsg:/dev/kmsg:ro 
     ports:
       - "8080:8080"               # Web UI + Prometheus scrape endpoint
     restart: unless-stopped
