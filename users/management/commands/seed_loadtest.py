@@ -39,11 +39,11 @@ from users.models import Profile, Upload
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
-TOTAL_USERS = 50
+TOTAL_USERS = 200
 PASSWORD = "Passw0rd!AK2025"   # Same password set during earlier user creation
-PERFORMER_RANGE = range(1, 26)       # users 1–25
-CLIENT_RANGE = range(26, 51)         # users 26–50
-DUAL_ROLE_RANGE = range(16, 26)      # users 16–25 (subset of performers)
+PERFORMER_RANGE = range(1, 81)       # users 1–80  (80 performers)
+CLIENT_RANGE = range(81, 181)        # users 81–180 (100 clients)
+DUAL_ROLE_RANGE = range(61, 81)      # users 61–80  (subset: both performer + client)
 TOKEN_OUTPUT_PATH = "/app/loadtest_tokens.json"
 
 
@@ -144,7 +144,7 @@ class Command(BaseCommand):
 
         self.stdout.write(self.style.SUCCESS(
             f"\n✅ Seeded {TOTAL_USERS} users.\n"
-            f"   Performers: {len(performers)} (users 1–25)\n"
-            f"   Clients:    {len(clients)} (users 26–50, incl. dual-role 16–25)\n"
+            f"   Performers: {len(performers)} (users 1–80)\n"
+            f"   Clients:    {len(clients)} (users 81–180, incl. dual-role 61–80)\n"
             f"   Tokens:     {TOKEN_OUTPUT_PATH}\n"
         ))

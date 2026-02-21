@@ -29,8 +29,7 @@ rm -rf "$PROMETHEUS_MULTIPROC_DIR" && mkdir -p "$PROMETHEUS_MULTIPROC_DIR"
 # 4) Start Gunicorn as the unprivileged user (proper signal handling via exec, exec makes sure su and then gunicorn are PID 1)
 exec su -s /bin/sh -c "exec gunicorn myproject.wsgi:application \
   --bind 0.0.0.0:8000  \
-  --worker-class gthread \ 
-  --workers 5  \ 
+  --worker-class gthread \
   --workers ${WEB_CONCURRENCY:-5} \
   --threads  ${WEB_THREADS:-2} \
   --timeout  ${WEB_TIMEOUT:-30} \
@@ -38,4 +37,3 @@ exec su -s /bin/sh -c "exec gunicorn myproject.wsgi:application \
   --error-logfile - \
   --log-level info \
   --capture-output" appuser
-
