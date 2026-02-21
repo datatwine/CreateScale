@@ -151,12 +151,11 @@ services:
     image: gcr.io/cadvisor/cadvisor:v0.50.0
     privileged: true
     command:
-      - "--docker_only=true" # Skip non-Docker cgroups (less noise)
-      - "--store_container_labels=true" # ★ ROOT FIX: expose compose labels to Prometheus
+      - "--store_container_labels=true" # Expose Docker Compose labels to Prometheus
       - "--housekeeping_interval=15s" # Reduce cAdvisor CPU overhead
     volumes:
       - /:/rootfs:ro
-      - /var/run/docker.sock:/var/run/docker.sock:ro # Docker socket for container discovery
+      - /var/run:/var/run:ro # Full /var/run needed for container discovery
       - /sys:/sys:ro
       - /var/lib/docker/:/var/lib/docker:ro
     ports:
