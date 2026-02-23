@@ -69,6 +69,8 @@ INSTALLED_APPS = [
     "allauth.account",
     "allauth.socialaccount",
     "allauth.socialaccount.providers.google",
+    "allauth.socialaccount.providers.twitter_oauth2",
+    "allauth.socialaccount.providers.linkedin_oauth2",
     "users.apps.UsersConfig",
     "bookings",
     "rest_framework",
@@ -99,11 +101,34 @@ SOCIALACCOUNT_PROVIDERS = {
             "secret": os.getenv("GOOGLE_CLIENT_SECRET", ""),
             "key": "",
         },
-        # optional: if you want email scope, etc.
         "SCOPE": ["email", "profile"],
         "AUTH_PARAMS": {"access_type": "online"},
-    }
+    },
+    "twitter_oauth2": {
+        "APP": {
+            "client_id": os.getenv("TWITTER_CLIENT_ID", ""),
+            "secret": os.getenv("TWITTER_CLIENT_SECRET", ""),
+        },
+    },
+    "linkedin_oauth2": {
+        "APP": {
+            "client_id": os.getenv("LINKEDIN_CLIENT_ID", ""),
+            "secret": os.getenv("LINKEDIN_CLIENT_SECRET", ""),
+        },
+        "SCOPE": ["openid", "profile", "email"],
+    },
 }
+
+# Skip the intermediate "Continue with X?" page on social login
+SOCIALACCOUNT_LOGIN_ON_GET = True
+
+# If a social login email matches an existing user, log into that user
+# (safe because Google/LinkedIn are trusted email providers)
+SOCIALACCOUNT_EMAIL_AUTHENTICATION = True
+SOCIALACCOUNT_EMAIL_AUTHENTICATION_AUTO_CONNECT = True
+
+# Google mobile client IDs (for API token validation)
+GOOGLE_IOS_CLIENT_ID = os.getenv("GOOGLE_IOS_CLIENT_ID", "")
 
 MIDDLEWARE = [
     'django_prometheus.middleware.PrometheusBeforeMiddleware',

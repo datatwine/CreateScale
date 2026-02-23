@@ -30,9 +30,16 @@
                     Let's Go 🚀
                 </button>
             </form>
-            
-            <!-- Google signup/login button -->
-            <a href="{% provider_login_url 'google' %}" class="btn">Continue with Google</a>
+
+            <!-- Social signup/login buttons -->
+            <div style="margin-top: 16px; display: flex; gap: 8px; flex-wrap: wrap;">
+                <a href="{% provider_login_url 'google' %}" class="btn"
+                    style="flex:1; text-align:center; background:#4285F4; color:#fff; padding:10px; border-radius:6px; text-decoration:none; font-weight:600;">Google</a>
+                <a href="{% provider_login_url 'twitter_oauth2' %}" class="btn"
+                    style="flex:1; text-align:center; background:#1DA1F2; color:#fff; padding:10px; border-radius:6px; text-decoration:none; font-weight:600;">Twitter</a>
+                <a href="{% provider_login_url 'linkedin_oauth2' %}" class="btn"
+                    style="flex:1; text-align:center; background:#0077B5; color:#fff; padding:10px; border-radius:6px; text-decoration:none; font-weight:600;">LinkedIn</a>
+            </div>
 
 
             <p class="login-link">Already have an account? <a href="{% url 'login' %}">Sign in here.</a></p>

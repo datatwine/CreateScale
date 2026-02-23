@@ -25,6 +25,7 @@ import {
 
 import { AuthContext } from "../context/AuthContext";
 import { signupWithCredentials } from "../api/auth";
+import SocialLoginButtons from "../components/SocialLoginButtons";
 
 // ----- Theme constants (so you can reuse them later) -----
 const { height: WINDOW_HEIGHT } = Dimensions.get("window");
@@ -319,6 +320,8 @@ export default function SignupScreen({ navigation }) {
                     <Text style={styles.loginLink}>Log in</Text>
                   </TouchableOpacity>
                 </View>
+
+                <SocialLoginButtons />
               </View>
             </View>
           </View>
