@@ -23,7 +23,7 @@ def signup(request):
             user.profile.profession = form.cleaned_data.get('profession')
             user.profile.location = form.cleaned_data.get('location')
             user.profile.save()  # Explicitly save the profile
-            login(request, user)  # Log the user in
+            login(request, user, backend="django.contrib.auth.backends.ModelBackend")
             return redirect('profile')  # Redirect to the profile page
     else:
         form = UserRegisterForm()
