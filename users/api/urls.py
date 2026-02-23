@@ -2,6 +2,7 @@ from django.urls import path
 from rest_framework.routers import DefaultRouter
 
 from bookings.api.views import CreateHireRequestAPIView, EngagementViewSet
+from users.oauth_views import SocialLoginAPIView
 from .views import (
     TokenLoginAPIView,
     TokenLogoutAPIView,
@@ -29,6 +30,7 @@ urlpatterns = [
     path("auth/signup/", SignupAPIView.as_view(), name="api-auth-signup"),
     path("auth/logout/", TokenLogoutAPIView.as_view(), name="api-auth-logout"),
     path("auth/me/", TokenMeAPIView.as_view(), name="api-auth-me"),
+    path("auth/oauth/", SocialLoginAPIView.as_view(), name="api-auth-oauth"),
 
     # -------------------------
     # USERS

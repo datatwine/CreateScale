@@ -1,5 +1,3 @@
-// src/screens/LoginScreen.js
-
 import React, { useState, useContext } from "react";
 import {
   View,
@@ -9,8 +7,10 @@ import {
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
 } from "react-native";
 import { AuthContext } from "../context/AuthContext";
+import SocialLoginButtons from "../components/SocialLoginButtons";
 
 export default function LoginScreen({ navigation }) {
   const { login } = useContext(AuthContext);
@@ -61,7 +61,7 @@ export default function LoginScreen({ navigation }) {
       </View>
 
       {/* Foreground content overlays the background */}
-      <View style={styles.overlay}>
+      <ScrollView contentContainerStyle={styles.overlay}>
         <Text style={styles.brandTitle}>CreateScale</Text>
         <Text style={styles.brandSubtitle}>Log in to your live experiences</Text>
 
@@ -106,8 +106,10 @@ export default function LoginScreen({ navigation }) {
               New here? <Text style={styles.secondaryButtonHighlight}>Sign up</Text>
             </Text>
           </TouchableOpacity>
+
+          <SocialLoginButtons />
         </View>
-      </View>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }

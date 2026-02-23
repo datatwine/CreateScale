@@ -63,6 +63,18 @@ export function AuthProvider({ children }) {
     }
   };
 
+  // Called by OAuth social login buttons — token already obtained from backend
+  const loginWithToken = async (newToken) => {
+    setToken(newToken);
+    await AsyncStorage.setItem("@auth_token", newToken);
+    try {
+      const me = await fetchAuthMe(newToken);
+      setUser(me);
+    } catch (err) {
+      console.log("Failed to load user after OAuth login:", err.message);
+    }
+  };
+
   const logout = async () => {
     setToken(null);
     setUser(null);
@@ -75,6 +87,7 @@ export function AuthProvider({ children }) {
     user,
     initializing,
     login,
+    loginWithToken,
     logout,
   };
 

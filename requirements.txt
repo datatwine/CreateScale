@@ -28,3 +28,4 @@ django-storages[boto3]>=1.14
 boto3>=1.35
 django-redis
 djangorestframework>=3.14.0
+google-auth>=2.28
