@@ -138,32 +138,20 @@ services:
     restart: unless-stopped
 
   # ---------------------------------------------------------------------------
-  # cAdvisor — Container Advisor by Google
-  # WHAT: Reads Docker's internal metrics and exposes them to Prometheus.
-  # WHY:  Without this, you can't see CPU/RAM/disk/network usage PER CONTAINER
-  #       in Grafana. During a load test, this tells you "the DB container hit
-  #       95% CPU at 11:42 AM" — which is exactly when latency spiked.
-  # RESOURCE COST: ~50 MB RAM, negligible CPU. It just reads, never writes.
-  # NOTE: "privileged: true" gives cAdvisor permission to read Docker internals.
-  #       It's read-only — it can't modify your containers.
+  # docker-stats-exporter — Container metrics via Docker socket API
+  # Replaces cAdvisor which requires direct Linux filesystem access
+  # (broken on Docker Desktop/WSL2 and newer EC2 Docker with containerd).
+  # Uses the same approach as `docker stats` — pure Docker API, no fs scanning.
+  # Exposes CPU %, memory, network I/O per container on :9417/metrics
   # ---------------------------------------------------------------------------
-  cadvisor:
-    image: gcr.io/cadvisor/cadvisor:v0.50.0
-    privileged: true
-    command:
-      - "--store_container_labels=true"
-      - "--docker_only=true"
-      - "--housekeeping_interval=15s"
+  docker-exporter:
+    build:
+      context: ./monitoring/docker_stats_exporter
+      dockerfile: Dockerfile
     volumes:
-      - /:/rootfs:ro
-      - /var/run:/var/run:ro
-      - /sys:/sys:ro
-      - /var/lib/docker/:/var/lib/docker:ro
-      - /dev/disk/:/dev/disk:ro
-    devices:
-      - /dev/kmsg:/dev/kmsg
+      - /var/run/docker.sock:/var/run/docker.sock:ro
     ports:
-      - "8080:8080"
+      - "9417:9417"
     restart: unless-stopped
 
   # ---------------------------------------------------------------------------
