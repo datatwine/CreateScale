@@ -26,12 +26,12 @@ scrape_configs:
     static_configs:
       - targets: ["nginxlog_exporter:4040"]
 
-  # --- Container metrics (via cAdvisor) ---
-  # Provides: CPU %, memory usage, disk I/O, network I/O PER CONTAINER.
-  # WHY: During a load test, this answers "which container is starving?"
+  # --- Container metrics (via docker-exporter / Docker socket API) ---
+  # Provides: CPU %, memory usage, network I/O PER CONTAINER.
+  # Uses Docker socket API — works on Docker Desktop, EC2, and all environments.
   - job_name: "cadvisor"
     static_configs:
-      - targets: ["cadvisor:8080"]
+      - targets: ["docker-exporter:9417"]
 
   # --- PostgreSQL metrics (via postgres-exporter) ---
   # Provides: active connections, cache hit ratio, tuples read/written,
