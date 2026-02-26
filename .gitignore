@@ -11,3 +11,9 @@ logs/
 
 logs/
 !logs/.gitkeep
+
+# Python bytecode
+__pycache__/
+*.pyc
+*.pyo
+*.pyd

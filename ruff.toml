@@ -9,3 +9,6 @@
 # F405: may be undefined from star import
 #       Side-effect of F403 in settings_sqlite.py (BASE_DIR comes from the * import).
 ignore = ["E402", "F403", "F405", "F811", "F841"]
+
+[lint.per-file-ignores]
+"users/apps.py" = ["F401"]  # signals side-effect import — must stay
