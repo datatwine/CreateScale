@@ -183,6 +183,7 @@ jobs:
           DJANGO_SECRET_KEY: "ci-test-secret-not-for-production-x7k2m9p"
           DJANGO_DEBUG: "0"
           DJANGO_ALLOWED_HOSTS: "localhost"
+          USE_S3: "0"
         run: python manage.py makemigrations --check --dry-run
 
       # --- Run the Layer 1 tests ---
@@ -197,6 +198,9 @@ jobs:
           DB_HOST: localhost
           DB_PORT: "5432"
           DJANGO_SECRET_KEY: "ci-test-secret-not-for-production-x7k2m9p"
+          DJANGO_DEBUG: "0"
+          DJANGO_ALLOWED_HOSTS: "localhost"
+          USE_S3: "0"
           REDIS_URL: redis://localhost:6379/0
           DJANGO_SETTINGS_MODULE: myproject.settings
         run: pytest tests/test_layer1.py -v
