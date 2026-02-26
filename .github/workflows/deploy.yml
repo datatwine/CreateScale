@@ -1,0 +1,298 @@
+# =============================================================================
+# CI/CD Pipeline — CreateScale (ArtKhoj)
+# =============================================================================
+#
+# WHAT THIS DOES:
+#   Push to main OR open a PR → this pipeline runs automatically.
+#   It runs 4 jobs in sequence (each depends on the previous passing):
+#
+#   1. GUARDRAILS  (~30s)  — linting + security scan (ruff + bandit)
+#   2. BUILD       (~2m)   — Docker image compiles + Django config valid
+#   3. TEST        (~2m)   — Layer 1 invariant tests with real Postgres
+#   4. DEPLOY      (~1m)   — Uses AWS SSM to run commands on EC2
+#                            (only runs on push to main, never on PRs)
+#
+# DEPLOYMENT METHOD:
+#   Uses AWS SSM (Systems Manager) instead of SSH.
+#   This means port 22 does NOT need to be open for GitHub Actions.
+#   SSM sends commands through AWS's internal network — free and secure.
+#
+# REQUIRED GITHUB SECRETS:
+#   AWS_ACCESS_KEY_ID      — IAM user access key (for SSM)
+#   AWS_SECRET_ACCESS_KEY  — IAM user secret key (for SSM)
+#   EC2_INSTANCE_ID        — your EC2 instance ID (i-0abc...)
+#   AWS_REGION             — your EC2 region (e.g., ap-south-1)
+#
+# =============================================================================
+
+name: CI/CD Pipeline
+
+# --- TRIGGER ---
+# Runs on:
+#   - Every push to the 'main' branch (triggers full pipeline including deploy)
+#   - Every pull request targeting 'main' (runs guardrails + build + test only)
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+
+  # ===========================================================================
+  # JOB 1: GUARDRAILS
+  # ===========================================================================
+  # PURPOSE: Catch "obviously bad" code before wasting time on a Docker build.
+  #
+  # ruff   → catches syntax errors, unused imports, undefined variables.
+  #          Think of it as a spell-checker for Python. Runs in <2 seconds.
+  #
+  # bandit → catches security anti-patterns:
+  #          - hardcoded passwords (password = "abc123")
+  #          - SQL injection (cursor.execute(f"SELECT * FROM {table}"))
+  #          - use of eval() with user input
+  #          - DEBUG = True shipped to production
+  #
+  # If EITHER fails, the pipeline stops here. No Docker build, no tests,
+  # no deploy. This saves ~5 minutes of CI time on obviously broken code.
+  # ===========================================================================
+  guardrails:
+    name: "🛡️ Guardrails (lint + security)"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install linters
+        run: pip install ruff bandit
+
+      # --- Ruff: fast Python linter ---
+      # Checks for: syntax errors, unused imports, undefined names,
+      # unreachable code, type errors. Runs in ~1 second.
+      - name: "Ruff — lint check"
+        run: ruff check .
+
+      # --- Bandit: security scanner ---
+      # Checks for: hardcoded secrets, SQL injection, insecure functions,
+      # weak crypto, debug mode in prod. Takes ~2 seconds.
+      # -x ./tests excludes test files (tests intentionally use simple passwords)
+      # -ll = only report medium and high severity issues (skip low/informational)
+      - name: "Bandit — security scan"
+        run: bandit -r . -x ./tests -ll
+
+  # ===========================================================================
+  # JOB 2: BUILD
+  # ===========================================================================
+  # PURPOSE: Verify the Docker image actually compiles and Django boots.
+  #
+  # This catches:
+  #   - Missing pip dependencies (forgot to add to requirements.txt)
+  #   - Import errors that only surface at startup
+  #   - Django misconfiguration (bad DATABASES, missing SECRET_KEY, etc.)
+  #   - Unapplied migrations (you wrote a model change but forgot makemigrations)
+  #
+  # "needs: guardrails" means this job ONLY runs if guardrails passed.
+  # ===========================================================================
+  build:
+    name: "🔨 Build + Django health"
+    needs: guardrails
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # --- Build ALL custom Docker images ---
+      # Your docker-compose.yml has 2 services with custom builds:
+      #   - web (build: .)                          — your Django app
+      #   - docker-exporter (build: ./monitoring/...) — metrics exporter
+      # "docker compose build" with no service name builds ALL of them.
+      - name: "Docker Compose — build all custom images"
+        run: docker compose build
+
+      # --- Django system check ---
+      # manage.py check --deploy runs Django's deployment checklist:
+      #   - SECRET_KEY is set and not the default
+      #   - DEBUG is False (in production settings)
+      #   - ALLOWED_HOSTS is configured
+      #   - All apps can be imported
+      - name: "Django check --deploy"
+        run: docker compose run --rm web python manage.py check --deploy
+
+      # --- Migration check ---
+      # --check exits with error code 1 if there are unapplied migrations.
+      # This catches: "I added a field to the model but forgot makemigrations"
+      - name: "Migrations up to date?"
+        run: docker compose run --rm web python manage.py migrate --check
+
+  # ===========================================================================
+  # JOB 3: TESTS
+  # ===========================================================================
+  # PURPOSE: Run Layer 1 invariant tests — the permanent guardrails that
+  # verify auth boundaries, ownership isolation, and signup integrity.
+  #
+  # These tests use a REAL Postgres database (not SQLite) so they catch
+  # database-specific issues. Redis is also available for caching.
+  #
+  # The tests are in tests/test_layer1.py.
+  # ===========================================================================
+  test:
+    name: "🧪 Layer 1 tests"
+    needs: build
+    runs-on: ubuntu-latest
+
+    # --- Service containers ---
+    # GitHub Actions spins up real Postgres and Redis containers.
+    # They're accessible via localhost on the specified ports.
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: testdb
+          POSTGRES_USER: testuser
+          POSTGRES_PASSWORD: testpass
+        ports:
+          - 5432:5432
+        # Wait for Postgres to be ready before running tests
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt pytest pytest-django
+
+      # --- Run the Layer 1 tests ---
+      # -v = verbose (shows each test name and PASS/FAIL)
+      # Environment variables point at the service containers above.
+      - name: "Run Layer 1 invariant tests"
+        env:
+          DATABASE_URL: postgres://testuser:testpass@localhost:5432/testdb
+          REDIS_URL: redis://localhost:6379/0
+          DJANGO_SETTINGS_MODULE: myproject.settings
+          SECRET_KEY: ci-test-secret-key-not-for-production
+        run: pytest tests/test_layer1.py -v
+
+  # ===========================================================================
+  # JOB 4: DEPLOY (via AWS SSM — no SSH needed)
+  # ===========================================================================
+  # PURPOSE: Auto-deploy to EC2 after all checks pass.
+  #
+  # IMPORTANT: This job ONLY runs on push to main (not on PRs).
+  #
+  # HOW IT WORKS:
+  #   Instead of SSH (which requires port 22 to be open), we use AWS
+  #   Systems Manager (SSM) to send commands to EC2 through AWS's
+  #   internal network. This is:
+  #     - More secure (no ports to open)
+  #     - Free (SSM is included with EC2)
+  #     - IP-agnostic (works regardless of GitHub runner's IP)
+  #
+  # WHAT IT DOES ON EC2:
+  #   1. cd /home/ubuntu/AK           → get into project directory
+  #   2. git pull origin main          → get the latest code
+  #   3. docker compose up -d --build  → rebuild and restart all services
+  #   4. manage.py migrate             → apply any new database migrations
+  #   5. manage.py collectstatic       → update static files
+  # ===========================================================================
+  deploy:
+    name: "🚀 Deploy to EC2"
+    needs: test
+    # --- CRITICAL: Only deploy on push to main, NEVER on PRs ---
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      # --- Configure AWS credentials ---
+      # Uses the IAM user we created (github-actions-deployer)
+      # with ONLY ssm:SendCommand and ssm:GetCommandInvocation permissions.
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      # --- Send deploy commands via SSM ---
+      # aws ssm send-command sends a shell script to the EC2 instance.
+      # It runs as root by default, so we use 'sudo -u ubuntu' for git
+      # (to avoid permission issues with the repo).
+      - name: "Deploy via SSM"
+        id: deploy
+        run: |
+          # Send the deploy commands to EC2
+          COMMAND_ID=$(aws ssm send-command \
+            --instance-ids "${{ secrets.EC2_INSTANCE_ID }}" \
+            --document-name "AWS-RunShellScript" \
+            --parameters 'commands=[
+              "cd /home/ubuntu/AK",
+              "git pull origin main",
+              "docker compose up -d --build",
+              "docker compose exec -T web python manage.py migrate",
+              "docker compose exec -T web python manage.py collectstatic --no-input",
+              "echo DEPLOY_COMPLETE"
+            ]' \
+            --timeout-seconds 300 \
+            --query "Command.CommandId" \
+            --output text)
+
+          echo "Command ID: $COMMAND_ID"
+          echo "command_id=$COMMAND_ID" >> $GITHUB_OUTPUT
+
+      # --- Wait for deployment to finish and check result ---
+      # Polls SSM every 15 seconds until the command completes.
+      # If it fails, the job fails and you get notified.
+      - name: "Wait for deploy to complete"
+        run: |
+          echo "Waiting for deployment to complete..."
+          for i in {1..20}; do
+            STATUS=$(aws ssm get-command-invocation \
+              --command-id "${{ steps.deploy.outputs.command_id }}" \
+              --instance-id "${{ secrets.EC2_INSTANCE_ID }}" \
+              --query "Status" \
+              --output text 2>/dev/null || echo "Pending")
+
+            echo "Attempt $i: Status = $STATUS"
+
+            if [ "$STATUS" = "Success" ]; then
+              echo "✅ Deployment succeeded!"
+              # Print the output from the deploy script
+              aws ssm get-command-invocation \
+                --command-id "${{ steps.deploy.outputs.command_id }}" \
+                --instance-id "${{ secrets.EC2_INSTANCE_ID }}" \
+                --query "StandardOutputContent" \
+                --output text
+              exit 0
+            elif [ "$STATUS" = "Failed" ] || [ "$STATUS" = "Cancelled" ] || [ "$STATUS" = "TimedOut" ]; then
+              echo "❌ Deployment failed with status: $STATUS"
+              # Print error output
+              aws ssm get-command-invocation \
+                --command-id "${{ steps.deploy.outputs.command_id }}" \
+                --instance-id "${{ secrets.EC2_INSTANCE_ID }}" \
+                --query "StandardErrorContent" \
+                --output text
+              exit 1
+            fi
+
+            sleep 15
+          done
+
+          echo "❌ Deployment timed out after 5 minutes"
+          exit 1
