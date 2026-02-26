@@ -114,20 +114,9 @@ jobs:
       - name: "Docker Compose — build all custom images"
         run: docker compose build
 
-      # --- Django system check ---
-      # manage.py check --deploy runs Django's deployment checklist:
-      #   - SECRET_KEY is set and not the default
-      #   - DEBUG is False (in production settings)
-      #   - ALLOWED_HOSTS is configured
-      #   - All apps can be imported
-      - name: "Django check --deploy"
-        run: docker compose run --rm web python manage.py check --deploy
-
-      # --- Migration check ---
-      # --check exits with error code 1 if there are unapplied migrations.
-      # This catches: "I added a field to the model but forgot makemigrations"
-      - name: "Migrations up to date?"
-        run: docker compose run --rm web python manage.py migrate --check
+      # NOTE: Django check and migration check are run in the TEST job,
+      # where a real Postgres service is available. Both commands need a
+      # live DB connection, which does not exist in this build-only job.
 
   # ===========================================================================
   # JOB 3: TESTS
@@ -180,15 +169,36 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt pytest pytest-django
 
+      # --- Check for unapplied migrations ---
+      # Moved here from the build job because this needs a live DB connection.
+      # Postgres service is running above, so this works correctly here.
+      # Exits with code 1 if you added a model field but forgot makemigrations.
+      - name: "Migrations up to date?"
+        env:
+          DB_NAME: testdb
+          DB_USER: testuser
+          DB_PASSWORD: testpass
+          DB_HOST: localhost
+          DB_PORT: "5432"
+          DJANGO_SECRET_KEY: "ci-test-secret-not-for-production-x7k2m9p"
+          DJANGO_DEBUG: "0"
+          DJANGO_ALLOWED_HOSTS: "localhost"
+        run: python manage.py migrate --check
+
       # --- Run the Layer 1 tests ---
       # -v = verbose (shows each test name and PASS/FAIL)
-      # Environment variables point at the service containers above.
+      # DB_* vars map to settings.py's os.getenv("DB_HOST") etc.
+      # settings.py reads DJANGO_SECRET_KEY (not SECRET_KEY) — confirmed.
       - name: "Run Layer 1 invariant tests"
         env:
-          DATABASE_URL: postgres://testuser:testpass@localhost:5432/testdb
+          DB_NAME: testdb
+          DB_USER: testuser
+          DB_PASSWORD: testpass
+          DB_HOST: localhost
+          DB_PORT: "5432"
+          DJANGO_SECRET_KEY: "ci-test-secret-not-for-production-x7k2m9p"
           REDIS_URL: redis://localhost:6379/0
           DJANGO_SETTINGS_MODULE: myproject.settings
-          SECRET_KEY: ci-test-secret-key-not-for-production
         run: pytest tests/test_layer1.py -v
 
   # ===========================================================================

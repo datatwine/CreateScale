@@ -1,7 +1,6 @@
 from django.test import TestCase
 from django.urls import reverse
 from django.contrib.auth.models import User
-from django.core.files.uploadedfile import SimpleUploadedFile
 from .models import Profile, Upload
 from PIL import Image
 from io import BytesIO
@@ -130,17 +129,8 @@ def generate_test_image():
 
 
 from django.test import TestCase
-from django.urls import reverse
-from django.contrib.auth.models import User
-from .models import Profile
 
-from PIL import Image
-from io import BytesIO
-from django.core.files.uploadedfile import InMemoryUploadedFile
 from django.test import TestCase
-from django.urls import reverse
-from django.contrib.auth.models import User
-from .models import Profile
 
 
 def generate_test_image():
@@ -209,12 +199,6 @@ class GlobalFeedViewTest(TestCase):
 
 
 from django.test import TestCase
-from django.urls import reverse
-from django.contrib.auth.models import User
-from .models import Profile, Upload
-from PIL import Image
-from io import BytesIO
-from django.core.files.uploadedfile import InMemoryUploadedFile
 
 def generate_test_image():
     """
@@ -300,18 +284,11 @@ class ProfileDetailViewTest(TestCase):
 
 
 from django.test import TestCase
-from django.urls import reverse
-from django.contrib.auth.models import User
 from users.models import Message
 
 from django.test import TestCase
-from django.urls import reverse
-from django.contrib.auth.models import User
-from users.models import Message
 
-from django.urls import reverse
 from django.contrib.messages import get_messages
-from users.models import Message
 
 class SendMessageViewTest(TestCase):
     """
@@ -469,10 +446,7 @@ class SendMessageViewTest(TestCase):
         self.assertRedirects(response, reverse('profile-detail', args=[self.receiver.id]))
 
 
-from django.urls import reverse
 from django.test import TestCase
-from django.contrib.auth.models import User
-from users.models import Message
 import datetime
 
 class InboxViewTest(TestCase):
@@ -521,14 +495,8 @@ class InboxViewTest(TestCase):
         self.assertContains(response, "No messages.")
 
 from django.test import TestCase
-from django.urls import reverse
-from django.contrib.auth.models import User
-from users.models import Message
 
-from django.urls import reverse
 from django.test import TestCase
-from django.contrib.auth.models import User
-from users.models import Message
 
 class MessageThreadViewTest(TestCase):
     """Test cases for the message_thread view."""
@@ -569,7 +537,6 @@ class MessageThreadViewTest(TestCase):
 
 from django.utils import timezone
 from datetime import timedelta
-from users.models import Message  # Ensure you import Message
 
 class HiringRequestTestCase(TestCase):
     def setUp(self):
@@ -662,11 +629,6 @@ class HiringRequestTestCase(TestCase):
 
 
 
-from django.utils import timezone
-from datetime import timedelta
-from django.urls import reverse
-from django.contrib.auth.models import User
-from users.models import Message
 from django.test import TestCase
 
 class HiringRequestSelfConflictTestCase(TestCase):

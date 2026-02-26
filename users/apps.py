@@ -4,5 +4,5 @@ class UsersConfig(AppConfig):
     name = 'users'
 
     def ready(self):
-        import users.signals  # Import the signals to ensure they are active
+        import users.signals  # noqa: F401 — side-effect import, activates Django signals
 

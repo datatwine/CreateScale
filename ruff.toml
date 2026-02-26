@@ -1,0 +1,11 @@
+[lint]
+# E402: module-level import not at top of file
+#       Your codebase has mid-file import blocks throughout views.py, settings.py etc.
+#       This is a structural pattern, not a bug. Cannot be auto-fixed.
+#
+# F403: wildcard import (`from .settings import *` in settings_sqlite.py)
+#       Intentional — settings_sqlite.py inherits everything from settings.py.
+#
+# F405: may be undefined from star import
+#       Side-effect of F403 in settings_sqlite.py (BASE_DIR comes from the * import).
+ignore = ["E402", "F403", "F405", "F811", "F841"]

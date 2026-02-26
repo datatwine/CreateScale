@@ -6,12 +6,11 @@ from django.contrib.auth.models import User
 # Create your views here.
 from django.shortcuts import render, redirect
 from django.contrib.auth.forms import AuthenticationForm
-from django.contrib.auth import login, logout, authenticate
+from django.contrib.auth import login, authenticate
 from django.contrib import messages
 from .forms import UserRegisterForm, UploadForm, ProfileUpdateForm
 from .models import Profile, Upload
 
-from django.http import HttpResponseRedirect  # Import the form for handling uploads
 
 # Sign-up view
 def signup(request):
@@ -53,10 +52,6 @@ def signin(request):
     return render(request, 'users/login.html', {'form': form})
 
 # Profile view (after login)
-from django.http import HttpResponseRedirect
-from django.shortcuts import render
-from .models import Profile, Upload
-from .forms import UploadForm
 
 
 @login_required
@@ -122,7 +117,6 @@ def profile(request):
 
 
 from django.db.models import Q
-from .models import Profile
 from .forms import ProfessionFilterForm
 from django.core.paginator import Paginator
 from django.views.decorators.cache import cache_page
@@ -196,18 +190,13 @@ def profile_detail(request, user_id):
     )
 
 from .models import Message
-from .forms import MessageForm
 
 
 # Messaging view
 from django.contrib.auth.decorators import login_required
-from django.shortcuts import get_object_or_404, redirect
-from django.contrib import messages
 from users.models import User, Message
 
 from django.contrib.auth.decorators import login_required
-from django.shortcuts import get_object_or_404, redirect
-from django.contrib import messages
 from .models import Message, User
 
 @login_required
@@ -228,8 +217,6 @@ def send_message(request, user_id):
 
 
 # Inbox view
-from django.db.models import Max, Q
-from .models import Message
 
 @login_required
 def inbox(request):
@@ -256,13 +243,8 @@ def inbox(request):
 
 
 
-from django.db.models import Q
 from django.contrib.auth.decorators import login_required
-from django.shortcuts import render, get_object_or_404, redirect
-from .models import User, Message
 
-from django.core.exceptions import PermissionDenied
-from django.contrib import messages as django_messages 
 
 
 def is_participant(user, thread_user1, thread_user2):
@@ -273,9 +255,6 @@ def is_participant(user, thread_user1, thread_user2):
 
 
 from django.contrib.auth.decorators import login_required
-from django.shortcuts import get_object_or_404, render, redirect
-from django.db.models import Q
-from django.contrib import messages
 from users.models import User, Message
 from datetime import date
 today = date.today().isoformat()
