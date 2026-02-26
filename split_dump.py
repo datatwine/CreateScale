@@ -1,4 +1,5 @@
-﻿import json, io
+﻿import json
+import io
 with io.open("dump-utf8.json","r",encoding="utf-8") as f:
     data = json.load(f)
 

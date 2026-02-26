@@ -26,7 +26,6 @@ class UserRegisterForm(UserCreationForm):
         return email
 
 
-from django.core.exceptions import ValidationError
 
 class UploadForm(forms.ModelForm):
     class Meta:
