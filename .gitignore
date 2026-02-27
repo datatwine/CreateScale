@@ -17,3 +17,6 @@ __pycache__/
 *.pyc
 *.pyo
 *.pyd
+
+# Local dev overrides — never deploy to EC2
+docker-compose.override.yml

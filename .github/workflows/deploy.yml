@@ -256,9 +256,11 @@ jobs:
             --instance-ids "${{ secrets.EC2_INSTANCE_ID }}" \
             --document-name "AWS-RunShellScript" \
             --parameters 'commands=[
+              "set -euo pipefail",
               "cd /home/ubuntu/AK",
-              "git pull origin main",
-              "docker compose up -d --build",
+              "git fetch origin",
+              "git reset --hard origin/main",
+              "docker compose up -d --build --remove-orphans",
               "docker compose exec -T web python manage.py migrate",
               "docker compose exec -T web python manage.py collectstatic --no-input",
               "echo DEPLOY_COMPLETE"
