@@ -258,9 +258,12 @@ jobs:
             --parameters 'commands=[
               "set -eu",
               "cd /home/ubuntu/AK",
+              "git config --global --add safe.directory /home/ubuntu/AK",
               "git fetch origin",
               "git reset --hard origin/main",
+              "rm -f docker-compose.override.yml",
               "docker compose up -d --build --remove-orphans",
+              "docker compose restart prometheus",
               "docker compose exec -T web python manage.py migrate",
               "docker compose exec -T web python manage.py collectstatic --no-input",
               "echo DEPLOY_COMPLETE"
