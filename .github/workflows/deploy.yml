@@ -256,7 +256,7 @@ jobs:
             --instance-ids "${{ secrets.EC2_INSTANCE_ID }}" \
             --document-name "AWS-RunShellScript" \
             --parameters 'commands=[
-              "set -euo pipefail",
+              "set -eu",
               "cd /home/ubuntu/AK",
               "git fetch origin",
               "git reset --hard origin/main",
