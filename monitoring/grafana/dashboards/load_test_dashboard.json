@@ -92,7 +92,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum(rate(django_http_requests_total_by_view_transport_method_total[1m]))",
+          "expr": "sum(rate(django_http_requests_total_by_view_transport_method_total[$__rate_interval]))",
           "legendFormat": "RPS",
           "refId": "A"
         }
@@ -161,7 +161,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "(sum(rate(django_http_responses_total_by_status_view_method_total{status=~\"5..\"}[1m])) or vector(0)) / (sum(rate(django_http_responses_total_by_status_view_method_total[1m])) > 0) * 100",
+          "expr": "(sum(rate(django_http_responses_total_by_status_view_method_total{status=~\"5..\"}[$__rate_interval])) or vector(0)) / (sum(rate(django_http_responses_total_by_status_view_method_total[$__rate_interval])) > 0) * 100",
           "legendFormat": "Error %",
           "refId": "A"
         }
@@ -230,7 +230,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.95, sum by (le) (rate(django_http_requests_latency_seconds_by_view_method_bucket[1m]))) * 1000",
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(django_http_requests_latency_seconds_by_view_method_bucket[$__rate_interval]))) * 1000",
           "legendFormat": "p95",
           "refId": "A"
         }
@@ -407,7 +407,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum by (container_label_com_docker_compose_service) (rate(container_cpu_usage_seconds_total{container_label_com_docker_compose_service=~\".+\"}[1m]))",
+          "expr": "sum by (container_label_com_docker_compose_service) (rate(container_cpu_usage_seconds_total{container_label_com_docker_compose_service=~\".+\"}[$__rate_interval]))",
           "legendFormat": "{{container_label_com_docker_compose_service}}",
           "refId": "A"
         }
@@ -715,12 +715,12 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "pg_stat_database_blks_hit{datname=\"createscale\"} / (pg_stat_database_blks_hit{datname=\"createscale\"} + pg_stat_database_blks_read{datname=\"createscale\"})",
+          "expr": "pg_stat_database_blks_hit{datname!~\"template0|template1|postgres|glitchtip\"} / (pg_stat_database_blks_hit{datname!~\"template0|template1|postgres|glitchtip\"} + pg_stat_database_blks_read{datname!~\"template0|template1|postgres|glitchtip\"})",
           "legendFormat": "Cache Hit Ratio",
           "refId": "A"
         }
       ],
-      "title": "Cache Hit Ratio (createscale)",
+      "title": "Cache Hit Ratio (app DB)",
       "type": "timeseries"
     },
     {
@@ -807,7 +807,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "rate(pg_stat_database_tup_fetched{datname=\"createscale\"}[1m])",
+          "expr": "rate(pg_stat_database_tup_fetched{datname!~\"template0|template1|postgres|glitchtip\"}[$__rate_interval])",
           "legendFormat": "Fetched (SELECT)",
           "refId": "A"
         },
@@ -817,7 +817,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "rate(pg_stat_database_tup_inserted{datname=\"createscale\"}[1m])",
+          "expr": "rate(pg_stat_database_tup_inserted{datname!~\"template0|template1|postgres|glitchtip\"}[$__rate_interval])",
           "legendFormat": "Inserted",
           "refId": "B"
         },
@@ -827,7 +827,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "rate(pg_stat_database_tup_updated{datname=\"createscale\"}[1m])",
+          "expr": "rate(pg_stat_database_tup_updated{datname!~\"template0|template1|postgres|glitchtip\"}[$__rate_interval])",
           "legendFormat": "Updated",
           "refId": "C"
         }
@@ -931,7 +931,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum by (view, method) (rate(django_http_requests_total_by_view_transport_method_total[1m]))",
+          "expr": "sum by (view, method) (rate(django_http_requests_total_by_view_transport_method_total[$__rate_interval]))",
           "legendFormat": "{{method}} {{view}}",
           "refId": "A"
         }
@@ -1024,7 +1024,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.95, sum by (le, view, method) (rate(django_http_requests_latency_seconds_by_view_method_bucket[1m]))) * 1000",
+          "expr": "histogram_quantile(0.95, sum by (le, view, method) (rate(django_http_requests_latency_seconds_by_view_method_bucket[$__rate_interval]))) * 1000",
           "legendFormat": "{{method}} {{view}}",
           "refId": "A"
         }
@@ -1116,7 +1116,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum by (view, method, status) (rate(django_http_responses_total_by_status_view_method_total{status=~\"4..|5..\"}[1m]))",
+          "expr": "sum by (view, method, status) (rate(django_http_responses_total_by_status_view_method_total{status=~\"4..|5..\"}[$__rate_interval]))",
           "legendFormat": "{{status}} {{method}} {{view}}",
           "refId": "A"
         }
@@ -1208,7 +1208,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum by (status) (rate(nginx_http_requests_total{status=~\"5..\"}[1m]))",
+          "expr": "sum by (status) (rate(nginx_http_requests_total{status=~\"5..\"}[$__rate_interval]))",
           "legendFormat": "Nginx {{status}}",
           "refId": "A"
         }
@@ -1292,7 +1292,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum(rate(container_cpu_usage_seconds_total{container_label_com_docker_compose_service=~\".+\"}[1m])) / 2",
+          "expr": "sum(rate(container_cpu_usage_seconds_total{container_label_com_docker_compose_service=~\".+\"}[$__rate_interval])) / 2",
           "legendFormat": "Host CPU %",
           "refId": "A"
         }
@@ -1385,7 +1385,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum(rate(django_http_requests_total_by_view_transport_method_total[1m]))",
+          "expr": "sum(rate(django_http_requests_total_by_view_transport_method_total[$__rate_interval]))",
           "legendFormat": "Total RPS",
           "refId": "A"
         }
@@ -1478,7 +1478,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.95, sum by (le) (rate(nginx_http_upstream_time_seconds_hist_bucket[1m])))",
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(nginx_http_upstream_time_seconds_hist_bucket[$__rate_interval])))",
           "legendFormat": "p95 Upstream",
           "refId": "A"
         },
@@ -1488,7 +1488,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.50, sum by (le) (rate(nginx_http_upstream_time_seconds_hist_bucket[1m])))",
+          "expr": "histogram_quantile(0.50, sum by (le) (rate(nginx_http_upstream_time_seconds_hist_bucket[$__rate_interval])))",
           "legendFormat": "p50 Upstream",
           "refId": "B"
         }
@@ -1611,7 +1611,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum(rate(django_http_responses_total_by_status_view_method_total{status=~\"4..\"}[1m]))",
+          "expr": "sum(rate(django_http_responses_total_by_status_view_method_total{status=~\"4..\"}[$__rate_interval]))",
           "legendFormat": "4xx",
           "refId": "A"
         },
@@ -1621,7 +1621,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum(rate(django_http_responses_total_by_status_view_method_total{status=~\"5..\"}[1m]))",
+          "expr": "sum(rate(django_http_responses_total_by_status_view_method_total{status=~\"5..\"}[$__rate_interval]))",
           "legendFormat": "5xx",
           "refId": "B"
         }
@@ -1774,7 +1774,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum by (status) (rate(django_http_responses_total_by_status_view_method_total[1m]))",
+          "expr": "sum by (status) (rate(django_http_responses_total_by_status_view_method_total[$__rate_interval]))",
           "legendFormat": "{{status}}",
           "refId": "A"
         }
@@ -1867,7 +1867,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum by (container_label_com_docker_compose_service) (rate(container_network_receive_bytes_total{container_label_com_docker_compose_service=~\".+\"}[1m]))",
+          "expr": "sum by (container_label_com_docker_compose_service) (rate(container_network_receive_bytes_total{container_label_com_docker_compose_service=~\".+\"}[$__rate_interval]))",
           "legendFormat": "{{container_label_com_docker_compose_service}} rx",
           "refId": "A"
         },
@@ -1877,7 +1877,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum by (container_label_com_docker_compose_service) (rate(container_network_transmit_bytes_total{container_label_com_docker_compose_service=~\".+\"}[1m]))",
+          "expr": "sum by (container_label_com_docker_compose_service) (rate(container_network_transmit_bytes_total{container_label_com_docker_compose_service=~\".+\"}[$__rate_interval]))",
           "legendFormat": "{{container_label_com_docker_compose_service}} tx",
           "refId": "B"
         }
@@ -2063,7 +2063,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.50, sum by (le) (rate(django_http_requests_latency_seconds_by_view_method_bucket[1m]))) * 1000",
+          "expr": "histogram_quantile(0.50, sum by (le) (rate(django_http_requests_latency_seconds_by_view_method_bucket[$__rate_interval]))) * 1000",
           "legendFormat": "p50",
           "refId": "A"
         },
@@ -2073,7 +2073,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.90, sum by (le) (rate(django_http_requests_latency_seconds_by_view_method_bucket[1m]))) * 1000",
+          "expr": "histogram_quantile(0.90, sum by (le) (rate(django_http_requests_latency_seconds_by_view_method_bucket[$__rate_interval]))) * 1000",
           "legendFormat": "p90",
           "refId": "B"
         },
@@ -2083,7 +2083,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.95, sum by (le) (rate(django_http_requests_latency_seconds_by_view_method_bucket[1m]))) * 1000",
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(django_http_requests_latency_seconds_by_view_method_bucket[$__rate_interval]))) * 1000",
           "legendFormat": "p95",
           "refId": "C"
         },
@@ -2093,7 +2093,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.99, sum by (le) (rate(django_http_requests_latency_seconds_by_view_method_bucket[1m]))) * 1000",
+          "expr": "histogram_quantile(0.99, sum by (le) (rate(django_http_requests_latency_seconds_by_view_method_bucket[$__rate_interval]))) * 1000",
           "legendFormat": "p99",
           "refId": "D"
         }

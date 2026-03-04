@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM python:3.12-slim
+FROM public.ecr.aws/docker/library/python:3.12-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
@@ -27,9 +27,6 @@ open(p,'wb').write(b)
 print('Normalized requirements.txt to UTF-8')
 PY
 RUN python -m pip install --upgrade pip setuptools wheel && pip install --no-cache-dir -r requirements.txt
-
-
-RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy project
 COPY . /app/
