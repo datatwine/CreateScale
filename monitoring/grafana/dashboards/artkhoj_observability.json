@@ -201,7 +201,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum by (status)(\r\n  rate(nginx_http_requests_total{status=~\"5..\"}[1m])\r\n)\r\n",
+          "expr": "sum by (status)(\r\n  rate(nginx_http_requests_total{status=~\"5..\"}[$__rate_interval])\r\n)\r\n",
           "instant": false,
           "legendFormat": "__auto",
           "range": true,
@@ -296,7 +296,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum by (view, method, status)(\r\n  rate(django_http_responses_total_by_status_view_method_total{status=~\"4..|5..\"}[1m])\r\n)\r\n",
+          "expr": "sum by (view, method, status)(\r\n  rate(django_http_responses_total_by_status_view_method_total{status=~\"4..|5..\"}[$__rate_interval])\r\n)\r\n",
           "instant": false,
           "legendFormat": "__auto",
           "range": true,
