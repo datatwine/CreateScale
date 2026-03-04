@@ -32,17 +32,14 @@ RUN ON EC2
 """
 
 import json
-import os
 import random
 from datetime import date, timedelta, time
 from io import BytesIO
 from pathlib import Path
 
 from django.core.files.base import ContentFile
-from django.core.files.uploadedfile import InMemoryUploadedFile
 from django.core.management.base import BaseCommand
 from django.contrib.auth.models import User
-from django.utils import timezone
 from rest_framework.authtoken.models import Token
 
 from users.models import Profile, Upload
