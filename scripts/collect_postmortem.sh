@@ -24,9 +24,9 @@ TIMESTAMP="$(date +%Y%m%d_%H%M)"
 OUTPUT="${SCRIPT_DIR}/postmortem_${TIMESTAMP}.txt"
 PROM="http://localhost:9090"
 
-# Time window: last 70 minutes (covers the 55-min soak + buffer)
+# Time window: last 140 minutes (covers the 120-min v2 soak + buffer)
 END=$(date +%s)
-START=$((END - 4200))
+START=$((END - 8400))
 STEP=60
 
 echo "═══════════════════════════════════════════════════════════════" > "$OUTPUT"
