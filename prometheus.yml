@@ -7,7 +7,7 @@
 # ---------------------------------------------------------------------------
 
 global:
-  scrape_interval: 15s       # How often to pull metrics from each target
+  scrape_interval: 45s       # How often to pull metrics from each target
   evaluation_interval: 15s   # How often to evaluate alerting rules (none yet)
 
 scrape_configs:
