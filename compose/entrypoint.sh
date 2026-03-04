@@ -24,6 +24,7 @@ su -s /bin/sh -c "python manage.py collectstatic --noinput" appuser
 
 export PROMETHEUS_MULTIPROC_DIR=/tmp/metrics
 rm -rf "$PROMETHEUS_MULTIPROC_DIR" && mkdir -p "$PROMETHEUS_MULTIPROC_DIR"
+chown -R appuser:appuser "$PROMETHEUS_MULTIPROC_DIR"
 # then launch gunicorn as usual
 
 # 4) Start Gunicorn as the unprivileged user (proper signal handling via exec, exec makes sure su and then gunicorn are PID 1)
