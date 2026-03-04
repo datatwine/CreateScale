@@ -5,8 +5,8 @@ set -e
 #    New Docker named volumes start root:root, which breaks collectstatic for appuser.
 # -p makes parent directories as required, -R recursively applies the preceding command 
 if [ "$(id -u)" = "0" ]; then
-  mkdir -p /app/staticfiles /app/media
-  chown -R appuser:appuser /app/staticfiles /app/media
+  mkdir -p /app/staticfiles /app/media /vol/media
+  chown -R appuser:appuser /app/staticfiles /app/media /vol/media
 fi
 
 # 2) Wait for Postgres (cold starts can lag a bit)
