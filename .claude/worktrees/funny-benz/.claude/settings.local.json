@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(docker compose up -d --build web nginx)",
+      "Bash(docker compose exec web python -c \":*)",
+      "Bash(docker compose exec redis redis-cli KEYS \"*\")",
+      "Bash(docker compose exec redis redis-cli --no-auth-warning KEYS \"*\")",
+      "Bash(docker compose exec -T redis redis-cli)",
+      "Bash(docker compose exec -T redis redis-cli KEYS \"*cache*\")",
+      "Bash(docker compose exec -T redis redis-cli KEYS \"*feed*\")",
+      "Bash(docker compose exec -T redis redis-cli -n 1 DBSIZE)",
+      "Bash(docker compose exec -T web python -c \":*)"
+    ]
+  }
+}

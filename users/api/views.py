@@ -1,6 +1,7 @@
 from datetime import date
 
 from django.contrib.auth import authenticate
+from django.core.cache import cache
 from django.core.paginator import Paginator
 from django.shortcuts import get_object_or_404
 
@@ -21,6 +22,15 @@ from .serializers import (
     UploadSerializer,
     SignupSerializer,
 )
+
+
+def _cached(key, timeout, compute_fn):
+    """Try cache first; fall through to compute_fn on miss."""
+    data = cache.get(key)
+    if data is None:
+        data = compute_fn()
+        cache.set(key, data, timeout)
+    return data
 
 
 # -------------------------------------------------------------------
@@ -136,6 +146,22 @@ class MeProfileAPIView(generics.RetrieveUpdateAPIView):
         profile, _ = Profile.objects.select_related("user").get_or_create(user=self.request.user)
         return profile
 
+    def retrieve(self, request, *args, **kwargs):
+        key = f"me:{request.user.id}"
+
+        def compute():
+            instance = self.get_object()
+            serializer = self.get_serializer(instance)
+            return serializer.data
+
+        return Response(_cached(key, 15, compute))
+
+    def update(self, request, *args, **kwargs):
+        response = super().update(request, *args, **kwargs)
+        cache.delete(f"me:{request.user.id}")
+        cache.delete(f"profile:{request.user.id}")
+        return response
+
 
 class MyUploadsAPIView(generics.ListCreateAPIView):
     """
@@ -157,9 +183,20 @@ class MyUploadsAPIView(generics.ListCreateAPIView):
 
         return qs
 
+    def list(self, request, *args, **kwargs):
+        key = f"uploads:{request.user.id}"
+
+        def compute():
+            queryset = self.get_queryset()
+            serializer = self.get_serializer(queryset, many=True)
+            return serializer.data
+
+        return Response(_cached(key, 30, compute))
+
     def perform_create(self, serializer):
         profile = Profile.objects.get(user=self.request.user)
         serializer.save(profile=profile)
+        cache.delete(f"uploads:{self.request.user.id}")
 
 
 class MyUploadDeleteAPIView(generics.DestroyAPIView):
@@ -172,6 +209,10 @@ class MyUploadDeleteAPIView(generics.DestroyAPIView):
 
     def get_queryset(self):
         return Upload.objects.filter(profile__user=self.request.user)
+
+    def perform_destroy(self, instance):
+        super().perform_destroy(instance)
+        cache.delete(f"uploads:{self.request.user.id}")
 
 
 class GlobalFeedAPIView(_LenientPaginatorMixin, generics.GenericAPIView):
@@ -187,28 +228,35 @@ class GlobalFeedAPIView(_LenientPaginatorMixin, generics.GenericAPIView):
     serializer_class = GlobalFeedProfileSerializer
 
     def get(self, request):
-        qs = (
-            Profile.objects
-            .exclude(user=request.user)
-            .select_related("user")
-            .only("user__id", "user__username", "profession", "profile_picture", "is_performer")
-        )
+        profs = ",".join(sorted(request.query_params.getlist("profession", [])))
+        page = request.query_params.get("page", "1")
+        key = f"feed:{request.user.id}:{page}:{profs}"
 
-        professions = [p for p in request.query_params.getlist("profession") if p]
-        if professions:
-            qs = qs.filter(profession__in=professions)
+        def compute():
+            qs = (
+                Profile.objects
+                .exclude(user=request.user)
+                .select_related("user")
+                .only("user__id", "user__username", "profession", "profile_picture", "is_performer")
+            )
 
-        paginator, page_obj = self.paginate_lenient(qs, request)
-        ser = self.get_serializer(page_obj.object_list, many=True, context={"request": request})
+            professions = [p for p in request.query_params.getlist("profession") if p]
+            if professions:
+                qs = qs.filter(profession__in=professions)
 
-        return Response({
-            "count": paginator.count,
-            "num_pages": paginator.num_pages,
-            "page": page_obj.number,
-            "has_next": page_obj.has_next(),
-            "has_previous": page_obj.has_previous(),
-            "results": ser.data,
-        })
+            paginator, page_obj = self.paginate_lenient(qs, request)
+            ser = self.get_serializer(page_obj.object_list, many=True, context={"request": request})
+
+            return {
+                "count": paginator.count,
+                "num_pages": paginator.num_pages,
+                "page": page_obj.number,
+                "has_next": page_obj.has_next(),
+                "has_previous": page_obj.has_previous(),
+                "results": ser.data,
+            }
+
+        return Response(_cached(key, 30, compute))
 
 
 class ProfileDetailAPIView(generics.RetrieveAPIView):
@@ -221,6 +269,17 @@ class ProfileDetailAPIView(generics.RetrieveAPIView):
 
     def get_object(self):
         return get_object_or_404(Profile.objects.select_related("user"), user__id=self.kwargs["user_id"])
+
+    def retrieve(self, request, *args, **kwargs):
+        user_id = self.kwargs["user_id"]
+        key = f"profile:{user_id}"
+
+        def compute():
+            instance = self.get_object()
+            serializer = self.get_serializer(instance)
+            return serializer.data
+
+        return Response(_cached(key, 60, compute))
 
 
 class ProfessionsAPIView(APIView):
@@ -252,46 +311,51 @@ class LiveEventsAPIView(_LenientPaginatorMixin, APIView):
 
     def get(self, request):
         scope = request.query_params.get("scope", "upcoming")
+        page = request.query_params.get("page", "1")
+        key = f"events:{scope}:{page}"
 
-        if scope == "past":
-            # Past accepted events, newest first
-            qs = (
-                Engagement.objects.filter(
-                    status=Engagement.STATUS_ACCEPTED,
-                    date__lt=date.today(),
+        def compute():
+            if scope == "past":
+                # Past accepted events, newest first
+                qs = (
+                    Engagement.objects.filter(
+                        status=Engagement.STATUS_ACCEPTED,
+                        date__lt=date.today(),
+                    )
+                    .select_related("client", "performer")
+                    .order_by("-date", "-time")
                 )
-                .select_related("client", "performer")
-                .order_by("-date", "-time")
-            )
-        else:
-            # Default: upcoming accepted events, soonest first
-            qs = (
-                Engagement.objects.filter(
-                    status=Engagement.STATUS_ACCEPTED,
-                    date__gte=date.today(),
+            else:
+                # Default: upcoming accepted events, soonest first
+                qs = (
+                    Engagement.objects.filter(
+                        status=Engagement.STATUS_ACCEPTED,
+                        date__gte=date.today(),
+                    )
+                    .select_related("client", "performer")
+                    .order_by("date", "time")
                 )
-                .select_related("client", "performer")
-                .order_by("date", "time")
-            )
 
-        paginator, page_obj = self.paginate_lenient(qs, request)
+            paginator, page_obj = self.paginate_lenient(qs, request)
 
-        results = [{
-            "id": e.id,
-            "date": e.date,
-            "time": e.time,
-            "venue": e.venue,
-            "occasion": e.occasion,
-            "status": e.status,
-            "client": {"id": e.client.id, "username": e.client.username},
-            "performer": {"id": e.performer.id, "username": e.performer.username},
-        } for e in page_obj.object_list]
+            results = [{
+                "id": e.id,
+                "date": e.date,
+                "time": e.time,
+                "venue": e.venue,
+                "occasion": e.occasion,
+                "status": e.status,
+                "client": {"id": e.client.id, "username": e.client.username},
+                "performer": {"id": e.performer.id, "username": e.performer.username},
+            } for e in page_obj.object_list]
 
-        return Response({
-            "count": paginator.count,
-            "num_pages": paginator.num_pages,
-            "page": page_obj.number,
-            "has_next": page_obj.has_next(),
-            "has_previous": page_obj.has_previous(),
-            "results": results,
-        })
+            return {
+                "count": paginator.count,
+                "num_pages": paginator.num_pages,
+                "page": page_obj.number,
+                "has_next": page_obj.has_next(),
+                "has_previous": page_obj.has_previous(),
+                "results": results,
+            }
+
+        return Response(_cached(key, 30, compute))
