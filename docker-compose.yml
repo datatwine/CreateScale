@@ -8,6 +8,7 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./compose/init-glitchtip-db.sh:/docker-entrypoint-initdb.d/init-glitchtip-db.sh:ro
     command: >
       postgres
         -c shared_preload_libraries=pg_stat_statements
@@ -98,8 +99,10 @@ services:
   glitchtip-web:
     image: glitchtip/glitchtip:latest
     depends_on:
-      - db
-      - redis
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
     environment:
       # Use your existing DB credentials, but point to the 'glitchtip' DB
       DATABASE_URL: postgres://${DB_USER}:${DB_PASSWORD}@db:5432/glitchtip
@@ -126,8 +129,10 @@ services:
   glitchtip-worker:
     image: glitchtip/glitchtip:latest
     depends_on:
-      - db
-      - redis
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
     environment:
       DATABASE_URL: postgres://${DB_USER}:${DB_PASSWORD}@db:5432/glitchtip
       SECRET_KEY: "change_me_for_local_glitchtip"
