@@ -9,7 +9,11 @@
       "Bash(docker compose exec -T redis redis-cli KEYS \"*cache*\")",
       "Bash(docker compose exec -T redis redis-cli KEYS \"*feed*\")",
       "Bash(docker compose exec -T redis redis-cli -n 1 DBSIZE)",
-      "Bash(docker compose exec -T web python -c \":*)"
+      "Bash(docker compose exec -T web python -c \":*)",
+      "Bash(curl -s http://localhost:8000/metrics)",
+      "Bash(docker compose exec -T web curl -s http://localhost:8000/metrics)",
+      "Bash(docker stats --no-stream --format \"table {{.Name}}\\\\t{{.CPUPerc}}\\\\t{{.MemUsage}}\")",
+      "Bash(curl.exe -s -o /dev/null -w \"HTTP_CODE: %{http_code}\\\\nTIME_TOTAL: %{time_total}s\\\\n\" http://localhost/api/users/professions/)"
     ]
   }
 }

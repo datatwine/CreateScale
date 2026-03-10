@@ -14,3 +14,10 @@ from django.core.wsgi import get_wsgi_application
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'myproject.settings')
 
 application = get_wsgi_application()
+
+# Wrap with Sentry WSGI middleware if SDK is active
+try:
+    from sentry_sdk.integrations.wsgi import SentryWsgiMiddleware
+    application = SentryWsgiMiddleware(application)
+except ImportError:
+    pass
