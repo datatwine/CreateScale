@@ -1,0 +1,28 @@
+# =============================================================================
+# Web Instance — docker-compose.web.yml
+# =============================================================================
+# Runs on both the OD Web instance and Spot instances.
+# Contains ONLY the Django/Gunicorn app container.
+# Pulls a pre-built ARM64 image from GHCR (built by CI/CD).
+#
+# USAGE:
+#   cd ~/AK-WEB
+#   docker compose -f docker-compose.web.yml up -d
+#
+# REQUIRES: .env file next to this file (never committed to repo).
+#   See .env.example for required variables.
+# =============================================================================
+
+services:
+  web:
+    image: ghcr.io/datatwine/createscale:latest
+    restart: unless-stopped
+    user: "0:0"
+    env_file:
+      - .env
+    environment:
+      WEB_CONCURRENCY: "3"
+      WEB_THREADS: "2"
+      WEB_TIMEOUT: "30"
+    ports:
+      - "8000:8000"

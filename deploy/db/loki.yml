@@ -1,0 +1,35 @@
+# =============================================================================
+# Loki config — Centralized log aggregation for the web fleet
+# =============================================================================
+# Deployed to the DB box. Receives log streams from Promtail agents running
+# on each web instance. Logs are stored locally for 7 days.
+# =============================================================================
+
+auth_enabled: false
+
+server:
+  http_listen_port: 3100
+
+common:
+  path_prefix: /tmp/loki
+  storage:
+    filesystem:
+      chunks_directory: /tmp/loki/chunks
+      rules_directory: /tmp/loki/rules
+  replication_factor: 1
+  ring:
+    kvstore:
+      store: inmemory
+
+schema_config:
+  configs:
+    - from: 2020-10-24
+      store: tsdb
+      object_store: filesystem
+      schema: v13
+      index:
+        prefix: index_
+        period: 24h
+
+limits_config:
+  retention_period: 168h  # 7 days

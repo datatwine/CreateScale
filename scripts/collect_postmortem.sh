@@ -225,6 +225,57 @@ except Exception as e:
 
 
 # ---------------------------------------------------------------------------
+# SECTION 6: Context Switches + Gunicorn Workers
+# ---------------------------------------------------------------------------
+echo "" >> "$OUTPUT"
+echo "╔══════════════════════════════════════════════════════════════╗" >> "$OUTPUT"
+echo "║  SECTION 6: CONTEXT SWITCHES + GUNICORN WORKERS            ║" >> "$OUTPUT"
+echo "╚══════════════════════════════════════════════════════════════╝" >> "$OUTPUT"
+
+echo "" >> "$OUTPUT"
+echo "── 6.1 Kernel Context Switches ──" >> "$OUTPUT"
+grep ctxt /proc/stat >> "$OUTPUT" 2>/dev/null || echo "  N/A" >> "$OUTPUT"
+
+echo "" >> "$OUTPUT"
+echo "── 6.2 Gunicorn Worker Processes ──" >> "$OUTPUT"
+docker compose exec -T web ps aux 2>/dev/null | grep gunicorn >> "$OUTPUT" || echo "  N/A" >> "$OUTPUT"
+
+echo "" >> "$OUTPUT"
+echo "── 6.3 Per-Process Context Switches ──" >> "$OUTPUT"
+for pid in $(docker compose exec -T web pgrep -f gunicorn 2>/dev/null); do
+    pid=$(echo "$pid" | tr -d '\r')
+    echo "  PID $pid:" >> "$OUTPUT"
+    docker compose exec -T web cat /proc/$pid/status 2>/dev/null | grep -E "voluntary_ctxt_switches|nonvoluntary_ctxt_switches" >> "$OUTPUT"
+done
+
+
+# ---------------------------------------------------------------------------
+# SECTION 7: Redis Cache Stats
+# ---------------------------------------------------------------------------
+echo "" >> "$OUTPUT"
+echo "╔══════════════════════════════════════════════════════════════╗" >> "$OUTPUT"
+echo "║  SECTION 7: REDIS CACHE STATS                              ║" >> "$OUTPUT"
+echo "╚══════════════════════════════════════════════════════════════╝" >> "$OUTPUT"
+
+echo "" >> "$OUTPUT"
+echo "── 7.1 Cache Hit/Miss Ratio ──" >> "$OUTPUT"
+cd "$(dirname "$SCRIPT_DIR")"
+docker compose exec -T redis redis-cli INFO stats 2>/dev/null | grep -E "keyspace_hits|keyspace_misses|total_commands_processed" >> "$OUTPUT"
+
+echo "" >> "$OUTPUT"
+echo "── 7.2 Redis Memory ──" >> "$OUTPUT"
+docker compose exec -T redis redis-cli INFO memory 2>/dev/null | grep -E "used_memory_human|used_memory_peak_human|maxmemory_human" >> "$OUTPUT"
+
+echo "" >> "$OUTPUT"
+echo "── 7.3 Redis Key Count ──" >> "$OUTPUT"
+docker compose exec -T redis redis-cli DBSIZE 2>/dev/null >> "$OUTPUT"
+
+echo "" >> "$OUTPUT"
+echo "── 7.4 Redis Slow Log (top 10) ──" >> "$OUTPUT"
+docker compose exec -T redis redis-cli SLOWLOG GET 10 2>/dev/null >> "$OUTPUT"
+
+
+# ---------------------------------------------------------------------------
 # Done
 # ---------------------------------------------------------------------------
 echo "" >> "$OUTPUT"
