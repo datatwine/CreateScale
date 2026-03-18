@@ -1,0 +1,37 @@
+# =============================================================================
+# Prometheus config — EC2 Service Discovery for horizontally scaled web fleet
+# =============================================================================
+# Deployed to the DB box. Automatically discovers all EC2 instances tagged
+# Role=web and scrapes their /metrics endpoint.
+#
+# REQUIRES: The DB box's EC2 instance must have the AK-EC2-Discovery IAM role
+#           attached (ec2:DescribeInstances permission).
+# =============================================================================
+
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  # ---- Web fleet (auto-discovered via EC2 tags) ----
+  - job_name: 'web-fleet'
+    ec2_sd_configs:
+      - region: ap-south-1
+        port: 8000
+        filters:
+          - name: 'tag:Role'
+            values: ['web']
+          - name: 'instance-state-name'
+            values: ['running']
+    relabel_configs:
+      - source_labels: [__meta_ec2_private_ip]
+        target_label: __address__
+        replacement: '${1}:8000'
+      - source_labels: [__meta_ec2_instance_id]
+        target_label: instance_id
+      - source_labels: [__meta_ec2_tag_Name]
+        target_label: instance_name
+
+  # ---- Local Postgres exporter (runs on DB box) ----
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['postgres_exporter:9187']

@@ -13,7 +13,9 @@
       "Bash(curl -s http://localhost:8000/metrics)",
       "Bash(docker compose exec -T web curl -s http://localhost:8000/metrics)",
       "Bash(docker stats --no-stream --format \"table {{.Name}}\\\\t{{.CPUPerc}}\\\\t{{.MemUsage}}\")",
-      "Bash(curl.exe -s -o /dev/null -w \"HTTP_CODE: %{http_code}\\\\nTIME_TOTAL: %{time_total}s\\\\n\" http://localhost/api/users/professions/)"
+      "Bash(curl.exe -s -o /dev/null -w \"HTTP_CODE: %{http_code}\\\\nTIME_TOTAL: %{time_total}s\\\\n\" http://localhost/api/users/professions/)",
+      "Read(//c/Users/91974/personal_gallery/myproject/.github/workflows/**)",
+      "Read(//c/Users/91974/**)"
     ]
   }
 }
