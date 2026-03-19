@@ -385,7 +385,7 @@ jobs:
               "cd /home/ubuntu/AK",
               "git pull origin main",
               "sudo cp deploy/nginx/artkhoj.conf /etc/nginx/sites-available/artkhoj",
-              "sudo cp deploy/nginx/upstream.conf /etc/nginx/conf.d/upstream.conf",
+              "sudo cp deploy/nginx/upstream.conf /etc/nginx/upstream.conf",
               "sudo cp deploy/nginx/update_upstream.py /usr/local/bin/update_upstream.py",
               "sudo chmod +x /usr/local/bin/update_upstream.py",
               "sudo cp deploy/nginx/nginx-discovery.service /etc/systemd/system/",

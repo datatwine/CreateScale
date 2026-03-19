@@ -16,7 +16,7 @@ import boto3
 REGION = "ap-south-1"
 TAG_KEY = "Role"
 TAG_VALUE = "web"
-UPSTREAM_FILE = "/etc/nginx/conf.d/upstream.conf"
+UPSTREAM_FILE = "/etc/nginx/upstream.conf"
 POLL_INTERVAL = 30
 
 ec2 = boto3.client("ec2", region_name=REGION)
