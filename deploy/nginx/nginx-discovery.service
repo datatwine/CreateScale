@@ -1,0 +1,11 @@
+[Unit]
+Description=Nginx Upstream Auto-Discovery
+After=network.target
+
+[Service]
+ExecStart=/usr/bin/python3 /usr/local/bin/update_upstream.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
