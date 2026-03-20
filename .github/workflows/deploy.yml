@@ -15,6 +15,8 @@
 #                              of Spot fleet (only on push to main)
 #   6. DEPLOY-DB    (~1m)   — Deploy DB box config changes
 #                              (only when deploy/db/** files change)
+#   7. DEPLOY-NGINX (~1m)   — Deploy Nginx config to web-od
+#                              (only when deploy/nginx/** files change)
 #
 # REQUIRED GITHUB SECRETS:
 #   AWS_ACCESS_KEY_ID        — IAM user access key (for SSM)
@@ -349,4 +351,78 @@ jobs:
             sleep 12
           done
           echo "❌ DB deploy timed out"
+          exit 1
+
+  # ===========================================================================
+  # JOB 7: DEPLOY NGINX CONFIG (only when deploy/nginx/** changes)
+  # ===========================================================================
+  # Triggers only when files in deploy/nginx/ are modified.
+  # Pulls latest repo on web-od, copies configs to system paths, reloads Nginx.
+  # ===========================================================================
+  deploy-nginx:
+    name: "🔀 Deploy Nginx Config"
+    needs: test
+    if: |
+      github.event_name == 'push' && github.ref == 'refs/heads/main' &&
+      contains(join(github.event.commits.*.modified, ','), 'deploy/nginx/')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: "Deploy Nginx config via SSM"
+        id: nginx_deploy
+        run: |
+          COMMAND_ID=$(aws ssm send-command \
+            --instance-ids "${{ secrets.EC2_WEB_OD_INSTANCE_ID }}" \
+            --document-name "AWS-RunShellScript" \
+            --parameters 'commands=[
+              "set -eu",
+              "cd /home/ubuntu/AK",
+              "git pull origin main",
+              "sudo cp deploy/nginx/artkhoj.conf /etc/nginx/sites-available/artkhoj",
+              "sudo cp deploy/nginx/upstream.conf /etc/nginx/upstream.conf",
+              "sudo cp deploy/nginx/update_upstream.py /usr/local/bin/update_upstream.py",
+              "sudo chmod +x /usr/local/bin/update_upstream.py",
+              "sudo cp deploy/nginx/nginx-discovery.service /etc/systemd/system/",
+              "sudo nginx -t && sudo systemctl reload nginx",
+              "sudo systemctl daemon-reload && sudo systemctl restart nginx-discovery",
+              "echo NGINX_DEPLOY_COMPLETE"
+            ]' \
+            --timeout-seconds 120 \
+            --query "Command.CommandId" \
+            --output text)
+
+          echo "Nginx Command: $COMMAND_ID"
+          echo "command_id=$COMMAND_ID" >> $GITHUB_OUTPUT
+
+      - name: "Wait for Nginx deploy"
+        run: |
+          for i in $(seq 1 12); do
+            STATUS=$(aws ssm get-command-invocation \
+              --command-id "${{ steps.nginx_deploy.outputs.command_id }}" \
+              --instance-id "${{ secrets.EC2_WEB_OD_INSTANCE_ID }}" \
+              --query "Status" --output text 2>/dev/null || echo "Pending")
+
+            echo "Attempt $i: Status = $STATUS"
+
+            if [ "$STATUS" = "Success" ]; then
+              echo "✅ Nginx deploy succeeded!"
+              exit 0
+            elif [ "$STATUS" = "Failed" ] || [ "$STATUS" = "Cancelled" ] || [ "$STATUS" = "TimedOut" ]; then
+              echo "❌ Nginx deploy failed with status: $STATUS"
+              aws ssm get-command-invocation \
+                --command-id "${{ steps.nginx_deploy.outputs.command_id }}" \
+                --instance-id "${{ secrets.EC2_WEB_OD_INSTANCE_ID }}" \
+                --query "StandardErrorContent" --output text
+              exit 1
+            fi
+
+            sleep 10
+          done
+          echo "❌ Nginx deploy timed out"
           exit 1

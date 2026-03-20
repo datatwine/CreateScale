@@ -15,7 +15,10 @@
       "Bash(docker stats --no-stream --format \"table {{.Name}}\\\\t{{.CPUPerc}}\\\\t{{.MemUsage}}\")",
       "Bash(curl.exe -s -o /dev/null -w \"HTTP_CODE: %{http_code}\\\\nTIME_TOTAL: %{time_total}s\\\\n\" http://localhost/api/users/professions/)",
       "Read(//c/Users/91974/personal_gallery/myproject/.github/workflows/**)",
-      "Read(//c/Users/91974/**)"
+      "Read(//c/Users/91974/**)",
+      "Bash(ls -la /c/Users/91974/personal*)",
+      "Bash(find /c/Users/91974 -name deploy.yml -o -name *.yml -path *workflows*)",
+      "Bash(find /c/Users/91974/Documents -name *Scale_Out* -o -name *AntiGravity*)"
     ]
   }
 }
