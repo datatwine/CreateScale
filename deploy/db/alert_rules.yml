@@ -1,0 +1,71 @@
+groups:
+  - name: fleet_health
+    rules:
+      # ---- High 5xx Error Rate ----
+      - alert: HighErrorRate
+        expr: >
+          (sum(rate(django_http_responses_total_by_status_view_method_total{status=~"5.."}[3m]))
+          / sum(rate(django_http_responses_total_by_status_view_method_total[3m]))) * 100 > 5
+        for: 3m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Fleet 5xx error rate above 5% for 3 minutes"
+          description: "Current error rate: {{ $value | printf \"%.1f\" }}%"
+
+      # ---- High p95 Latency ----
+      - alert: HighP95Latency
+        expr: >
+          histogram_quantile(0.95,
+            sum by (le) (rate(django_http_requests_latency_seconds_by_view_method_bucket[3m]))
+          ) > 5
+        for: 3m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Fleet p95 latency above 5 seconds for 3 minutes"
+          description: "Current p95: {{ $value | printf \"%.2f\" }}s"
+
+      # ---- Instance Down ----
+      - alert: WebInstanceDown
+        expr: up{job="web-fleet"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Web fleet instance {{ $labels.instance_name }} is down"
+          description: "Instance {{ $labels.instance_id }} has been unreachable for 2 minutes"
+
+      # ---- Django Cache Hit Rate Drop ----
+      - alert: CacheHitRateLow
+        expr: >
+          (sum(rate(django_cache_get_hits_total[5m]))
+          / (sum(rate(django_cache_get_hits_total[5m])) + sum(rate(django_cache_get_misses_total[5m])))) * 100 < 50
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Django cache hit rate below 50% for 5 minutes"
+          description: "Current hit rate: {{ $value | printf \"%.1f\" }}%. Check Redis connectivity."
+
+  - name: infrastructure
+    rules:
+      # ---- Redis Evictions ----
+      - alert: RedisEvictions
+        expr: rate(redis_evicted_keys_total[2m]) > 0
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Redis is evicting keys — cache is full"
+          description: "Eviction rate: {{ $value | printf \"%.1f\" }}/sec. Increase maxmemory or review cache TTLs."
+
+      # ---- DB Connections High ----
+      - alert: HighDBConnections
+        expr: sum(pg_stat_activity_count) > 150
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "PostgreSQL connections above 150 (max=200)"
+          description: "Current: {{ $value }}. Consider connection pooling (pgbouncer)."
