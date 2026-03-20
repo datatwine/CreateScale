@@ -208,6 +208,7 @@ jobs:
             --document-name "AWS-RunShellScript" \
             --parameters 'commands=[
               "set -eu",
+              "cd /home/ubuntu/AK && git pull origin main",
               "cd /home/ubuntu/AK-WEB",
               "docker pull ghcr.io/${{ github.repository_owner }}/createscale:latest",
               "docker compose -f docker-compose.web.yml up -d --force-recreate",
@@ -316,6 +317,7 @@ jobs:
               "cd /home/ubuntu/AK",
               "git pull origin main",
               "cd deploy/db",
+              "docker compose -f docker-compose.data.yml build docker_stats_exporter",
               "docker compose -f docker-compose.data.yml up -d --remove-orphans",
               "echo DB_DEPLOY_COMPLETE"
             ]' \
@@ -391,6 +393,10 @@ jobs:
               "sudo cp deploy/nginx/nginx-discovery.service /etc/systemd/system/",
               "sudo nginx -t && sudo systemctl reload nginx",
               "sudo systemctl daemon-reload && sudo systemctl restart nginx-discovery",
+              "docker pull quay.io/martinhelmich/prometheus-nginxlog-exporter:v1.11.0",
+              "docker stop nginxlog_exporter || true",
+              "docker rm nginxlog_exporter || true",
+              "docker run -d --name nginxlog_exporter --restart unless-stopped -v /var/log/nginx:/var/log/nginx:ro -v /home/ubuntu/AK/deploy/nginx/nginxlog.yml:/config/nginxlog.yml:ro -p 4040:4040 quay.io/martinhelmich/prometheus-nginxlog-exporter:v1.11.0 --config-file /config/nginxlog.yml",
               "echo NGINX_DEPLOY_COMPLETE"
             ]' \
             --timeout-seconds 120 \

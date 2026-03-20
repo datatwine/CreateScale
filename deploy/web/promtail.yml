@@ -2,10 +2,8 @@
 # Promtail config — Ships logs from web instances to central Loki
 # =============================================================================
 # Deployed to each web instance (OD + Spot).
-# Reads Gunicorn/Django stdout logs from Docker and ships them to Loki
-# running on the DB box.
-#
-# NOTE: Replace <AK-DB-PRIVATE-IP> with the actual private IP of the DB box.
+# Uses Docker service discovery to find the web container and ship its logs
+# to Loki running on the DB box (172.31.6.148).
 # =============================================================================
 
 server:
@@ -16,13 +14,19 @@ positions:
   filename: /tmp/positions.yaml
 
 clients:
-  # Loki is running on the DB box, port 3100
-  - url: http://<AK-DB-PRIVATE-IP>:3100/loki/api/v1/push
+  - url: http://172.31.6.148:3100/loki/api/v1/push
 
 scrape_configs:
   - job_name: docker
-    static_configs:
-      - targets: ['localhost']
-        labels:
-          job: web
-          __path__: /var/log/*.log
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 30s
+    relabel_configs:
+      - source_labels: ['__meta_docker_container_label_com_docker_compose_service']
+        regex: 'web'
+        action: keep
+      - source_labels: ['__meta_docker_container_label_com_docker_compose_service']
+        target_label: service
+      - source_labels: ['__meta_docker_container_name']
+        regex: '/(.*)'
+        target_label: container

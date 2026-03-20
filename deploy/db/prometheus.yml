@@ -9,7 +9,11 @@
 # =============================================================================
 
 global:
-  scrape_interval: 15s
+  scrape_interval: 45s
+  evaluation_interval: 45s
+
+rule_files:
+  - /etc/prometheus/alert_rules.yml
 
 scrape_configs:
   # ---- Web fleet (auto-discovered via EC2 tags) ----
@@ -35,3 +39,18 @@ scrape_configs:
   - job_name: 'postgres'
     static_configs:
       - targets: ['postgres_exporter:9187']
+
+  # ---- Redis exporter (runs on DB box) ----
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis_exporter:9121']
+
+  # ---- Nginx log exporter (runs on web-od) ----
+  - job_name: 'nginxlog'
+    static_configs:
+      - targets: ['172.31.12.193:4040']
+
+  # ---- Docker stats (DB box containers only) ----
+  - job_name: 'docker-db'
+    static_configs:
+      - targets: ['docker_stats_exporter:9417']
