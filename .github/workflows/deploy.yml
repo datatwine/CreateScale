@@ -208,8 +208,7 @@ jobs:
             --document-name "AWS-RunShellScript" \
             --parameters 'commands=[
               "set -eu",
-              "git config --global --add safe.directory /home/ubuntu/AK",
-              "cd /home/ubuntu/AK && git pull origin main",
+              "su - ubuntu -c \"cd /home/ubuntu/AK && git pull origin main\"",
               "cd /home/ubuntu/AK-WEB",
               "docker pull ghcr.io/${{ github.repository_owner }}/createscale:latest",
               "docker compose -f docker-compose.web.yml up -d --force-recreate",
@@ -315,10 +314,8 @@ jobs:
             --document-name "AWS-RunShellScript" \
             --parameters 'commands=[
               "set -eu",
-              "git config --global --add safe.directory /home/ubuntu/AK",
-              "cd /home/ubuntu/AK",
-              "git pull origin main",
-              "cd deploy/db",
+              "su - ubuntu -c \"cd /home/ubuntu/AK && git pull origin main\"",
+              "cd /home/ubuntu/AK/deploy/db",
               "docker compose -f docker-compose.data.yml build docker_stats_exporter",
               "docker compose -f docker-compose.data.yml up -d --remove-orphans",
               "echo DB_DEPLOY_COMPLETE"
@@ -386,9 +383,8 @@ jobs:
             --document-name "AWS-RunShellScript" \
             --parameters 'commands=[
               "set -eu",
-              "git config --global --add safe.directory /home/ubuntu/AK",
+              "su - ubuntu -c \"cd /home/ubuntu/AK && git pull origin main\"",
               "cd /home/ubuntu/AK",
-              "git pull origin main",
               "sudo cp deploy/nginx/artkhoj.conf /etc/nginx/sites-available/artkhoj",
               "sudo cp deploy/nginx/upstream.conf /etc/nginx/upstream.conf",
               "sudo cp deploy/nginx/update_upstream.py /usr/local/bin/update_upstream.py",
