@@ -56,7 +56,7 @@ while True:
         ips = [ip for ip in ips if ip != my_ip]
 
         conf = write_upstream(ips)
-        new_hash = hashlib.md5(conf.encode()).hexdigest()
+        new_hash = hashlib.md5(conf.encode(), usedforsecurity=False).hexdigest()
         if new_hash != prev_hash:
             with open(UPSTREAM_FILE, "w") as f:
                 f.write(conf)
