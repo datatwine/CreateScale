@@ -14,9 +14,9 @@
 #   5. DEPLOY-WEB   (~3m)   — Deploy to OD instance, then rolling restart
 #                              of Spot fleet (only on push to main)
 #   6. DEPLOY-DB    (~1m)   — Deploy DB box config changes
-#                              (only when deploy/db/** files change)
+#                              (every push to main, idempotent)
 #   7. DEPLOY-NGINX (~1m)   — Deploy Nginx config to web-od
-#                              (only when deploy/nginx/** files change)
+#                              (every push to main, idempotent)
 #
 # REQUIRED GITHUB SECRETS:
 #   AWS_ACCESS_KEY_ID        — IAM user access key (for SSM)
@@ -286,18 +286,15 @@ jobs:
           echo "✅ Rolling restart complete."
 
   # ===========================================================================
-  # JOB 6: DEPLOY DB BOX (only when deploy/db/** changes)
+  # JOB 6: DEPLOY DB BOX
   # ===========================================================================
-  # Triggers only when files in deploy/db/ are modified.
-  # Runs git pull on the DB box and restarts services.
+  # Runs on every push to main. Idempotent — docker compose up -d is a no-op
+  # if nothing changed. Pulls latest code and restarts services.
   # ===========================================================================
   deploy-db:
     name: "🗄️ Deploy DB Box"
     needs: test
-    if: |
-      github.event_name == 'push' && github.ref == 'refs/heads/main' &&
-      (contains(join(github.event.commits.*.modified, ','), 'deploy/db/') ||
-       contains(join(github.event.commits.*.added, ','), 'deploy/db/'))
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - name: Configure AWS credentials
@@ -358,16 +355,13 @@ jobs:
   # ===========================================================================
   # JOB 7: DEPLOY NGINX CONFIG (only when deploy/nginx/** changes)
   # ===========================================================================
-  # Triggers only when files in deploy/nginx/ are modified.
-  # Pulls latest repo on web-od, copies configs to system paths, reloads Nginx.
+  # Runs on every push to main. Idempotent — nginx reload and config copy
+  # are harmless no-ops if nothing changed.
   # ===========================================================================
   deploy-nginx:
     name: "🔀 Deploy Nginx Config"
     needs: test
-    if: |
-      github.event_name == 'push' && github.ref == 'refs/heads/main' &&
-      (contains(join(github.event.commits.*.modified, ','), 'deploy/nginx/') ||
-       contains(join(github.event.commits.*.added, ','), 'deploy/nginx/'))
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - name: Configure AWS credentials
