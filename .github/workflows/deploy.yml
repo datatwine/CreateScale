@@ -296,7 +296,8 @@ jobs:
     needs: test
     if: |
       github.event_name == 'push' && github.ref == 'refs/heads/main' &&
-      contains(join(github.event.commits.*.modified, ','), 'deploy/db/')
+      (contains(join(github.event.commits.*.modified, ','), 'deploy/db/') ||
+       contains(join(github.event.commits.*.added, ','), 'deploy/db/'))
     runs-on: ubuntu-latest
     steps:
       - name: Configure AWS credentials
@@ -365,7 +366,8 @@ jobs:
     needs: test
     if: |
       github.event_name == 'push' && github.ref == 'refs/heads/main' &&
-      contains(join(github.event.commits.*.modified, ','), 'deploy/nginx/')
+      (contains(join(github.event.commits.*.modified, ','), 'deploy/nginx/') ||
+       contains(join(github.event.commits.*.added, ','), 'deploy/nginx/'))
     runs-on: ubuntu-latest
     steps:
       - name: Configure AWS credentials
