@@ -208,6 +208,7 @@ jobs:
             --document-name "AWS-RunShellScript" \
             --parameters 'commands=[
               "set -eu",
+              "git config --global --add safe.directory /home/ubuntu/AK",
               "cd /home/ubuntu/AK && git pull origin main",
               "cd /home/ubuntu/AK-WEB",
               "docker pull ghcr.io/${{ github.repository_owner }}/createscale:latest",
@@ -314,6 +315,7 @@ jobs:
             --document-name "AWS-RunShellScript" \
             --parameters 'commands=[
               "set -eu",
+              "git config --global --add safe.directory /home/ubuntu/AK",
               "cd /home/ubuntu/AK",
               "git pull origin main",
               "cd deploy/db",
@@ -384,6 +386,7 @@ jobs:
             --document-name "AWS-RunShellScript" \
             --parameters 'commands=[
               "set -eu",
+              "git config --global --add safe.directory /home/ubuntu/AK",
               "cd /home/ubuntu/AK",
               "git pull origin main",
               "sudo cp deploy/nginx/artkhoj.conf /etc/nginx/sites-available/artkhoj",
