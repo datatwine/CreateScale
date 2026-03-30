@@ -24,10 +24,12 @@ TIMESTAMP="$(date +%Y%m%d_%H%M)"
 OUTPUT="${SCRIPT_DIR}/postmortem_${TIMESTAMP}.txt"
 PROM="http://localhost:9090"
 
-# Time window: last 140 minutes (covers the 120-min v2 soak + buffer)
+# Time window: configurable via $1 (minutes) or TEST_DURATION_MIN env var
+DURATION_MIN="${1:-${TEST_DURATION_MIN:-110}}"
 END=$(date +%s)
-START=$((END - 8400))
+START=$((END - DURATION_MIN * 60))
 STEP=60
+ASG_NAME="${ASG_NAME:-AK-WebFleet-ASG}"
 
 echo "═══════════════════════════════════════════════════════════════" > "$OUTPUT"
 echo "  POSTMORTEM DATA COLLECTION — $(date)" >> "$OUTPUT"
@@ -273,6 +275,177 @@ docker compose exec -T redis redis-cli DBSIZE 2>/dev/null >> "$OUTPUT"
 echo "" >> "$OUTPUT"
 echo "── 7.4 Redis Slow Log (top 10) ──" >> "$OUTPUT"
 docker compose exec -T redis redis-cli SLOWLOG GET 10 2>/dev/null >> "$OUTPUT"
+
+
+# ---------------------------------------------------------------------------
+# SECTION 8: ASG Scaling Activity
+# ---------------------------------------------------------------------------
+echo "" >> "$OUTPUT"
+echo "╔══════════════════════════════════════════════════════════════╗" >> "$OUTPUT"
+echo "║  SECTION 8: ASG SCALING ACTIVITY                           ║" >> "$OUTPUT"
+echo "╚══════════════════════════════════════════════════════════════╝" >> "$OUTPUT"
+echo "" >> "$OUTPUT"
+
+if command -v aws &>/dev/null; then
+    aws autoscaling describe-scaling-activities \
+        --auto-scaling-group-name "$ASG_NAME" \
+        --max-items 50 2>/dev/null \
+    | python3 -c "
+import sys, json
+from datetime import datetime
+try:
+    d = json.load(sys.stdin)
+    activities = d.get('Activities', [])
+    start_ts = $START
+    end_ts = $END
+    print(f'  ASG: $ASG_NAME')
+    print(f'  Window: {datetime.fromtimestamp(start_ts).strftime(\"%H:%M\")} -> {datetime.fromtimestamp(end_ts).strftime(\"%H:%M\")}')
+    print(f'  {\"StartTime\":<22s} {\"Status\":<12s} Description')
+    print(f'  {\"─\"*22} {\"─\"*12} {\"─\"*50}')
+    found = 0
+    for a in activities:
+        # Parse ISO timestamp
+        ts_str = a.get('StartTime', '')
+        if isinstance(ts_str, str):
+            try:
+                ts = datetime.fromisoformat(ts_str.replace('Z','+00:00')).timestamp()
+            except:
+                continue
+        else:
+            ts = ts_str
+        if start_ts <= ts <= end_ts:
+            found += 1
+            t = datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
+            status = a.get('StatusCode', '?')
+            desc = a.get('Description', '')[:60]
+            print(f'  {t:<22s} {status:<12s} {desc}')
+    if found == 0:
+        print('  No scaling activity during test window.')
+except Exception as e:
+    print(f'  Parse error: {e}')
+" >> "$OUTPUT"
+else
+    echo "  ⚠️  aws CLI not available — skipping ASG activity" >> "$OUTPUT"
+fi
+
+
+# ---------------------------------------------------------------------------
+# SECTION 9: Per-Instance Fleet Metrics
+# ---------------------------------------------------------------------------
+echo "" >> "$OUTPUT"
+echo "╔══════════════════════════════════════════════════════════════╗" >> "$OUTPUT"
+echo "║  SECTION 9: PER-INSTANCE FLEET METRICS                     ║" >> "$OUTPUT"
+echo "╚══════════════════════════════════════════════════════════════╝" >> "$OUTPUT"
+
+prom_query "9.1 Per-Instance RPS (1-min rate)" \
+    "sum by (instance) (rate(django_http_requests_total_by_view_transport_method_total[1m]))"
+
+prom_query "9.2 Per-Instance p95 Latency (ms)" \
+    "histogram_quantile(0.95, sum by (le, instance) (rate(django_http_requests_latency_seconds_by_view_method_bucket[1m]))) * 1000"
+
+prom_query "9.3 Per-Instance CPU (process seconds/sec)" \
+    "rate(process_cpu_seconds_total{job=\"web-fleet\"}[1m])"
+
+
+# ---------------------------------------------------------------------------
+# SECTION 10: Scaling Gap Analysis
+# ---------------------------------------------------------------------------
+echo "" >> "$OUTPUT"
+echo "╔══════════════════════════════════════════════════════════════╗" >> "$OUTPUT"
+echo "║  SECTION 10: SCALING GAP ANALYSIS                          ║" >> "$OUTPUT"
+echo "╚══════════════════════════════════════════════════════════════╝" >> "$OUTPUT"
+echo "" >> "$OUTPUT"
+
+# Query p95 latency at 30s resolution, then find the gap where p95 > 500ms
+curl -s "${PROM}/api/v1/query_range?query=$(python3 -c "import urllib.parse; print(urllib.parse.quote('histogram_quantile(0.95, sum by (le) (rate(django_http_requests_latency_seconds_by_view_method_bucket[1m]))) * 1000'))")&start=${START}&end=${END}&step=30" \
+| python3 -c "
+import sys, json
+from datetime import datetime
+
+THRESHOLD_MS = 500
+RECOVERY_READINGS = 3   # 3 consecutive readings below threshold = recovered (90s)
+
+try:
+    d = json.load(sys.stdin)
+    if d['status'] != 'success':
+        print('  ERROR: ' + str(d))
+        sys.exit()
+
+    results = d['data']['result']
+    if not results:
+        print('  No p95 latency data found.')
+        sys.exit()
+
+    values = results[0]['values']  # [[timestamp, value], ...]
+    if not values:
+        print('  No p95 data points.')
+        sys.exit()
+
+    # Find gap_start: first timestamp where p95 > threshold
+    gap_start = None
+    gap_start_idx = None
+    max_p95 = 0
+    for i, (ts, val) in enumerate(values):
+        v = float(val)
+        if v != v:  # NaN check
+            continue
+        if v > THRESHOLD_MS and gap_start is None:
+            gap_start = float(ts)
+            gap_start_idx = i
+        if gap_start is not None and v > max_p95:
+            max_p95 = v
+
+    if gap_start is None:
+        print('  No scaling gap detected — p95 never exceeded 500ms. ')
+        sys.exit()
+
+    # Find gap_end: first timestamp after gap_start with 3+ consecutive readings below threshold
+    gap_end = None
+    consecutive_below = 0
+    for i in range(gap_start_idx, len(values)):
+        ts, val = values[i]
+        v = float(val)
+        if v != v:
+            consecutive_below = 0
+            continue
+        if v < THRESHOLD_MS:
+            consecutive_below += 1
+            if consecutive_below >= RECOVERY_READINGS:
+                # Recovery point is when the streak started
+                gap_end = float(values[i - RECOVERY_READINGS + 1][0])
+                break
+        else:
+            consecutive_below = 0
+
+    # Query 5xx errors during gap window
+    gap_end_ts = gap_end if gap_end else float(values[-1][0])
+
+    print('  SCALING GAP ANALYSIS')
+    print('  ' + '─' * 40)
+    print(f'  Gap start:    {datetime.fromtimestamp(gap_start).strftime(\"%H:%M:%S\")} (p95 crossed 500ms)')
+    if gap_end:
+        duration_s = gap_end - gap_start
+        mins = int(duration_s // 60)
+        secs = int(duration_s % 60)
+        print(f'  Gap end:      {datetime.fromtimestamp(gap_end).strftime(\"%H:%M:%S\")} (p95 recovered below 500ms)')
+        print(f'  Duration:     {mins}m {secs}s')
+    else:
+        duration_s = float(values[-1][0]) - gap_start
+        mins = int(duration_s // 60)
+        secs = int(duration_s % 60)
+        print(f'  Gap end:      DID NOT RECOVER')
+        print(f'  Duration:     {mins}m {secs}s (ongoing)')
+    print(f'  Peak p95:     {max_p95:,.0f}ms')
+
+except Exception as e:
+    print(f'  Analysis error: {e}')
+" >> "$OUTPUT"
+
+# 5xx error count during gap (separate query — uses the gap timestamps from above or full window)
+echo "" >> "$OUTPUT"
+echo "── 10.1 5xx Errors During Test Window ──" >> "$OUTPUT"
+prom_instant "5xx Total" \
+    "sum(increase(django_http_responses_total_by_status_view_method_total{status=~\"5..\"}[${DURATION_MIN}m]))"
 
 
 # ---------------------------------------------------------------------------
