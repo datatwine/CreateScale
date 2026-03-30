@@ -1,0 +1,141 @@
+# =============================================================================
+# Fleet Mode Overlay — docker-compose.fleet.yml
+# =============================================================================
+# Transforms the local dev stack into a production-like horizontally scaled
+# fleet: 3 web instances behind Nginx, full observability, production dashboard
+# + alert rules, and Promtail→Loki log pipeline.
+#
+# USAGE:
+#   docker compose -f docker-compose.yml -f docker-compose.fleet.yml up
+#
+# This file OVERRIDES docker-compose.yml (the base) and REPLACES
+# docker-compose.override.yml (which is only auto-loaded when no -f flags).
+#
+# To scale beyond the default 3 instances:
+#   docker compose -f docker-compose.yml -f docker-compose.fleet.yml up --scale web=5
+# =============================================================================
+
+services:
+  # ---------- Migration runner (one-shot, replicates OD instance role) ----------
+  # In production, only the OD instance runs migrations (RUN_MIGRATIONS=1).
+  # Spot instances skip migrations to avoid race conditions.
+  # Locally, this container does the same: migrate + collectstatic, then exit.
+  migrate:
+    build: .
+    user: "0:0"
+    env_file:
+      - .env
+    environment:
+      RUN_MIGRATIONS: "1"
+    entrypoint: []
+    command: >
+      sh -c "
+        mkdir -p /app/staticfiles /vol/static &&
+        chown -R appuser:appuser /app/staticfiles /vol/static &&
+        echo 'Waiting for database at $${DB_HOST}:$${DB_PORT}...' &&
+        while ! nc -z $${DB_HOST} $${DB_PORT}; do sleep 0.2; done &&
+        echo 'Running migrations + collectstatic...' &&
+        su -s /bin/sh -c 'python manage.py migrate --noinput' appuser &&
+        su -s /bin/sh -c 'python manage.py collectstatic --noinput' appuser &&
+        echo 'Migrate complete — exiting.'
+      "
+    volumes:
+      - .:/app:rw,delegated
+      - static_volume:/app/staticfiles
+      - media_volume:/vol/media
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    restart: "no"
+
+  # ---------- Web fleet (overrides base web service) ----------
+  web:
+    volumes:
+      - .:/app:rw,delegated
+      - static_volume:/app/staticfiles
+      - media_volume:/vol/media
+    environment:
+      # Match production docker-compose.web.yml tuning
+      WEB_CONCURRENCY: "3"
+      WEB_THREADS: "2"
+      WEB_TIMEOUT: "30"
+      RUN_MIGRATIONS: "0"          # Handled by migrate service above
+      DJANGO_ALLOWED_HOSTS: "*"    # Local fleet: Prometheus hits containers by Docker IP
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      migrate:
+        condition: service_completed_successfully
+    deploy:
+      replicas: 3
+    # No 'command:' override — uses entrypoint.sh from Dockerfile,
+    # same startup path as production (wait for DB → skip migrations → gunicorn)
+
+  # ---------- DB tuning (match production docker-compose.data.yml) ----------
+  db:
+    command: >
+      postgres
+        -c shared_preload_libraries=pg_stat_statements
+        -c pg_stat_statements.track=all
+        -c listen_addresses='*'
+        -c max_connections=200
+
+  # ---------- Nginx (fleet-aware config with DNS resolver) ----------
+  nginx:
+    volumes:
+      - static_volume:/vol/static:ro
+      - media_volume:/vol/media:ro
+      - ./compose/nginx-fleet.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./logs/nginx:/var/log/nginx
+
+  # ---------- Prometheus (production job names + DNS service discovery) ----------
+  prometheus:
+    volumes:
+      - ./monitoring/prometheus-fleet.yml:/etc/prometheus/prometheus.yml:ro
+      - ./deploy/db/alert_rules.yml:/etc/prometheus/alert_rules.yml:ro
+
+  # ---------- Grafana (fleet dashboard picked up from monitoring/grafana/dashboards/) ----------
+  # No extra volume mounts needed:
+  #   - fleet_dashboard_v2.json already copied into monitoring/grafana/dashboards/
+  #   - Loki datasource added to existing datasource.yml
+  #   - Base compose already mounts both directories
+
+  # ---------- Redis exporter (missing from local, present in production) ----------
+  redis_exporter:
+    image: oliver006/redis_exporter:v1.58.0
+    restart: unless-stopped
+    environment:
+      REDIS_ADDR: "redis://redis:6379"
+    depends_on:
+      - redis
+
+  # ---------- Loki (log aggregation, same as production DB box) ----------
+  loki:
+    image: grafana/loki:2.9.0
+    restart: unless-stopped
+    volumes:
+      - loki_data:/tmp/loki
+    ports:
+      - "3100:3100"
+    command: -config.file=/etc/loki/local-config.yaml
+
+  # ---------- Promtail (log shipper, reads Docker container logs) ----------
+  promtail:
+    image: grafana/promtail:2.9.0
+    restart: unless-stopped
+    volumes:
+      - ./compose/promtail-fleet.yml:/etc/promtail/config.yml:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - promtail_positions:/tmp
+    command: -config.file=/etc/promtail/config.yml
+    depends_on:
+      - loki
+
+volumes:
+  loki_data:
+  promtail_positions:
