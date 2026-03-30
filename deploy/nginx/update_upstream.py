@@ -38,6 +38,7 @@ def get_web_ips():
 
 def write_upstream(ips):
     lines = ["upstream django_upstream {"]
+    lines.append("    least_conn;")
     # Always include localhost (the OD box's own Gunicorn)
     lines.append("    server 127.0.0.1:8000 max_fails=2 fail_timeout=10s;")
     for ip in ips:
