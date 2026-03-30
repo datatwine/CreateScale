@@ -18,7 +18,8 @@
       "Read(//c/Users/91974/**)",
       "Bash(ls -la /c/Users/91974/personal*)",
       "Bash(find /c/Users/91974 -name deploy.yml -o -name *.yml -path *workflows*)",
-      "Bash(find /c/Users/91974/Documents -name *Scale_Out* -o -name *AntiGravity*)"
+      "Bash(find /c/Users/91974/Documents -name *Scale_Out* -o -name *AntiGravity*)",
+      "Bash(grep -rn \"django_prometheus\" \"C:\\\\Users\\\\91974\\\\personal_gallery\\\\myproject\\\\myproject\"\" --include=\"*.py \")"
     ]
   }
 }

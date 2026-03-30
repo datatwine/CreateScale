@@ -1,0 +1,43 @@
+# =============================================================================
+# Promtail Fleet Config — Local Docker log collection
+# =============================================================================
+# Reads container logs via Docker socket, ships to local Loki.
+# Simpler than production's EC2-specific promtail config since all containers
+# share one Docker network.
+#
+# In production, Promtail runs on each web instance and ships logs to
+# the DB box's Loki via private IP. Locally, everything is on one network.
+# =============================================================================
+
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+
+scrape_configs:
+  # ---- Docker container logs (all containers) ----
+  - job_name: docker
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: docker
+          __path__: /var/lib/docker/containers/*/*-json.log
+
+    pipeline_stages:
+      # Parse Docker JSON log format
+      - docker: {}
+
+      # Extract container name from log path for labeling
+      - regex:
+          expression: '/var/lib/docker/containers/(?P<container_id>[^/]+)/.*'
+          source: filename
+
+      # Add useful labels
+      - labels:
+          container_id:

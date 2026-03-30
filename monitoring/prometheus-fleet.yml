@@ -1,0 +1,55 @@
+# =============================================================================
+# Prometheus Fleet Config — Local equivalent of deploy/db/prometheus.yml
+# =============================================================================
+# Every job_name matches production exactly so that fleet_dashboard_v2.json
+# and alert_rules.yml work without modification.
+#
+# Key difference from production:
+#   - dns_sd_configs instead of ec2_sd_configs (Docker DNS vs AWS EC2 API)
+#   - 15s scrape interval (vs prod's 45s) for faster local feedback
+#   - All targets on one Docker network (vs cross-box in production)
+# =============================================================================
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  - /etc/prometheus/alert_rules.yml
+
+scrape_configs:
+  # ---- Web fleet (auto-discovered via Docker DNS) ----
+  # Production uses ec2_sd_configs with tag:Role=web.
+  # Locally, Docker DNS resolves 'web' to all container IPs from --scale web=3.
+  - job_name: 'web-fleet'
+    dns_sd_configs:
+      - names: ['web']
+        type: A
+        port: 8000
+        refresh_interval: 10s
+    relabel_configs:
+      # Map container IP to instance_name label (mirrors prod's EC2 tag Name)
+      - source_labels: [__address__]
+        target_label: instance_name
+        regex: '(.+):8000'
+        replacement: '${1}'
+
+  # ---- PostgreSQL exporter (same as production) ----
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['postgres_exporter:9187']
+
+  # ---- Redis exporter (same as production, MISSING from local dev) ----
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis_exporter:9121']
+
+  # ---- Nginx log exporter (renamed from local 'nginxlogs' to match prod) ----
+  - job_name: 'nginxlog'
+    static_configs:
+      - targets: ['nginxlog_exporter:4040']
+
+  # ---- Docker stats exporter (renamed from local 'cadvisor' to match prod) ----
+  - job_name: 'docker-db'
+    static_configs:
+      - targets: ['docker-exporter:9417']
