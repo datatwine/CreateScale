@@ -241,8 +241,6 @@ from pathlib import Path
 STATIC_URL = "/static/"
 STATIC_ROOT = Path("/vol/static")
 
-STATICFILES_STORAGE = "django.contrib.staticfiles.storage.ManifestStaticFilesStorage"
-
 # 👇 add this line
 # STATICFILES_DIRS = [ BASE_DIR / "static" ]
 
@@ -258,27 +256,46 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 USE_S3 = os.getenv("USE_S3", "1") == "1"
 
 if USE_S3:
-    # Make sure django-storages is available
     INSTALLED_APPS.append("storages")
 
-    AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
-    AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
+    # Only set explicit keys if provided — otherwise boto3 uses the
+    # EC2 instance profile (IAM role) automatically.
+    _ak = os.getenv("AWS_ACCESS_KEY_ID", "")
+    _sk = os.getenv("AWS_SECRET_ACCESS_KEY", "")
+    if _ak and _sk:
+        AWS_ACCESS_KEY_ID = _ak
+        AWS_SECRET_ACCESS_KEY = _sk
+
     AWS_STORAGE_BUCKET_NAME = os.getenv("AWS_STORAGE_BUCKET_NAME")
-    AWS_S3_REGION_NAME = os.getenv("AWS_S3_REGION_NAME", "ap-south-1")  # Mumbai
+    AWS_S3_REGION_NAME = os.getenv("AWS_S3_REGION_NAME", "ap-south-1")
     AWS_S3_SIGNATURE_VERSION = "s3v4"
 
-    # Good defaults for user uploads
     AWS_S3_FILE_OVERWRITE = False
     AWS_DEFAULT_ACL = None
-    AWS_QUERYSTRING_AUTH = False  # clean, cacheable URLs
+    AWS_QUERYSTRING_AUTH = False
 
-    DEFAULT_FILE_STORAGE = "storages.backends.s3boto3.S3Boto3Storage"
+    STORAGES = {
+        "default": {
+            "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
+        },
+        "staticfiles": {
+            "BACKEND": "django.contrib.staticfiles.storage.ManifestStaticFilesStorage",
+        },
+    }
     MEDIA_URL = f"https://{AWS_STORAGE_BUCKET_NAME}.s3.{AWS_S3_REGION_NAME}.amazonaws.com/"
-    MEDIA_ROOT = None  # Not used with S3
+    MEDIA_ROOT = None
 else:
     # Local dev fallback
     MEDIA_URL = "/media/"
     MEDIA_ROOT = Path("/vol/media")
+    STORAGES = {
+        "default": {
+            "BACKEND": "django.core.files.storage.FileSystemStorage",
+        },
+        "staticfiles": {
+            "BACKEND": "django.contrib.staticfiles.storage.ManifestStaticFilesStorage",
+        },
+    }
 
 LOGOUT_REDIRECT_URL = 'login'  # Use the name of your sign-in URL pattern
 
