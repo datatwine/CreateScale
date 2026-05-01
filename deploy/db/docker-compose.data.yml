@@ -37,6 +37,11 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   redis:
     image: redis:7-alpine
@@ -44,6 +49,11 @@ services:
     command: ["redis-server", "--save", "", "--appendonly", "no", "--bind", "0.0.0.0", "--protected-mode", "no"]
     ports:
       - "6379:6379"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   glitchtip-web:
     image: glitchtip/glitchtip:latest
@@ -62,6 +72,11 @@ services:
     ports:
       - "8000:8000"
     restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   glitchtip-worker:
     image: glitchtip/glitchtip:latest
@@ -78,6 +93,11 @@ services:
       DEFAULT_FROM_EMAIL: "[email protected]"
     command: ./bin/run-celery-with-beat.sh
     restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   # =========== Phase 6: Observability ===========
 
@@ -93,6 +113,11 @@ services:
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.retention.time=15d'
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   grafana:
     image: grafana/grafana:10.4.5
@@ -110,6 +135,11 @@ services:
       - ./grafana/dashboards:/etc/grafana/dashboards:ro
     ports:
       - "3000:3000"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   postgres_exporter:
     image: prometheuscommunity/postgres-exporter:v0.15.0
@@ -119,6 +149,11 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   redis_exporter:
     image: oliver006/redis_exporter:v1.58.0
@@ -127,6 +162,11 @@ services:
       REDIS_ADDR: "redis://redis:6379"
     depends_on:
       - redis
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   loki:
     image: grafana/loki:2.9.0
@@ -137,6 +177,11 @@ services:
     ports:
       - "3100:3100"
     command: -config.file=/etc/loki/local-config.yaml
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   docker_stats_exporter:
     build:
@@ -145,6 +190,11 @@ services:
     restart: unless-stopped
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 volumes:
   postgres_data:
