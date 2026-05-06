@@ -42,5 +42,33 @@ services:
       - promtail_positions:/tmp
     command: -config.file=/etc/promtail/config.yml
 
+  # ---- Node Exporter ----
+  # Exposes host-level CPU/memory metrics on :9100 for Prometheus.
+  # Needed because Gunicorn multiprocess mode disables Python's ProcessCollector,
+  # so process_cpu_seconds_total and process_resident_memory_bytes don't exist.
+  # node_exporter reads /proc and /sys from the HOST (read-only) instead.
+  node_exporter:
+    image: prom/node-exporter:v1.8.1
+    restart: unless-stopped
+    ports:
+      - "9100:9100"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--path.rootfs=/rootfs'
+      - '--collector.disable-defaults'
+      - '--collector.cpu'
+      - '--collector.meminfo'
+      - '--collector.loadavg'
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
 volumes:
   promtail_positions:
