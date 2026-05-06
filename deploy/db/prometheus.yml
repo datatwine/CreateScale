@@ -35,6 +35,28 @@ scrape_configs:
       - source_labels: [__meta_ec2_tag_Name]
         target_label: instance_name
 
+  # ---- Node exporter on web instances (host CPU / memory) ----
+  # Same EC2 discovery as web-fleet but port 9100 instead of 8000.
+  # Separate job name keeps Django app metrics (web-fleet) cleanly
+  # separated from host metrics (node-web) in Grafana queries.
+  - job_name: 'node-web'
+    ec2_sd_configs:
+      - region: ap-south-1
+        port: 9100
+        filters:
+          - name: 'tag:Role'
+            values: ['web']
+          - name: 'instance-state-name'
+            values: ['running']
+    relabel_configs:
+      - source_labels: [__meta_ec2_private_ip]
+        target_label: __address__
+        replacement: '${1}:9100'
+      - source_labels: [__meta_ec2_instance_id]
+        target_label: instance_id
+      - source_labels: [__meta_ec2_tag_Name]
+        target_label: instance_name
+
   # ---- Local Postgres exporter (runs on DB box) ----
   - job_name: 'postgres'
     static_configs:
