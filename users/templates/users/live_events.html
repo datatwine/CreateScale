@@ -1,4 +1,5 @@
 {% extends 'users/base.html' %}
+{% load cache %}
 
 {% block content %}
 <div class="center-container">
@@ -7,19 +8,17 @@
     {% if events %}
         <ul class="events-list">
             {% for e in events %}
+            {% cache 120 event_item e.id %}
                 <li style="margin-bottom: 0.75rem;">
                     <strong>{{ e.date }} {{ e.time }}</strong>
                     — {{ e.occasion }} at {{ e.venue }}<br>
                     Performer: {{ e.performer.username }} |
                     Client: {{ e.client.username }}
                 </li>
+            {% endcache %}
             {% endfor %}
         </ul>
-    {% else %}
-        <p>No upcoming events yet.</p>
-    {% endif %}
 
-    {# 🔹 Simple pagination controls #}
         {% if page_obj and page_obj.paginator.num_pages > 1 %}
             <div class="pagination" style="margin-top: 1rem; text-align: center;">
                 {% if page_obj.has_previous %}

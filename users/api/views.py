@@ -4,6 +4,8 @@ from django.contrib.auth import authenticate
 from django.core.cache import cache
 from django.core.paginator import Paginator
 from django.shortcuts import get_object_or_404
+from django.utils.decorators import method_decorator
+from django.views.decorators.cache import cache_control
 
 from rest_framework import generics, status
 from rest_framework.permissions import IsAuthenticated, AllowAny
@@ -40,6 +42,7 @@ def _cached(key, timeout, compute_fn):
 class TokenLoginAPIView(APIView):
     permission_classes = [AllowAny]
 
+    @method_decorator(cache_control(no_store=True))
     def post(self, request):
         """
         POST /api/auth/token/
@@ -63,6 +66,7 @@ class TokenLoginAPIView(APIView):
 class TokenLogoutAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
+    @method_decorator(cache_control(no_store=True))
     def post(self, request):
         """
         POST /api/auth/logout/
@@ -75,6 +79,7 @@ class TokenLogoutAPIView(APIView):
 class TokenMeAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
+    @method_decorator(cache_control(no_store=True))
     def get(self, request):
         """
         GET /api/auth/me/
@@ -99,6 +104,7 @@ class SignupAPIView(APIView):
     """
     permission_classes = [AllowAny]
 
+    @method_decorator(cache_control(no_store=True))
     def post(self, request):
         serializer = SignupSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)  # 400 with field errors on failure
@@ -146,6 +152,7 @@ class MeProfileAPIView(generics.RetrieveUpdateAPIView):
         profile, _ = Profile.objects.select_related("user").get_or_create(user=self.request.user)
         return profile
 
+    @method_decorator(cache_control(private=True, max_age=15))
     def retrieve(self, request, *args, **kwargs):
         key = f"me:{request.user.id}"
 
@@ -156,6 +163,7 @@ class MeProfileAPIView(generics.RetrieveUpdateAPIView):
 
         return Response(_cached(key, 15, compute))
 
+    @method_decorator(cache_control(no_store=True))
     def update(self, request, *args, **kwargs):
         response = super().update(request, *args, **kwargs)
         cache.delete(f"me:{request.user.id}")
@@ -183,6 +191,7 @@ class MyUploadsAPIView(generics.ListCreateAPIView):
 
         return qs
 
+    @method_decorator(cache_control(private=True, max_age=30))
     def list(self, request, *args, **kwargs):
         key = f"uploads:{request.user.id}"
 
@@ -219,23 +228,22 @@ class GlobalFeedAPIView(_LenientPaginatorMixin, generics.GenericAPIView):
     """
     GET /api/users/feed/?professions=A&professions=B&page=1
 
-    Mirrors users.views.global_feed:
-    - exclude request.user
-    - filter by ProfessionFilterForm's MultipleChoice field 'professions'
-    - pagination 20/page
+    Shared cache: one Redis entry per (page, profession-filter) serves ALL users.
+    Self-exclusion happens after cache retrieval — a microsecond list filter
+    instead of a per-user DB query + serialization.
     """
     permission_classes = [IsAuthenticated]
     serializer_class = GlobalFeedProfileSerializer
 
+    @method_decorator(cache_control(private=True, max_age=30))
     def get(self, request):
         profs = ",".join(sorted(request.query_params.getlist("profession", [])))
         page = request.query_params.get("page", "1")
-        key = f"feed:{request.user.id}:{page}:{profs}"
+        key = f"feed:{page}:{profs}"
 
         def compute():
             qs = (
                 Profile.objects
-                .exclude(user=request.user)
                 .select_related("user")
                 .only("user__id", "user__username", "profession", "profile_picture", "is_performer")
             )
@@ -256,7 +264,19 @@ class GlobalFeedAPIView(_LenientPaginatorMixin, generics.GenericAPIView):
                 "results": ser.data,
             }
 
-        return Response(_cached(key, 30, compute))
+        data = _cached(key, 30, compute)
+
+        # Post-cache: strip the requesting user from results
+        filtered = [p for p in data["results"] if p["user_id"] != request.user.id]
+
+        return Response({
+            "count":        max(data["count"] - 1, 0),
+            "num_pages":    data["num_pages"],
+            "page":         data["page"],
+            "has_next":     data["has_next"],
+            "has_previous": data["has_previous"],
+            "results":      filtered,
+        })
 
 
 class ProfileDetailAPIView(generics.RetrieveAPIView):
@@ -270,6 +290,7 @@ class ProfileDetailAPIView(generics.RetrieveAPIView):
     def get_object(self):
         return get_object_or_404(Profile.objects.select_related("user"), user__id=self.kwargs["user_id"])
 
+    @method_decorator(cache_control(private=True, max_age=60))
     def retrieve(self, request, *args, **kwargs):
         user_id = self.kwargs["user_id"]
         key = f"profile:{user_id}"
@@ -286,19 +307,23 @@ class ProfessionsAPIView(APIView):
     """
     GET /api/users/professions/
     Helps frontend build the same filter options as your ProfessionFilterForm.
+    Cached for 5 minutes — profession list changes very rarely.
     """
     permission_classes = [IsAuthenticated]
 
+    @method_decorator(cache_control(private=True, max_age=300))
     def get(self, request):
-        professions = (
-            Profile.objects
-            .exclude(profession__isnull=True)
-            .exclude(profession__exact="")
-            .values_list("profession", flat=True)
-            .distinct()
-            .order_by("profession")
-        )
-        return Response({"professions": list(professions)})
+        def compute():
+            return list(
+                Profile.objects
+                .exclude(profession__isnull=True)
+                .exclude(profession__exact="")
+                .values_list("profession", flat=True)
+                .distinct()
+                .order_by("profession")
+            )
+
+        return Response({"professions": _cached("professions", 300, compute)})
 
 
 class LiveEventsAPIView(_LenientPaginatorMixin, APIView):
@@ -307,8 +332,9 @@ class LiveEventsAPIView(_LenientPaginatorMixin, APIView):
     Mirrors users.views.live_events: accepted upcoming engagements, paginated.
     """
     permission_classes = [IsAuthenticated]
-    page_size = 10  # matches users.views.live_events page size :contentReference[oaicite:12]{index=12}
+    page_size = 10  # matches users.views.live_events page size
 
+    @method_decorator(cache_control(private=True, max_age=30))
     def get(self, request):
         scope = request.query_params.get("scope", "upcoming")
         page = request.query_params.get("page", "1")
