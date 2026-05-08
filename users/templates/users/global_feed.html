@@ -1,10 +1,11 @@
 {% extends 'users/base.html' %}
 {% load static %}
+{% load cache %}
 
 
 {% block content %}
 
-<div class="global-feed-container"> 
+<div class="global-feed-container">
 
 <h1>Global Feed</h1>
 
@@ -28,6 +29,7 @@
 
 <!-- Display Filtered Profiles -->
 {% for profile in profiles %}
+{% cache 300 profile_card profile.user.id %}
 <div class="profile-header-global">
     <div class="profile-picture-container">
         <a href="{% url 'profile-detail' profile.user.id %}" class="profile-link">
@@ -42,6 +44,7 @@
 
     </div>
 </div>
+{% endcache %}
 {% empty %}
 <p>No users found for the selected profession.</p>
 {% endfor %}
@@ -68,7 +71,3 @@
 </div>
 
 {% endblock %}
-
-
-
-
