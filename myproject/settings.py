@@ -83,7 +83,7 @@ SITE_ID = 1
 #Below is the login/signup settings 
 
 # Django-allauth local environment settings
-ACCOUNT_DEFAULT_HTTP_PROTOCOL = "http"
+ACCOUNT_DEFAULT_HTTP_PROTOCOL = os.getenv("ACCOUNT_HTTP_PROTOCOL", "http")
 
 LOGIN_REDIRECT_URL = "/users/profile/"
 LOGOUT_REDIRECT_URL = "/"
@@ -268,8 +268,18 @@ if USE_S3:
         AWS_SECRET_ACCESS_KEY = _sk
 
     AWS_STORAGE_BUCKET_NAME = os.getenv("AWS_STORAGE_BUCKET_NAME")
-    AWS_S3_REGION_NAME = os.getenv("AWS_S3_REGION_NAME", "ap-south-1")
+    AWS_S3_REGION_NAME = os.getenv("AWS_S3_REGION_NAME", "auto")
     AWS_S3_SIGNATURE_VERSION = "s3v4"
+
+    # R2 endpoint — when set, boto3 talks to R2 instead of S3
+    _endpoint = os.getenv("AWS_S3_ENDPOINT_URL", "")
+    if _endpoint:
+        AWS_S3_ENDPOINT_URL = _endpoint
+
+    # Custom domain for media URLs (e.g., media.yourdomain.com)
+    _custom_domain = os.getenv("AWS_S3_CUSTOM_DOMAIN", "")
+    if _custom_domain:
+        AWS_S3_CUSTOM_DOMAIN = _custom_domain
 
     AWS_S3_FILE_OVERWRITE = False
     AWS_DEFAULT_ACL = None
@@ -283,7 +293,12 @@ if USE_S3:
             "BACKEND": "django.contrib.staticfiles.storage.ManifestStaticFilesStorage",
         },
     }
-    MEDIA_URL = f"https://{AWS_STORAGE_BUCKET_NAME}.s3.{AWS_S3_REGION_NAME}.amazonaws.com/"
+
+    # URL generation: custom domain → S3/R2-style URL
+    if _custom_domain:
+        MEDIA_URL = f"https://{_custom_domain}/"
+    else:
+        MEDIA_URL = f"https://{AWS_STORAGE_BUCKET_NAME}.s3.{AWS_S3_REGION_NAME}.amazonaws.com/"
     MEDIA_ROOT = None
 else:
     # Local dev fallback
