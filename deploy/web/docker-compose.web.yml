@@ -34,6 +34,7 @@ services:
 
   promtail:
     image: grafana/promtail:2.9.0
+    hostname: ${HOSTNAME:-ak-web}
     restart: unless-stopped
     volumes:
       - ./promtail.yml:/etc/promtail/config.yml:ro

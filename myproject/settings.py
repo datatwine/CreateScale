@@ -50,6 +50,12 @@ if not SECRET_KEY:
 ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", default=["localhost", "127.0.0.1"])
 ALLOWED_HOSTS.append("192.168.1.6")
 
+# ---------------------------------------------------------------------------
+# Behind Cloudflare (Flexible SSL) → Nginx → Django, the real scheme is HTTPS
+# but Django receives plain HTTP from Nginx.  Tell Django to trust the header.
+# ---------------------------------------------------------------------------
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
 TIME_ZONE = os.getenv("TIME_ZONE", "Asia/Kolkata")
 USE_TZ = True
 
