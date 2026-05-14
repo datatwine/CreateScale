@@ -210,6 +210,8 @@ jobs:
               "set -eu",
               "su - ubuntu -c \"cd /home/ubuntu/AK && git pull origin main\"",
               "cd /home/ubuntu/AK-WEB",
+              "aws s3 cp s3://createscale-config/web/.env /home/ubuntu/AK-WEB/.env",
+              "sed -i \"s/RUN_MIGRATIONS=0/RUN_MIGRATIONS=1/\" /home/ubuntu/AK-WEB/.env",
               "docker pull ghcr.io/${{ github.repository_owner }}/createscale:latest",
               "docker compose -f docker-compose.web.yml up -d --force-recreate",
               "echo OD_DEPLOY_COMPLETE"
@@ -275,6 +277,7 @@ jobs:
               --parameters 'commands=[
                 "set -eu",
                 "cd /home/ubuntu/AK-WEB",
+                "aws s3 cp s3://createscale-config/web/.env /home/ubuntu/AK-WEB/.env",
                 "docker pull ghcr.io/datatwine/createscale:latest",
                 "docker compose -f docker-compose.web.yml up -d --force-recreate",
                 "echo SPOT_DEPLOY_COMPLETE"
