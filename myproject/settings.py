@@ -147,6 +147,7 @@ MIDDLEWARE = [
     'django_prometheus.middleware.PrometheusBeforeMiddleware',
     'silk.middleware.SilkyMiddleware',
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.http.ConditionalGetMiddleware',   # ETag + 304 support
@@ -296,7 +297,7 @@ if USE_S3:
             "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
         },
         "staticfiles": {
-            "BACKEND": "django.contrib.staticfiles.storage.ManifestStaticFilesStorage",
+            "BACKEND": "myproject.storage.ForgivingStaticFilesStorage",
         },
     }
 
@@ -315,7 +316,7 @@ else:
             "BACKEND": "django.core.files.storage.FileSystemStorage",
         },
         "staticfiles": {
-            "BACKEND": "django.contrib.staticfiles.storage.ManifestStaticFilesStorage",
+            "BACKEND": "myproject.storage.ForgivingStaticFilesStorage",
         },
     }
 
