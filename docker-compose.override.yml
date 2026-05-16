@@ -2,6 +2,7 @@ services:
   web:
     volumes:
       - .:/app:rw,delegated
+      - static_volume:/vol/static
     command: >
       sh -lc "python manage.py migrate --noinput &&
               python manage.py collectstatic --noinput &&
