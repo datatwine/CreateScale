@@ -1,39 +1,194 @@
 {% extends 'users/base.html' %}
 {% load static %}
 {% load socialaccount %}
-{% block content %}
-<div class="top-right-logo">
-    <img src="{% static 'users/images/artkhojlogo.png' %}" alt="Brand Logo">
-</div>
 
-<div class="login-container">
-    <div class="background-slider">
-        <img src="{% static 'users/images/carry.webp' %}" class="slideshow-image active">
-        <img src="{% static 'users/images/mikeportnoy.jfif' %}" class="slideshow-image">
-        <img src="{% static 'users/images/gavin_harrison.jfif' %}" class="slideshow-image">
+{% block title %}Login · ArtKhoj{% endblock %}
+
+{% block extra_css %}
+    <link rel="stylesheet" href="{% static 'users/css/login.css' %}">
+{% endblock %}
+
+{# Hide the global nav/footer chrome — auth pages are full-bleed #}
+{% block site_chrome %}{% endblock %}
+
+{# Replace the .center-container wrapper with our own layout #}
+{% block content_wrap %}
+
+    <!-- ============== BRAND ============== -->
+    <a href="{% url 'login' %}" class="brandmark" aria-label="ArtKhoj home">
+        <img src="{% static 'users/images/artkhojlogo.png' %}" alt="ArtKhoj" class="brandmark-img">
+        {# If you'd rather use the CSS dot from the prototype, swap the <img> for:
+           <span class="dot">a</span><span class="wordmark">artkhoj</span>
+        #}
+    </a>
+
+    <!-- ============== PAGE ============== -->
+    <div class="page">
+
+        <!-- ===== FORM SIDE ===== -->
+        <section class="form-side">
+            <div class="form-wrap">
+
+                <div class="center-tag">
+                    <span class="eyebrow"><span class="pulse"></span> Welcome back, performer</span>
+                </div>
+
+                <h1 class="heading">
+                    The stage is <span class="accent">yours.</span>
+                </h1>
+                <p class="sub">Log in to find your next gig, and put your craft on the map.</p>
+
+                <form method="POST" autocomplete="on" novalidate>
+                    {% csrf_token %}
+
+                    {% if form.non_field_errors %}
+                        <div class="form-banner-error">
+                            {{ form.non_field_errors.0 }}
+                        </div>
+                    {% endif %}
+
+                    <div class="field">
+                        <label for="id_username">Username</label>
+                        <div class="input-wrap">
+                            <input id="id_username" name="username" type="text"
+                                   value="{{ form.username.value|default:'' }}"
+                                   placeholder="ravi.tabla" required autofocus>
+                        </div>
+                        {% if form.username.errors %}
+                            <div class="field-error">{{ form.username.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="field">
+                        <label for="id_password">Password</label>
+                        <div class="input-wrap">
+                            <input id="id_password" name="password" type="password"
+                                   placeholder="••••••••" required>
+                            <button type="button" class="toggle-pw" data-toggle-pw>Show</button>
+                        </div>
+                        {% if form.password.errors %}
+                            <div class="field-error">{{ form.password.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                    <button type="submit" class="btn-chunky">
+                        Take the stage
+                        <span class="arrow">→</span>
+                    </button>
+                </form>
+
+                <div class="or-divider">or continue with</div>
+
+                <div class="oauth-row">
+                    <a href="{% provider_login_url 'google' %}" class="oauth-chip" data-p="google" aria-label="Continue with Google">
+                        <svg viewBox="0 0 18 18" aria-hidden="true">
+                            <path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84c-.21 1.12-.84 2.07-1.79 2.71v2.26h2.9c1.7-1.56 2.69-3.87 2.69-6.61z"/>
+                            <path fill="#34A853" d="M9 18c2.43 0 4.47-.81 5.96-2.19l-2.9-2.26c-.81.54-1.83.86-3.06.86-2.35 0-4.34-1.59-5.05-3.72H.96v2.33A9 9 0 0 0 9 18z"/>
+                            <path fill="#FBBC05" d="M3.95 10.69A5.4 5.4 0 0 1 3.66 9c0-.59.1-1.16.29-1.69V4.98H.96A9 9 0 0 0 0 9c0 1.45.35 2.83.96 4.02l2.99-2.33z"/>
+                            <path fill="#EA4335" d="M9 3.58c1.32 0 2.51.45 3.44 1.35l2.58-2.58A9 9 0 0 0 9 0 9 9 0 0 0 .96 4.98l2.99 2.33C4.66 5.17 6.65 3.58 9 3.58z"/>
+                        </svg>
+                        Google
+                    </a>
+                    <a href="{% provider_login_url 'twitter_oauth2' %}" class="oauth-chip" data-p="twitter" aria-label="Continue with Twitter">
+                        <svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor">
+                            <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                        </svg>
+                        Twitter
+                    </a>
+                    <a href="{% provider_login_url 'linkedin_oauth2' %}" class="oauth-chip" data-p="linkedin" aria-label="Continue with LinkedIn">
+                        <svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor">
+                            <path d="M20.45 20.45h-3.55v-5.57c0-1.33-.03-3.04-1.85-3.04-1.85 0-2.14 1.45-2.14 2.94v5.67H9.36V9h3.41v1.56h.05c.48-.9 1.64-1.85 3.38-1.85 3.61 0 4.27 2.38 4.27 5.47v6.27zM5.34 7.43a2.06 2.06 0 1 1 0-4.13 2.06 2.06 0 0 1 0 4.13zM7.12 20.45H3.56V9h3.56v11.45z"/>
+                        </svg>
+                        LinkedIn
+                    </a>
+                </div>
+
+                <p class="bottom-line">
+                    New to ArtKhoj? <a href="{% url 'signup' %}">Create your stage →</a>
+                </p>
+
+            </div>
+        </section>
+
+        <!-- ===== STAGE SIDE ===== -->
+        <aside class="stage-side">
+            <div class="stage-inner">
+
+                <div class="stage-top">
+                    <span class="live-dot"></span>
+                    <span><strong>2,418</strong> gigs live this week</span>
+                </div>
+
+                <div>
+                    <h2 class="stage-headline">
+                        Where artists <span class="italic">find</span><br>
+                        their <span class="underline">crowd</span>.
+                    </h2>
+                    <p class="stage-sub">
+                        ArtKhoj is the home for performing artists in Bangalore — drummers, dancers, magicians, illusionists, every craft that lives on a stage.
+                    </p>
+                </div>
+
+                <div class="chip-stack" aria-hidden="true">
+                    <span class="chip"><span class="emoji-dot"></span>Tabla</span>
+                    <span class="chip"><span class="emoji-dot"></span>Bharatanatyam</span>
+                    <span class="chip"><span class="emoji-dot"></span>Stand-up</span>
+                    <span class="chip"><span class="emoji-dot"></span>Sound engineer</span>
+                    <span class="chip"><span class="emoji-dot"></span>Magician</span>
+                    <span class="chip"><span class="emoji-dot"></span>Sitar</span>
+                    <span class="chip"><span class="emoji-dot"></span>Beatboxer</span>
+                    <span class="chip"><span class="emoji-dot"></span>Poet</span>
+                </div>
+
+                <div class="testimonial">
+                    <div class="avatar">G</div>
+                    <div>
+                        <p>"Booked three weddings and a corporate gig in my first month. Felt like the audition queue finally came to <em>me</em>."</p>
+                        <span class="who">Gauri V. · Kathak performer, Bangalore</span>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Marquee at bottom of stage side -->
+            <div class="marquee" aria-hidden="true">
+                <div class="marquee-track">
+                    <span>
+                        <strong>Singers</strong><span class="star">★</span>
+                        <strong>Dancers</strong><span class="star">★</span>
+                        <strong>Drummers</strong><span class="star">★</span>
+                        <strong>Magicians</strong><span class="star">★</span>
+                        <strong>Comics</strong><span class="star">★</span>
+                        <strong>Sound engineers</strong><span class="star">★</span>
+                        <strong>Lighting designers</strong><span class="star">★</span>
+                    </span>
+                    <span>
+                        <strong>Singers</strong><span class="star">★</span>
+                        <strong>Dancers</strong><span class="star">★</span>
+                        <strong>Drummers</strong><span class="star">★</span>
+                        <strong>Magicians</strong><span class="star">★</span>
+                        <strong>Comics</strong><span class="star">★</span>
+                        <strong>Sound engineers</strong><span class="star">★</span>
+                        <strong>Lighting designers</strong><span class="star">★</span>
+                    </span>
+                </div>
+            </div>
+        </aside>
+
     </div>
-
-    <div class="login-form">
-        <h2>Login into ArtKhoj</h2>
-        <form method="POST">
-            {% csrf_token %}
-            {{ form.as_p }}
-            <button type="submit" class="styled-button">Login</button>
-        </form>
-
-        
-        <div style="margin-top: 16px; display: flex; gap: 8px; flex-wrap: wrap;">
-          <a href="{% provider_login_url 'google' %}" class="btn" style="flex:1; text-align:center; background:#4285F4; color:#fff; padding:10px; border-radius:6px; text-decoration:none; font-weight:600;">Google</a>
-          <a href="{% provider_login_url 'twitter_oauth2' %}" class="btn" style="flex:1; text-align:center; background:#1DA1F2; color:#fff; padding:10px; border-radius:6px; text-decoration:none; font-weight:600;">Twitter</a>
-          <a href="{% provider_login_url 'linkedin_oauth2' %}" class="btn" style="flex:1; text-align:center; background:#0077B5; color:#fff; padding:10px; border-radius:6px; text-decoration:none; font-weight:600;">LinkedIn</a>
-        </div>
-
-        <p>Don't have an account? <a href="{% url 'signup' %}">Sign up here</a>.</p>
-    </div>
-</div>
-
-<!-- JavaScript for Slideshow -->
-<script src="{% static 'users/scripts/slideshow.js' %}"></script>
 
 {% endblock %}
 
+{% block extra_js %}
+<script>
+    // Password show/hide toggle
+    document.querySelectorAll('[data-toggle-pw]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            var input = btn.closest('.input-wrap').querySelector('input');
+            var isHidden = input.type === 'password';
+            input.type = isHidden ? 'text' : 'password';
+            btn.textContent = isHidden ? 'Hide' : 'Show';
+        });
+    });
+</script>
+{% endblock %}

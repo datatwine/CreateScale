@@ -3,39 +3,50 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Your Project Title{% endblock %}</title>
-    
-    <!-- Load static files -->
+    <title>{% block title %}ArtKhoj{% endblock %}</title>
+
     {% load static %}
-    
-    <!-- Link to your CSS file -->
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Global stylesheet (existing) -->
     <link rel="stylesheet" href="{% static 'users/styles.css' %}">
+
+    <!-- Per-page stylesheets injected here -->
+    {% block extra_css %}{% endblock %}
 </head>
 <body>
-    
+
     <main>
-        <!-- Centralized wrapper class for content -->
-        <div class="center-container">
-            {% block content %}
-            {% endblock %}
-        </div>
+        {% block content_wrap %}
+            <div class="center-container">
+                {% block content %}{% endblock %}
+            </div>
+        {% endblock %}
     </main>
 
-    <header>
-        <h1 style="text-align:center">Navigation</h1>
-        <nav>
-            <ul class="nav-links">
-                <li><a href="{% url 'signup' %}">Sign Up</a></li>
-                <li><a href="{% url 'login' %}">Log In</a></li>
-                <li><a href="{% url 'global-feed' %}">Global Feed</a></li>
-                <li><a href="{% url 'profile' %}">Profile</a></li>
-                <li><a href="{% url 'live-events' %}">Live Events</a></li>
-            </ul>
-        </nav>
-    </header>
+    {% block site_chrome %}
+        <header>
+            <h1 style="text-align:center">Navigation</h1>
+            <nav>
+                <ul class="nav-links">
+                    <li><a href="{% url 'signup' %}">Sign Up</a></li>
+                    <li><a href="{% url 'login' %}">Log In</a></li>
+                    <li><a href="{% url 'global-feed' %}">Global Feed</a></li>
+                    <li><a href="{% url 'profile' %}">Profile</a></li>
+                    <li><a href="{% url 'live-events' %}">Live Events</a></li>
+                </ul>
+            </nav>
+        </header>
 
-    <footer style="text-align:center">
-        <p>&copy; 2024 ArtKhoj</p>
-    </footer>
+        <footer style="text-align:center">
+            <p>&copy; 2024 ArtKhoj</p>
+        </footer>
+    {% endblock %}
+
+    {% block extra_js %}{% endblock %}
 </body>
 </html>
