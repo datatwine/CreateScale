@@ -80,7 +80,7 @@ class ProfessionFilterForm(forms.Form):
     def __init__(self, *args, **kwargs):
         super(ProfessionFilterForm, self).__init__(*args, **kwargs)
         # Dynamically generate profession choices from all profiles
-        all_professions = Profile.objects.values_list('profession', flat=True).distinct()
+        all_professions = Profile.objects.values_list('profession', flat=True).distinct().order_by('profession')
         self.fields['professions'].choices = [(prof, prof) for prof in all_professions if prof]
 
 
