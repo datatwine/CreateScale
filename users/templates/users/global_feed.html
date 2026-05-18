@@ -40,23 +40,33 @@
             </div>
         </div>
 
-        <!-- Filter pill bar — one pill per profession, front-end styled, backend-compatible -->
-        <div class="filter-bar" role="navigation" aria-label="Filter by profession">
+        <!-- Filter pill bar — expandable pill cloud -->
+        <div class="filter-bar-wrap">
+            <div class="filter-bar {% if selected_profession %}expanded{% endif %}"
+                 id="filterBar" role="navigation" aria-label="Filter by profession">
 
-            {# "All" pill clears the filter #}
-            <a href="{% url 'global-feed' %}"
-               class="filter-pill {% if not selected_profession %}active{% endif %}">
-                All artists
-            </a>
-
-            {% for value, label in profession_filter_form.fields.professions.choices %}
-                <a href="{% url 'global-feed' %}?professions={{ value|urlencode }}"
-                   class="filter-pill {% if value == selected_profession %}active{% endif %}"
-                   data-profession="{{ value }}">
-                    <span class="pill-emoji" data-map="{{ value }}"></span>{{ label }}
+                {# "All" pill clears the filter #}
+                <a href="{% url 'global-feed' %}"
+                   class="filter-pill {% if not selected_profession %}active{% endif %}">
+                    All artists
                 </a>
-            {% endfor %}
 
+                {% for value, label in profession_filter_form.fields.professions.choices %}
+                    <a href="{% url 'global-feed' %}?professions={{ value|urlencode }}"
+                       class="filter-pill {% if value == selected_profession %}active{% endif %}"
+                       data-profession="{{ value }}">
+                        <span class="pill-emoji" data-map="{{ value }}"></span>{{ label }}
+                    </a>
+                {% endfor %}
+
+            </div>
+            <button class="filter-toggle {% if selected_profession %}expanded{% endif %}"
+                    id="filterToggle" type="button"
+                    aria-expanded="{% if selected_profession %}true{% else %}false{% endif %}"
+                    hidden>
+                <span class="toggle-label"></span>
+                <span class="toggle-arrow">&#9660;</span>
+            </button>
         </div>
 
         <!-- Profile grid -->
@@ -164,5 +174,34 @@ document.querySelectorAll('.performer-card[data-profession]').forEach(function(c
 document.querySelectorAll('.pill-emoji[data-map]').forEach(function(span) {
     span.textContent = getEmoji(span.dataset.map) + ' ';
 });
+
+// ---- Expandable filter pill cloud ----
+(function() {
+    var bar = document.getElementById('filterBar');
+    var btn = document.getElementById('filterToggle');
+    if (!bar || !btn) return;
+
+    var pills = bar.querySelectorAll('.filter-pill');
+    if (pills.length < 2) return;
+
+    var firstTop = pills[0].offsetTop;
+    var hiddenCount = 0;
+    pills.forEach(function(p) { if (p.offsetTop > firstTop + 5) hiddenCount++; });
+    if (hiddenCount === 0) return;
+
+    var label = btn.querySelector('.toggle-label');
+    var isExpanded = bar.classList.contains('expanded');
+
+    btn.removeAttribute('hidden');
+    label.textContent = isExpanded ? 'Less' : '+' + hiddenCount + ' more';
+
+    btn.addEventListener('click', function() {
+        isExpanded = !isExpanded;
+        bar.classList.toggle('expanded', isExpanded);
+        btn.classList.toggle('expanded', isExpanded);
+        btn.setAttribute('aria-expanded', isExpanded);
+        label.textContent = isExpanded ? 'Less' : '+' + hiddenCount + ' more';
+    });
+})();
 </script>
 {% endblock %}
