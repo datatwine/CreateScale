@@ -1,0 +1,93 @@
+/* ArtKhoj — Shared Bottom Nav */
+
+:root {
+  --ink: #1F1A17;
+  --ink-mute: #8C8077;
+  --paper: #FFF8EE;
+  --card: #FFFFFF;
+  --orange: #e68a00;
+  --grey-line: #E9E2D8;
+  --grey-soft: #F2EDE5;
+  --nav-h: 64px;
+}
+
+/* ==================== BOTTOM NAV ==================== */
+.bottom-nav {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  z-index: 50;
+  height: var(--nav-h);
+  background: var(--card);
+  border-top: 1.5px solid var(--grey-line);
+  display: flex;
+  align-items: stretch;
+}
+.nav-items {
+  display: flex;
+  flex: 1;
+  align-items: stretch;
+  max-width: 600px;
+  margin: 0 auto;
+}
+.nav-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  text-decoration: none;
+  color: var(--ink-mute);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font-family: inherit;
+  padding: 0;
+  position: relative;
+  transition: color 0.15s;
+}
+.nav-item svg {
+  width: 22px; height: 22px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: stroke 0.15s;
+}
+.nav-item:hover,
+.nav-item.active {
+  color: var(--orange);
+}
+.nav-item.active::after {
+  content: "";
+  position: absolute;
+  top: 0; left: 20%; right: 20%;
+  height: 2.5px;
+  background: var(--orange);
+  border-radius: 0 0 4px 4px;
+}
+/* Inbox badge */
+.nav-badge {
+  position: absolute;
+  top: 8px;
+  right: calc(50% - 18px);
+  background: #E63946;
+  color: white;
+  font-size: 10px;
+  font-weight: 700;
+  min-width: 16px;
+  height: 16px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  border: 2px solid var(--card);
+}
+
+/* Hidden logout form — submit button is the nav item */
+.nav-logout-form { flex: 1; display: contents; }
