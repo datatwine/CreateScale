@@ -2,72 +2,167 @@
 {% load static %}
 {% load cache %}
 
+{% block title %}ArtKhoj Feed{% endblock %}
 
-{% block content %}
+{% block extra_css %}
+    <link rel="stylesheet" href="{% static 'users/css/feed.css' %}">
+{% endblock %}
 
-<div class="global-feed-container">
+{% block content_wrap %}
 
-<h1>Global Feed</h1>
-
-<!-- Filter Form -->
-<div class="filter-container">
-<form method="get" action="{% url 'global-feed' %}">
-    <div class="dropdown-filter">
-    <label for="id_professions">Filter by Profession:</label>
-    <select name="professions" id="id_professions">
-        <option value="">-- All --</option>
-        {% for value, label in profession_filter_form.fields.professions.choices %}
-            <option value="{{ value }}" {% if value in profession_filter_form.cleaned_data.professions %}selected{% endif %}>
-                {{ label }}
-            </option>
-        {% endfor %}
-    </select>
-</div>
-    <button type="submit">Apply Filter</button>
-</form>
-</div>
-
-<!-- Display Filtered Profiles -->
-{% for profile in profiles %}
-{% cache 300 profile_card profile.user.id %}
-<div class="profile-header-global">
-    <div class="profile-picture-container">
-        <a href="{% url 'profile-detail' profile.user.id %}" class="profile-link">
-        {% if profile.profile_picture %}
-        <img src="{{ profile.profile_picture.url }}" alt="{{ profile.user.username }}'s profile picture" />
-        {% else %}
-        <img src="{% static 'users/images/default-avatar.png' %}" alt="{{ profile.user.username }}'s profile picture" />
-        {% endif %}
-            <p><strong>{{ profile.user.username }}</strong></p>
-            <p>{{ profile.profession }}</p>
+    <!-- ====== TOPBAR ====== -->
+    <header class="topbar">
+        <a href="{% url 'global-feed' %}" class="brandmark" aria-label="ArtKhoj home">
+            <img src="{% static 'users/images/artkhojlogo.png' %}" alt="ArtKhoj" class="brandmark-img">
         </a>
+    </header>
 
-    </div>
-</div>
-{% endcache %}
-{% empty %}
-<p>No users found for the selected profession.</p>
-{% endfor %}
-
-    <!-- Pagination controls -->
-    {% if profiles.paginator.num_pages > 1 %}
-        <div class="pagination">
-            {% if profiles.has_previous %}
-                <a href="?page={{ profiles.previous_page_number }}{% if selected_profession %}&professions={{ selected_profession }}{% endif %}">
-                    Previous
-                </a>
-            {% endif %}
-
-            <span>Page {{ profiles.number }} of {{ profiles.paginator.num_pages }}</span>
-
-            {% if profiles.has_next %}
-                <a href="?page={{ profiles.next_page_number }}{% if selected_profession %}&professions={{ selected_profession }}{% endif %}">
-                    Next
-                </a>
-            {% endif %}
+    {% if messages %}
+        <div class="django-messages">
+            {% for message in messages %}
+                <div class="django-message django-message-{{ message.tags }}">{{ message }}</div>
+            {% endfor %}
         </div>
     {% endif %}
 
-</div>
+    <!-- ====== PAGE ====== -->
+    <div class="feed-page">
 
+        <!-- Header -->
+        <div class="feed-header">
+            <div class="feed-title-wrap">
+                <h1 class="feed-title">ArtKhoj <span class="accent">Feed</span></h1>
+                <p class="feed-sub">Discover performing artists in Bangalore</p>
+            </div>
+            <div class="live-count">
+                <span class="live-dot"></span>
+                <span>{{ profiles.paginator.count }} artist{{ profiles.paginator.count|pluralize }} on stage</span>
+            </div>
+        </div>
+
+        <!-- Filter pill bar — one pill per profession, front-end styled, backend-compatible -->
+        <div class="filter-bar" role="navigation" aria-label="Filter by profession">
+
+            {# "All" pill clears the filter #}
+            <a href="{% url 'global-feed' %}"
+               class="filter-pill {% if not selected_profession %}active{% endif %}">
+                All artists
+            </a>
+
+            {% for value, label in profession_filter_form.fields.professions.choices %}
+                <a href="{% url 'global-feed' %}?professions={{ value|urlencode }}"
+                   class="filter-pill {% if value == selected_profession %}active{% endif %}"
+                   data-profession="{{ value }}">
+                    <span class="pill-emoji" data-map="{{ value }}"></span>{{ label }}
+                </a>
+            {% endfor %}
+
+        </div>
+
+        <!-- Profile grid -->
+        <div class="profiles-grid">
+            {% for profile in profiles %}
+                {% cache 300 profile_card profile.user.id %}
+                <a href="{% url 'profile-detail' profile.user.id %}"
+                   class="performer-card"
+                   data-profession="{{ profile.profession }}">
+
+                    <span class="prof-emoji-badge" aria-hidden="true"></span>
+
+                    {% if profile.profile_picture %}
+                        <img class="card-avatar"
+                             src="{{ profile.profile_picture.url }}"
+                             alt="{{ profile.user.username }}"
+                             loading="lazy">
+                    {% else %}
+                        <img class="card-avatar"
+                             src="{% static 'users/images/default-avatar.png' %}"
+                             alt="{{ profile.user.username }}"
+                             loading="lazy">
+                    {% endif %}
+
+                    <div class="card-name">{{ profile.user.username }}</div>
+
+                    <span class="card-profession">
+                        <span class="dot"></span>{{ profile.profession }}
+                    </span>
+
+                </a>
+                {% endcache %}
+            {% empty %}
+                <div class="feed-empty">
+                    <strong>No artists found</strong>
+                    Try a different filter or check back soon.
+                </div>
+            {% endfor %}
+        </div>
+
+        <!-- Pagination -->
+        {% if profiles.paginator.num_pages > 1 %}
+            <div class="pagination-row">
+                {% if profiles.has_previous %}
+                    <a href="?page={{ profiles.previous_page_number }}{% if selected_profession %}&professions={{ selected_profession }}{% endif %}"
+                       class="page-btn">&larr; Previous</a>
+                {% endif %}
+
+                <span class="page-info">
+                    Page {{ profiles.number }} of {{ profiles.paginator.num_pages }}
+                </span>
+
+                {% if profiles.has_next %}
+                    <a href="?page={{ profiles.next_page_number }}{% if selected_profession %}&professions={{ selected_profession }}{% endif %}"
+                       class="page-btn">Next &rarr;</a>
+                {% endif %}
+            </div>
+        {% endif %}
+
+    </div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Profession → Emoji mapping (front-end only, zero backend changes)
+var EMOJI_MAP = [
+    { keys: ['tabla','mridangam','dholak','percussion','drummer','drum'],        emoji: '🥁' },
+    { keys: ['singer','vocalist','voice','carnatic','classical vocal','ghazal'], emoji: '🎤' },
+    { keys: ['dancer','dance','bharatanatyam','kathak','contemporary',
+              'folk dance','kuchipudi','odissi','mohiniyattam'],                  emoji: '💃' },
+    { keys: ['comedian','comic','stand-up','standup','improv','comedy'],         emoji: '😂' },
+    { keys: ['magician','magic','illusionist','conjurer'],                       emoji: '🪄' },
+    { keys: ['guitarist','guitar'],                                              emoji: '🎸' },
+    { keys: ['pianist','piano','keyboard','keyboardist'],                        emoji: '🎹' },
+    { keys: ['sitar','veena','violin','violinist','sarangi'],                    emoji: '🎻' },
+    { keys: ['flute','flautist','bansuri','wind'],                               emoji: '🎶' },
+    { keys: ['sound','audio','mix'],                                             emoji: '🔊' },
+    { keys: ['light','lighting'],                                                emoji: '💡' },
+    { keys: ['poet','poetry','spoken word','slam','writer'],                     emoji: '✍️' },
+    { keys: ['beatbox'],                                                         emoji: '🎤' },
+    { keys: ['actor','theatre','theater','drama'],                               emoji: '🎭' },
+    { keys: ['musician','music'],                                                emoji: '🎵' },
+];
+
+function getEmoji(profession) {
+    if (!profession) return '🎭';
+    var lower = profession.toLowerCase();
+    for (var i = 0; i < EMOJI_MAP.length; i++) {
+        var entry = EMOJI_MAP[i];
+        for (var j = 0; j < entry.keys.length; j++) {
+            if (lower.indexOf(entry.keys[j]) !== -1) return entry.emoji;
+        }
+    }
+    return '🎭';
+}
+
+// Inject emoji into every card badge
+document.querySelectorAll('.performer-card[data-profession]').forEach(function(card) {
+    var badge = card.querySelector('.prof-emoji-badge');
+    if (badge) badge.textContent = getEmoji(card.dataset.profession);
+});
+
+// Inject emoji into filter pill spans
+document.querySelectorAll('.pill-emoji[data-map]').forEach(function(span) {
+    span.textContent = getEmoji(span.dataset.map) + ' ';
+});
+</script>
 {% endblock %}

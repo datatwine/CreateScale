@@ -1,0 +1,338 @@
+/* ArtKhoj — Global Feed */
+
+:root {
+  --ink: #1F1A17;
+  --ink-soft: #5A4F47;
+  --ink-mute: #8C8077;
+  --paper: #FFF8EE;
+  --card: #FFFFFF;
+  --cream: #FFF1E0;
+  --peach: #FFD9B0;
+  --orange: #e68a00;
+  --orange-deep: #b56b00;
+  --grey-line: #E9E2D8;
+  --grey-soft: #F2EDE5;
+
+  --shadow-stamp: 4px 4px 0 var(--ink);
+  --radius-pill: 999px;
+  --radius-chunky: 18px;
+  --radius-card: 16px;
+  --nav-h: 64px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: "Outfit", system-ui, sans-serif;
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: inherit; text-decoration: none; }
+
+/* ==================== TOPBAR ==================== */
+.topbar {
+  position: sticky; top: 0; z-index: 40;
+  display: flex; align-items: center;
+  justify-content: space-between;
+  padding: 0 32px; height: 58px;
+  background: rgba(255,248,238,0.92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1.5px solid var(--grey-line);
+}
+.brandmark {
+  display: flex; align-items: center; gap: 10px;
+  text-decoration: none;
+}
+.brandmark .dot {
+  width: 32px; height: 32px;
+  background: var(--ink); border-radius: 50%;
+  display: grid; place-items: center;
+  color: var(--orange);
+  font-family: "Bricolage Grotesque", sans-serif;
+  font-weight: 800; font-size: 16px;
+}
+.brandmark .wordmark {
+  font-family: "Bricolage Grotesque", sans-serif;
+  font-weight: 700; font-size: 18px;
+  letter-spacing: -0.02em;
+}
+.brandmark-img { height: 36px; width: auto; display: block; }
+
+/* ==================== PAGE ==================== */
+.feed-page {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 36px 24px 24px;
+}
+
+/* ==================== HEADER ==================== */
+.feed-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 28px;
+}
+.feed-title-wrap {}
+.feed-title {
+  font-family: "Bricolage Grotesque", sans-serif;
+  font-weight: 700;
+  font-size: clamp(28px, 4vw, 40px);
+  letter-spacing: -0.03em;
+  line-height: 1;
+  margin-bottom: 6px;
+}
+.feed-title .accent { color: var(--orange); }
+.feed-sub {
+  font-size: 14px;
+  color: var(--ink-mute);
+  font-weight: 500;
+}
+
+/* Live count badge */
+.live-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--ink);
+  color: var(--paper);
+  font-family: "Bricolage Grotesque", sans-serif;
+  font-weight: 700;
+  font-size: 14px;
+  padding: 10px 18px;
+  border-radius: var(--radius-pill);
+  letter-spacing: -0.01em;
+  flex-shrink: 0;
+}
+.live-count .live-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--orange);
+  box-shadow: 0 0 0 0 rgba(230,138,0,0.6);
+  animation: pulse 1.8s ease-out infinite;
+}
+@keyframes pulse {
+  0%   { box-shadow: 0 0 0 0   rgba(230,138,0,0.55); }
+  100% { box-shadow: 0 0 0 9px rgba(230,138,0,0); }
+}
+
+/* ==================== FILTER BAR ==================== */
+.filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 4px;
+  margin-bottom: 32px;
+}
+
+.filter-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  padding: 8px 16px;
+  font-family: "Outfit", sans-serif;
+  font-weight: 600;
+  font-size: 13.5px;
+  color: var(--ink-soft);
+  background: var(--card);
+  border: 1.5px solid var(--grey-line);
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  text-decoration: none;
+  transition: border-color 0.15s, background 0.15s, color 0.15s,
+              transform 0.12s, box-shadow 0.12s;
+}
+.filter-pill:hover {
+  border-color: var(--ink);
+  background: var(--cream);
+  color: var(--ink);
+}
+.filter-pill.active {
+  background: var(--orange);
+  border: 2px solid var(--ink);
+  color: var(--ink);
+  box-shadow: 3px 3px 0 var(--ink);
+  transform: translate(-1px,-1px);
+  font-weight: 700;
+}
+.filter-pill .pill-emoji { font-size: 14px; line-height: 1; }
+
+/* ==================== GRID ==================== */
+.profiles-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 18px;
+  margin-bottom: 36px;
+}
+
+/* ---- Performer card ---- */
+.performer-card {
+  background: var(--card);
+  border: 2px solid var(--orange);
+  border-radius: var(--radius-card);
+  box-shadow: 4px 4px 0 var(--ink);
+  padding: 20px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  position: relative;
+  text-decoration: none;
+  color: var(--ink);
+  cursor: pointer;
+  transition: transform 0.2s cubic-bezier(0.23,1,0.32,1),
+              box-shadow 0.2s cubic-bezier(0.23,1,0.32,1);
+}
+
+/* Tilt pattern — business-card-scattered feel */
+.performer-card:nth-child(4n+1) { transform: rotate(-1.2deg); }
+.performer-card:nth-child(4n+2) { transform: rotate(0.8deg); }
+.performer-card:nth-child(4n+3) { transform: rotate(1.4deg); }
+.performer-card:nth-child(4n+4) { transform: rotate(-0.6deg); }
+
+.performer-card:hover {
+  transform: rotate(0) translate(-3px,-3px) !important;
+  box-shadow: 7px 7px 0 var(--ink);
+  background: var(--cream);
+}
+.performer-card:active {
+  transform: rotate(0) translate(2px,2px) !important;
+  box-shadow: 0 0 0 var(--ink);
+}
+
+/* Profession emoji badge */
+.prof-emoji-badge {
+  position: absolute;
+  top: 10px; right: 10px;
+  font-size: 18px;
+  line-height: 1;
+  background: var(--cream);
+  border: 1.5px solid var(--peach);
+  border-radius: 10px;
+  padding: 3px 6px;
+}
+
+/* Avatar */
+.card-avatar {
+  width: 72px; height: 72px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2.5px solid var(--orange);
+  margin-bottom: 12px;
+  display: block;
+}
+
+/* Name */
+.card-name {
+  font-family: "Bricolage Grotesque", sans-serif;
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: -0.015em;
+  margin-bottom: 6px;
+  word-break: break-word;
+}
+
+/* Profession tag */
+.card-profession {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--orange-deep);
+  background: var(--cream);
+  border: 1px solid var(--peach);
+  border-radius: var(--radius-pill);
+  padding: 3px 10px;
+}
+.card-profession .dot {
+  width: 5px; height: 5px; border-radius: 50%;
+  background: var(--orange); flex-shrink: 0;
+}
+
+/* Empty state */
+.feed-empty {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 64px 0;
+  color: var(--ink-mute);
+}
+.feed-empty strong {
+  display: block;
+  font-family: "Bricolage Grotesque", sans-serif;
+  font-size: 22px;
+  color: var(--ink-soft);
+  margin-bottom: 8px;
+}
+
+/* ==================== PAGINATION ==================== */
+.pagination-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 8px;
+}
+.page-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--card);
+  color: var(--ink);
+  font-family: "Bricolage Grotesque", sans-serif;
+  font-weight: 700;
+  font-size: 14px;
+  padding: 12px 22px;
+  border: 2px solid var(--ink);
+  border-radius: var(--radius-chunky);
+  box-shadow: 3px 3px 0 var(--ink);
+  cursor: pointer;
+  text-decoration: none;
+  transition: transform 0.12s, box-shadow 0.12s, background 0.12s;
+}
+.page-btn:hover {
+  transform: translate(-2px,-2px);
+  box-shadow: 5px 5px 0 var(--ink);
+  background: var(--cream);
+}
+.page-btn:active {
+  transform: translate(2px,2px);
+  box-shadow: 0 0 0 var(--ink);
+}
+.page-info {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-mute);
+  padding: 0 4px;
+}
+
+/* ==================== DJANGO MESSAGES ==================== */
+.django-messages {
+  max-width: 1100px;
+  margin: 12px auto 0;
+  padding: 0 24px;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.django-message {
+  padding: 12px 16px; border-radius: 12px;
+  font-size: 14px; font-weight: 500; line-height: 1.4;
+}
+.django-message-success { background:#EDFBEE; border:1.5px solid #a8e6b0; color:#1a7f2e; }
+.django-message-error   { background:#FFE6E0; border:1.5px solid #C5530B; color:#8f3400; }
+
+/* ==================== RESPONSIVE ==================== */
+@media (max-width: 600px) {
+  .topbar { padding: 0 16px; }
+  .feed-page { padding: 24px 14px; }
+  .profiles-grid { gap: 12px; }
+  .performer-card { padding: 16px 12px 12px; }
+  .card-avatar { width: 60px; height: 60px; }
+  .card-name { font-size: 13.5px; }
+}
