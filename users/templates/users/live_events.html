@@ -1,42 +1,254 @@
 {% extends 'users/base.html' %}
+{% load static %}
 {% load cache %}
 
-{% block content %}
-<div class="center-container">
-    <h2>Upcoming live events</h2>
+{% block title %}Live Events · ArtKhoj{% endblock %}
 
-    {% if events %}
-        <ul class="events-list">
-            {% for e in events %}
-            {% cache 120 event_item e.id %}
-                <li style="margin-bottom: 0.75rem;">
-                    <strong>{{ e.date }} {{ e.time }}</strong>
-                    — {{ e.occasion }} at {{ e.venue }}<br>
-                    Performer: {{ e.performer.username }} |
-                    Client: {{ e.client.username }}
-                </li>
-            {% endcache %}
+{% block extra_css %}
+    <link rel="stylesheet" href="{% static 'users/css/live_events.css' %}">
+{% endblock %}
+
+{% block content_wrap %}
+
+    <!-- ====== TOPBAR ====== -->
+    <header class="topbar">
+        <a href="{% url 'global-feed' %}" class="brandmark" aria-label="ArtKhoj home">
+            <img src="{% static 'users/images/artkhojlogo.png' %}" alt="ArtKhoj" class="brandmark-img">
+        </a>
+    </header>
+
+    {% if messages %}
+        <div class="django-messages">
+            {% for message in messages %}
+                <div class="django-message django-message-{{ message.tags }}">{{ message }}</div>
             {% endfor %}
-        </ul>
-
-        {% if page_obj and page_obj.paginator.num_pages > 1 %}
-            <div class="pagination" style="margin-top: 1rem; text-align: center;">
-                {% if page_obj.has_previous %}
-                    <a href="?page={{ page_obj.previous_page_number }}">Previous</a>
-                {% endif %}
-
-                <span style="margin: 0 0.5rem;">
-                    Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
-                </span>
-
-                {% if page_obj.has_next %}
-                    <a href="?page={{ page_obj.next_page_number }}">Next</a>
-                {% endif %}
-            </div>
-        {% endif %}
-    {% else %}
-        <p>No upcoming events yet.</p>
+        </div>
     {% endif %}
 
-</div>
+    <!-- ====== HERO BAND ====== -->
+    <div class="hero-band">
+        <div class="hero-band-inner">
+
+            <span class="live-badge">
+                <span class="live-dot"></span>
+                LIVE EVENTS
+            </span>
+
+            <h1 class="hero-title">
+                Stages <span class="accent">on fire</span><br>
+                across Bangalore
+            </h1>
+
+            {# Countdown — JS reads data-datetime from the first card #}
+            <div>
+                <div class="countdown-label-outer">Next event in</div>
+                <div class="countdown-wrap">
+                    <div class="countdown-unit">
+                        <div class="countdown-num" id="cd-days">--</div>
+                        <div class="countdown-label">Days</div>
+                    </div>
+                    <div class="countdown-sep">:</div>
+                    <div class="countdown-unit">
+                        <div class="countdown-num" id="cd-hours">--</div>
+                        <div class="countdown-label">Hrs</div>
+                    </div>
+                    <div class="countdown-sep">:</div>
+                    <div class="countdown-unit">
+                        <div class="countdown-num" id="cd-mins">--</div>
+                        <div class="countdown-label">Min</div>
+                    </div>
+                    <div class="countdown-sep">:</div>
+                    <div class="countdown-unit">
+                        <div class="countdown-num" id="cd-secs">--</div>
+                        <div class="countdown-label">Sec</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="hero-stats">
+                <span class="hero-stat-pill">
+                    <span class="pill-accent">{{ page_obj.paginator.count }}</span>
+                    event{{ page_obj.paginator.count|pluralize }} on stage
+                </span>
+                <span class="hero-stat-pill">🎭 Bangalore</span>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- ====== PAGE BODY ====== -->
+    <div class="events-page">
+
+        <!-- Toggle: upcoming / past -->
+        <div class="view-toggle">
+            <button class="toggle-btn active" id="btn-upcoming"
+                    onclick="showView('upcoming')">Upcoming</button>
+            <button class="toggle-btn" id="btn-past"
+                    onclick="showView('past')">Past events</button>
+        </div>
+
+        <!-- ===== UPCOMING EVENTS ===== -->
+        <div id="view-upcoming">
+            <div class="section-eyebrow">Upcoming performances</div>
+
+            {% if events %}
+                <ul class="events-list">
+                    {% for e in events %}
+                        {% cache 120 event_card_detail e.id %}
+                        <li class="event-card"
+                            data-datetime="{{ e.date|date:'Y-m-d' }}T{{ e.time|time:'H:i:s' }}">
+
+                            <div class="ticket-header">
+                                <div class="ticket-occasion">{{ e.occasion }}</div>
+                                <span class="today-badge">TODAY</span>
+                            </div>
+
+                            <div class="ticket-body">
+                                <div class="ticket-datetime">
+                                    <div class="ticket-day">{{ e.date|date:"d" }}</div>
+                                    <div class="ticket-month-time">
+                                        <div class="ticket-month">{{ e.date|date:"M Y" }}</div>
+                                        <div class="ticket-time">{{ e.time|time:"g:i A" }}</div>
+                                    </div>
+                                </div>
+                                <hr class="ticket-perf" />
+                                <div class="event-venue">
+                                    <span class="venue-pin">📍</span>{{ e.venue }}
+                                </div>
+                                <div class="event-meta">
+                                    <span class="meta-chip">
+                                        <span class="chip-dot"></span>{{ e.performer.username }}
+                                    </span>
+                                    {% if e.performer.profile.profession %}
+                                        <span class="meta-chip">
+                                            <span class="chip-dot"></span>{{ e.performer.profile.profession }}
+                                        </span>
+                                    {% endif %}
+                                </div>
+                                <div class="ticket-serial">AK-{{ e.date|date:"Y-md" }}-{{ e.id|stringformat:"03d" }}</div>
+                            </div>
+
+                        </li>
+                        {% endcache %}
+                    {% endfor %}
+                </ul>
+
+                {% if page_obj and page_obj.paginator.num_pages > 1 %}
+                    <div class="pagination-row">
+                        {% if page_obj.has_previous %}
+                            <a href="?page={{ page_obj.previous_page_number }}"
+                               class="page-btn">&larr; Previous</a>
+                        {% endif %}
+                        <span class="page-info">
+                            Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+                        </span>
+                        {% if page_obj.has_next %}
+                            <a href="?page={{ page_obj.next_page_number }}"
+                               class="page-btn">Next &rarr;</a>
+                        {% endif %}
+                    </div>
+                {% endif %}
+
+            {% else %}
+                <div class="events-empty">
+                    <span class="empty-emoji">🎭</span>
+                    <strong>No upcoming events yet</strong>
+                    <p>Accepted gigs will appear here. Check back soon.</p>
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- ===== PAST EVENTS ===== -->
+        <div id="view-past" style="display:none;">
+            <div class="section-eyebrow">Past performances</div>
+
+            {% if past_events %}
+                <ul class="events-list">
+                    {% for e in past_events %}
+                        <li class="event-card is-past"
+                            data-datetime="{{ e.date|date:'Y-m-d' }}T{{ e.time|time:'H:i:s' }}">
+
+                            <div class="ticket-header">
+                                <div class="ticket-occasion">{{ e.occasion }}</div>
+                            </div>
+
+                            <div class="ticket-body">
+                                <div class="ticket-datetime">
+                                    <div class="ticket-day">{{ e.date|date:"d" }}</div>
+                                    <div class="ticket-month-time">
+                                        <div class="ticket-month">{{ e.date|date:"M Y" }}</div>
+                                        <div class="ticket-time">{{ e.time|time:"g:i A" }}</div>
+                                    </div>
+                                </div>
+                                <hr class="ticket-perf" />
+                                <div class="event-venue">
+                                    <span class="venue-pin">📍</span>{{ e.venue }}
+                                </div>
+                                <div class="event-meta">
+                                    <span class="meta-chip">
+                                        <span class="chip-dot"></span>{{ e.performer.username }}
+                                    </span>
+                                    {% if e.performer.profile.profession %}
+                                        <span class="meta-chip">
+                                            <span class="chip-dot"></span>{{ e.performer.profile.profession }}
+                                        </span>
+                                    {% endif %}
+                                </div>
+                                <div class="ticket-serial">AK-{{ e.date|date:"Y-md" }}-{{ e.id|stringformat:"03d" }}</div>
+                            </div>
+
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <div class="events-empty">
+                    <span class="empty-emoji">🎟️</span>
+                    <strong>No past events yet</strong>
+                    <p>Completed gigs will show up here.</p>
+                </div>
+            {% endif %}
+        </div>
+
+    </div><!-- /events-page -->
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// ── View toggle ──
+function showView(which) {
+    document.getElementById('view-upcoming').style.display = which === 'upcoming' ? 'block' : 'none';
+    document.getElementById('view-past').style.display     = which === 'past'     ? 'block' : 'none';
+    document.getElementById('btn-upcoming').classList.toggle('active', which === 'upcoming');
+    document.getElementById('btn-past').classList.toggle('active',     which === 'past');
+}
+
+// ── TODAY badge ──
+var todayMidnight = new Date(); todayMidnight.setHours(0,0,0,0);
+document.querySelectorAll('.event-card[data-datetime]').forEach(function(card) {
+    var dt = new Date(card.dataset.datetime);
+    var d  = new Date(dt); d.setHours(0,0,0,0);
+    if (d.getTime() === todayMidnight.getTime()) card.classList.add('is-today');
+});
+
+// ── Live countdown to nearest upcoming event ──
+var nextDt = null;
+document.querySelectorAll('#view-upcoming .event-card[data-datetime]').forEach(function(card) {
+    var dt = new Date(card.dataset.datetime);
+    if (dt > new Date() && (!nextDt || dt < nextDt)) nextDt = dt;
+});
+
+function pad(n) { return String(n).padStart(2, '0'); }
+
+function tick() {
+    if (!nextDt) return;
+    var diff = Math.max(0, nextDt - new Date());
+    document.getElementById('cd-days').textContent  = pad(Math.floor(diff / 86400000));
+    document.getElementById('cd-hours').textContent = pad(Math.floor((diff % 86400000) / 3600000));
+    document.getElementById('cd-mins').textContent  = pad(Math.floor((diff % 3600000)  / 60000));
+    document.getElementById('cd-secs').textContent  = pad(Math.floor((diff % 60000)    / 1000));
+}
+tick();
+setInterval(tick, 1000);
+</script>
 {% endblock %}

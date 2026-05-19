@@ -398,28 +398,38 @@ from datetime import date
 @cache_page(60)
 def live_events(request):
     """
-    Upcoming accepted engagements, optimized + paginated.
+    Upcoming + past accepted engagements, optimized + paginated.
     """
-    # Query is already N+1-safe via select_related
+    today = date.today()
+
+    # Upcoming events — paginated
     events_qs = (
         Engagement.objects.filter(
             status=Engagement.STATUS_ACCEPTED,
-            date__gte=date.today(),
+            date__gte=today,
         )
-        .select_related("client", "performer")
+        .select_related("client", "performer", "performer__profile")
         .order_by("date", "time")
     )
 
-    # 🔹 Pagination (tweak 10 if you want a different page size)
     paginator = Paginator(events_qs, 10)
     page_number = request.GET.get("page")
     page_obj = paginator.get_page(page_number)
 
+    # Past events — most recent 20, no pagination
+    past_events = list(
+        Engagement.objects.filter(
+            status=Engagement.STATUS_ACCEPTED,
+            date__lt=today,
+        )
+        .select_related("client", "performer", "performer__profile")
+        .order_by("-date", "-time")[:20]
+    )
+
     context = {
-        # Keep existing template variable name so `{% if events %}` and `{% for e in events %}`
-        # continue to work as before
         "events": page_obj.object_list,
         "page_obj": page_obj,
+        "past_events": past_events,
     }
     return render(request, "users/live_events.html", context)
 
