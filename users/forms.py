@@ -59,6 +59,7 @@ class ProfileUpdateForm(forms.ModelForm):
             "profession",
             "location",
             "profile_picture",
+            "cover_photo",
             "bio",
             "is_performer",
             "is_potential_client",

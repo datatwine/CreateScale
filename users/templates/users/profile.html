@@ -34,6 +34,18 @@
     <!-- ============ PAGE ============ -->
     <div class="profile-page">
 
+        <!-- ===== COVER BANNER — clickable, uploads cover_photo ===== -->
+        <div class="cover-banner{% if not user.profile.cover_photo %} cover-banner-empty{% endif %}" id="cover-banner">
+            {% if user.profile.cover_photo %}
+                <img id="cover-img" src="{{ user.profile.cover_photo.url }}" alt="Cover photo">
+            {% else %}
+                <img id="cover-img" alt="Cover photo" hidden>
+            {% endif %}
+            <div class="cover-overlay">
+                <span class="cover-hint">✎ {% if user.profile.cover_photo %}Change{% else %}Add{% endif %} cover photo</span>
+            </div>
+        </div>
+
         <!-- ===== PROFILE HEADER CARD ===== -->
         <div class="profile-header-card">
 
@@ -55,6 +67,9 @@
 
                 {# Hidden profile picture file input — triggered by clicking the avatar #}
                 <input type="file" id="profile-pic-upload" name="profile_picture" style="display:none;" accept="image/*">
+
+                {# Hidden cover photo file input — triggered by clicking the cover banner #}
+                <input type="file" id="cover-photo-upload" name="cover_photo" style="display:none;" accept="image/*">
 
                 <div class="profile-username">{{ user.username }}</div>
 
@@ -242,6 +257,28 @@
                 if (file && profilePic) {
                     var reader = new FileReader();
                     reader.onload = function (e) { profilePic.src = e.target.result; };
+                    reader.readAsDataURL(file);
+                }
+            });
+        }
+
+        // Cover banner click → trigger cover file input + live preview before save
+        var coverBanner = document.getElementById("cover-banner");
+        var coverUpload = document.getElementById("cover-photo-upload");
+        var coverImg = document.getElementById("cover-img");
+        if (coverBanner && coverUpload) {
+            coverBanner.addEventListener("click", function () {
+                coverUpload.click();
+            });
+            coverUpload.addEventListener("change", function () {
+                var file = coverUpload.files[0];
+                if (file && coverImg) {
+                    var reader = new FileReader();
+                    reader.onload = function (e) {
+                        coverImg.src = e.target.result;
+                        coverImg.hidden = false;
+                        coverBanner.classList.remove("cover-banner-empty");
+                    };
                     reader.readAsDataURL(file);
                 }
             });

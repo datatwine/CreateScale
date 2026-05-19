@@ -1,91 +1,244 @@
 {% extends 'users/base.html' %}
 {% load static %}
 
+{% block title %}{{ profile.user.username }} · ArtKhoj{% endblock %}
 
-{% block content %}
-<div class="profile-page-container">
-<h1>{{ profile.user.username }}'s Profile</h1>
+{% block extra_css %}
+    <link rel="stylesheet" href="{% static 'users/css/profile_detail.css' %}">
+{% endblock %}
 
-<div class="profile-header">
-<!-- Profile Picture -->
-    <div class="profile-picture">
-    {% if profile.profile_picture %}
-        <img src="{{ profile.profile_picture.url }}" alt="{{ profile.user.username }}'s profile picture" style="max-width: 200px; height: auto;">
-    {% else %}
-        <p>No profile picture available.</p>
-    {% endif %}
+{% block content_wrap %}
+
+    <!-- ====== TOPBAR ====== -->
+    <header class="topbar">
+        <a href="{% url 'global-feed' %}" class="back-btn" aria-label="Back to feed">&larr; Feed</a>
+        <a href="{% url 'global-feed' %}" class="brandmark" aria-label="ArtKhoj">
+            <img src="{% static 'users/images/artkhojlogo.png' %}" alt="ArtKhoj" class="brandmark-img">
+        </a>
+    </header>
+
+    <!-- ====== HERO BAND ====== -->
+    <div class="hero-band" id="hero-band" data-profession="{{ profile.profession }}">
+
+        <!-- Cover background — cover_photo, else profile pic, darkened via CSS overlay -->
+        <div class="hero-cover">
+            {% if profile.cover_photo %}
+                <img src="{{ profile.cover_photo.url }}" alt="" aria-hidden="true">
+            {% elif profile.profile_picture %}
+                <img src="{{ profile.profile_picture.url }}" alt="" aria-hidden="true">
+            {% endif %}
+        </div>
+        <div class="hero-cover-overlay"></div>
+
+        <!-- Large decorative emoji watermark — JS injected -->
+        <div class="hero-emoji-watermark" id="hero-watermark" aria-hidden="true"></div>
+
+        <div class="hero-content">
+
+            <div class="hero-avatar-wrap">
+                {% if profile.profile_picture %}
+                    <img class="hero-avatar" src="{{ profile.profile_picture.url }}"
+                         alt="{{ profile.user.username }}">
+                {% else %}
+                    <img class="hero-avatar"
+                         src="{% static 'users/images/default-avatar.png' %}"
+                         alt="{{ profile.user.username }}">
+                {% endif %}
+
+                {% if profile.is_performer %}
+                    <span class="available-badge">
+                        <span class="available-dot"></span>
+                        Available
+                    </span>
+                {% endif %}
+            </div>
+
+            <h1 class="hero-username">{{ profile.user.username }}</h1>
+
+            <div class="hero-tags">
+                {% if profile.profession %}
+                    <span class="hero-tag">
+                        <span class="tag-dot"></span>{{ profile.profession }}
+                    </span>
+                {% endif %}
+                {% if profile.location %}
+                    <span class="hero-tag">
+                        <span class="tag-dot"></span>{{ profile.location }}
+                    </span>
+                {% endif %}
+            </div>
+
+        </div>
     </div>
 
-    <div class="profile-info">
-        <!-- Profile Information -->
-        <p><strong>Profession:</strong> {{ profile.profession }}</p>
-        <p><strong>Location:</strong> {{ profile.location }}</p>
-        <p><strong>Bio:</strong> {{ profile.bio }}</p>
-        {% if profile.is_performer %}
-            <p><em>This user is available to be hired as a performer.</em></p>
-        {% endif %}
+    <!-- ====== STATS STRIP ====== -->
+    <div class="stats-strip">
+        <div class="stats-inner">
+
+            <div class="stat-item">
+                <div class="stat-num">{{ gigs_count|default:0 }}</div>
+                <div class="stat-label">Gigs performed</div>
+            </div>
+
+            <div class="stat-item">
+                {% if last_engagement %}
+                    <div class="stat-num" style="font-size:15px; letter-spacing:0; line-height:1.3;">
+                        {{ last_engagement.venue|truncatechars:20 }}<br>
+                        <span style="font-size:12px; color:rgba(255,255,255,0.5);">
+                            {{ last_engagement.date|date:"M d Y" }}
+                        </span>
+                    </div>
+                {% else %}
+                    <div class="stat-num" style="font-size:15px; letter-spacing:0; color:rgba(255,255,255,0.35);">&mdash;</div>
+                {% endif %}
+                <div class="stat-label">Last performed</div>
+            </div>
+
+            <div class="stat-item">
+                <div class="stat-num" data-emoji style="font-size:28px;">🎭</div>
+                <div class="stat-label">{{ profile.profession|truncatechars:12 }}</div>
+            </div>
+
         </div>
-</div>
-
-
-<!-- Rule 5: hire button from profile_detail (for performers only) -->
-{% if request.user.is_authenticated and request.user != profile.user and profile.is_performer %}
-    <div class="hire-section" style="margin-top: 10px;">
-        {% if request.user.profile.client_blacklisted %}
-            <p>You are currently blocked from hiring performers.</p>
-        {% elif not request.user.profile.is_potential_client %}
-            <p><em>To hire performers, enable the "I hire performers" toggle on your own profile first.</em></p>
-        {% elif not request.user.profile.client_approved %}
-            <p><em>Your account is waiting for admin approval to hire performers.</em></p>
-        {% else %}
-            <a href="{% url 'bookings:create-hire' profile.user.id %}" class="styled-button">
-                Hire {{ profile.user.username }}
-            </a>
-        {% endif %}
     </div>
-{% endif %}
 
+    <!-- ====== PAGE BODY ====== -->
+    <div class="detail-page">
 
+        {% if profile.bio %}
+            <p class="artist-bio">{{ profile.bio }}</p>
+        {% endif %}
 
-{% if request.user != profile.user %}
-<div class="message-form-container">
-    <form action="{% url 'send_message' profile.user.id %}" method="post" style="margin-top: 10px;">
-        {% csrf_token %}
-        <textarea
-            name="content"
-            rows="3"
-            cols="40"
-            placeholder="Write your message here..."
-            style="width: 100%; margin-bottom: 5px;"></textarea>
-            <button type="submit" class="styled-button">Send Message</button>
-    </form>
-</div>
-{% endif %}
+        <!-- ===== HIRE SECTION (conditional states) ===== -->
+        {% if request.user.is_authenticated and request.user != profile.user and profile.is_performer %}
+            <div class="hire-section">
+                <div class="hire-section-title">Book this artist</div>
 
+                {% if request.user.profile.client_blacklisted %}
+                    <div class="hire-info blocked">
+                        <span class="info-icon">🚫</span>
+                        <span>Your account is currently restricted from hiring performers.</span>
+                    </div>
 
-<!-- User's Uploads -->
-<div class="uploads-container-profile">
-<h2>Uploads</h2>
-{% for upload in uploads %}
-    {% if upload.image and upload.image.url != profile.profile_picture.url %}
-        <div class="upload-item">
-            <img src="{{ upload.image.url }}" alt="Uploaded Image" style="max-width: 300px;">
-            <p>{{ upload.caption }}</p>
-            <p><small>{{ upload.upload_date }}</small></p>
+                {% elif not request.user.profile.is_potential_client %}
+                    <div class="hire-info">
+                        <span class="info-icon">💡</span>
+                        <span>To hire performers, enable the <strong>"I hire performers"</strong> toggle on your own profile first.</span>
+                    </div>
+
+                {% elif not request.user.profile.client_approved %}
+                    <div class="hire-info">
+                        <span class="info-icon">⏳</span>
+                        <span>Your account is waiting for admin approval to hire performers.</span>
+                    </div>
+
+                {% else %}
+                    <a href="{% url 'bookings:create-hire' profile.user.id %}" class="btn-hire">
+                        <span class="hire-emoji">🎭</span>
+                        Hire {{ profile.user.username }}
+                    </a>
+                {% endif %}
+
+            </div>
+        {% endif %}
+
+        <!-- ===== UPLOADS ===== -->
+        <div class="section-head">
+            <h2 class="section-title">Their <span class="accent">work</span></h2>
         </div>
-    {% elif upload.video %}
-        <div class="upload-item">
-            <video controls>
-                <source src="{{ upload.video.url }}" type="video/mp4">
-                Your browser does not support the video tag.
-            </video>
-            <p>{{ upload.caption }}</p>
-            <p><small>{{ upload.upload_date }}</small></p>
+
+        <div class="uploads-grid">
+            {% for upload in uploads %}
+                {% if upload.image %}
+                    {# Skip if this image is the same as the profile picture #}
+                    {% if not profile.profile_picture or upload.image.url != profile.profile_picture.url %}
+                        <div class="upload-card">
+                            <div class="media-wrap">
+                                <img src="{{ upload.image.url }}"
+                                     alt="{{ upload.caption }}"
+                                     loading="lazy">
+                            </div>
+                            <div class="card-overlay">
+                                <p class="caption">{{ upload.caption }}</p>
+                                <p class="upload-date">{{ upload.upload_date|date:"d M Y" }}</p>
+                            </div>
+                        </div>
+                    {% endif %}
+                {% elif upload.video %}
+                    <div class="upload-card">
+                        <div class="media-wrap">
+                            <video muted playsinline preload="metadata">
+                                <source src="{{ upload.video.url }}" type="video/mp4">
+                            </video>
+                        </div>
+                        <span class="play-badge" aria-hidden="true">
+                            <svg viewBox="0 0 24 24">
+                                <polygon points="5 3 19 12 5 21 5 3" fill="white"></polygon>
+                            </svg>
+                        </span>
+                        <div class="card-overlay">
+                            <p class="caption">{{ upload.caption }}</p>
+                            <p class="upload-date">{{ upload.upload_date|date:"d M Y" }}</p>
+                        </div>
+                    </div>
+                {% endif %}
+            {% empty %}
+                <div class="uploads-empty">
+                    <strong>No uploads yet</strong>
+                    This artist hasn't shared any work yet.
+                </div>
+            {% endfor %}
         </div>
-    {% endif %}
-{% empty %}
-    <p style="text-align:center;">No uploads yet.</p>
-{% endfor %}
-</div>
-</div>
+
+    </div><!-- /detail-page -->
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+var EMOJI_MAP = [
+    { keys: ['tabla','mridangam','dholak','percussion','drummer','drum'], emoji: '🥁' },
+    { keys: ['singer','vocalist','voice','carnatic','ghazal'],            emoji: '🎤' },
+    { keys: ['dancer','dance','bharatanatyam','kathak','contemporary',
+              'kuchipudi','odissi','folk dance'],                          emoji: '💃' },
+    { keys: ['comedian','comic','stand-up','standup','comedy'],           emoji: '😂' },
+    { keys: ['magician','magic','illusionist'],                           emoji: '🪄' },
+    { keys: ['guitarist','guitar'],                                       emoji: '🎸' },
+    { keys: ['pianist','piano','keyboard'],                               emoji: '🎹' },
+    { keys: ['sitar','veena','violin','sarangi'],                         emoji: '🎻' },
+    { keys: ['flute','flautist','bansuri'],                               emoji: '🎶' },
+    { keys: ['sound','audio','mix'],                                      emoji: '🔊' },
+    { keys: ['light','lighting'],                                         emoji: '💡' },
+    { keys: ['poet','poetry','spoken word','writer'],                     emoji: '✍️' },
+    { keys: ['actor','theatre','theater','drama'],                        emoji: '🎭' },
+    { keys: ['musician','music'],                                         emoji: '🎵' },
+];
+
+function getEmoji(profession) {
+    if (!profession) return '🎭';
+    var lower = profession.toLowerCase();
+    for (var i = 0; i < EMOJI_MAP.length; i++) {
+        var e = EMOJI_MAP[i];
+        for (var j = 0; j < e.keys.length; j++) {
+            if (lower.indexOf(e.keys[j]) !== -1) return e.emoji;
+        }
+    }
+    return '🎭';
+}
+
+var heroBand = document.getElementById('hero-band');
+var profession = heroBand ? (heroBand.dataset.profession || '') : '';
+
+// Watermark
+var watermark = document.getElementById('hero-watermark');
+if (watermark) watermark.textContent = getEmoji(profession);
+
+// Hire button emoji
+var hireEmoji = document.querySelector('.hire-emoji');
+if (hireEmoji) hireEmoji.textContent = getEmoji(profession);
+
+// Profession stat emoji
+var emojiStat = document.querySelector('.stat-num[data-emoji]');
+if (emojiStat) emojiStat.textContent = getEmoji(profession);
+</script>
 {% endblock %}

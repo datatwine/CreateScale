@@ -84,6 +84,8 @@ def profile(request):
                 # <<< bullet-proof the avatar save, even if the form omits the field
                 if 'profile_picture' in request.FILES:
                     profile_obj.profile_picture = request.FILES['profile_picture']
+                if 'cover_photo' in request.FILES:
+                    profile_obj.cover_photo = request.FILES['cover_photo']
                 profile_obj.save()
                 # >>>
 
@@ -165,12 +167,15 @@ from django.shortcuts import get_object_or_404
 
 @login_required
 def profile_detail(request, user_id):
+    from datetime import date
+    from bookings.models import Engagement
+
     # Get the profile of the user being viewed
     user_profile = get_object_or_404(
         Profile.objects.select_related("user"),
         user__id=user_id,
     )
-    
+
     # All uploads for this profile, newest first
     uploads = (
         Upload.objects
@@ -178,7 +183,16 @@ def profile_detail(request, user_id):
         .order_by("-upload_date")
     )
 
-    unread_messages = Message.objects.filter(recipient=request.user, is_read=False)
+    # Gig stats — accepted engagements with a past date (covered by the
+    # (performer, status, date) index on Engagement).
+    today = date.today()
+    gig_qs = Engagement.objects.filter(
+        performer=user_profile.user,
+        status=Engagement.STATUS_ACCEPTED,
+        date__lt=today,
+    )
+    gigs_count = gig_qs.count()
+    last_engagement = gig_qs.order_by("-date").first()
 
     return render(
         request,
@@ -186,6 +200,8 @@ def profile_detail(request, user_id):
         {
             "profile": user_profile,
             "uploads": uploads,
+            "gigs_count": gigs_count,
+            "last_engagement": last_engagement,
         },
     )
 
