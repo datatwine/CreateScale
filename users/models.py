@@ -8,6 +8,7 @@ class Profile(models.Model):
     profession = models.CharField(max_length=100, blank=True, db_index=True)
     location = models.CharField(max_length=100, blank=True)
     profile_picture = models.ImageField(upload_to='profile_pics/', blank=True, null=True)
+    cover_photo = models.ImageField(upload_to='cover_photos/', blank=True, null=True)
     bio = models.CharField(max_length=140, blank=True)
 
     # --- Hiring system toggles / flags ---

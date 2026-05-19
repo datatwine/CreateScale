@@ -607,6 +607,7 @@ body.border-stripe .upload-card:hover {
   .uploads-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
   .profile-page { padding: 20px 14px; }
   .topbar { padding: 0 16px; }
+  .cover-banner { height: 130px; }
 }
 
 
@@ -670,4 +671,70 @@ form.info-col {
   border: none;
   padding: 0;
   margin: 0;
+}
+
+/* ==================== COVER BANNER ==================== */
+.cover-banner {
+  position: relative;
+  width: 100%;
+  height: 170px;
+  border-radius: 22px;
+  border: 1.5px solid var(--grey-line);
+  overflow: hidden;
+  cursor: pointer;
+  margin-bottom: 20px;
+  background: var(--card);
+}
+.cover-banner img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.cover-banner img[hidden] { display: none; }
+.cover-banner-empty {
+  background: linear-gradient(135deg, var(--cream) 0%, var(--peach) 100%);
+  border: 1.5px dashed var(--peach);
+}
+
+/* Hover overlay + edit hint */
+.cover-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  transition: background 0.18s;
+}
+.cover-banner:hover .cover-overlay {
+  background: rgba(31, 26, 23, 0.34);
+}
+.cover-banner-empty:hover .cover-overlay {
+  background: transparent;
+}
+.cover-hint {
+  font-family: "Bricolage Grotesque", sans-serif;
+  font-weight: 700;
+  font-size: 13px;
+  color: #ffffff;
+  background: var(--ink);
+  padding: 8px 16px;
+  border-radius: var(--radius-pill);
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 0.18s, transform 0.18s;
+}
+.cover-banner:hover .cover-hint {
+  opacity: 1;
+  transform: translateY(0);
+}
+/* Empty state — hint stays visible as an orange stamp pill on the placeholder */
+.cover-banner-empty .cover-hint {
+  opacity: 1;
+  transform: none;
+  background: var(--orange);
+  color: var(--ink);
+  border: 2px solid var(--ink);
+  box-shadow: 2px 2px 0 var(--ink);
 }
