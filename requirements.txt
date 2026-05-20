@@ -33,3 +33,5 @@ argon2-cffi>=23.1
 pytest>=8.0
 pytest-django>=4.8
 whitenoise>=6.5
+celery>=5.3
+sorl-thumbnail>=12.10

@@ -6,9 +6,9 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-# System deps for psycopg2 and utilities
+# System deps for psycopg2, utilities, and ffmpeg (for the video-compression Celery worker)
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential libpq-dev netcat-openbsd \
+    build-essential libpq-dev netcat-openbsd ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
 # Python deps

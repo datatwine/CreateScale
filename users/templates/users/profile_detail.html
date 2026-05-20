@@ -1,5 +1,6 @@
 {% extends 'users/base.html' %}
 {% load static %}
+{% load thumbnail %}
 
 {% block title %}{{ profile.user.username }} · ArtKhoj{% endblock %}
 
@@ -154,9 +155,16 @@
                     {% if not profile.profile_picture or upload.image.url != profile.profile_picture.url %}
                         <div class="upload-card">
                             <div class="media-wrap">
-                                <img src="{{ upload.image.url }}"
-                                     alt="{{ upload.caption }}"
-                                     loading="lazy">
+                                {# 300x300 thumbnail via sorl-thumbnail (falls back to full image on any failure) #}
+                                {% thumbnail upload.image "300x300" crop="center" as t %}
+                                    <img src="{{ t.url }}"
+                                         alt="{{ upload.caption }}"
+                                         loading="lazy">
+                                {% empty %}
+                                    <img src="{{ upload.image.url }}"
+                                         alt="{{ upload.caption }}"
+                                         loading="lazy">
+                                {% endthumbnail %}
                             </div>
                             <div class="card-overlay">
                                 <p class="caption">{{ upload.caption }}</p>

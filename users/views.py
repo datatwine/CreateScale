@@ -68,6 +68,12 @@ def profile(request):
                 upload = upload_form.save(commit=False)
                 upload.profile = user_profile
                 upload.save()
+                # Kick off background ffmpeg re-encode for videos. If the
+                # worker is offline, the message queues in Redis and the
+                # upload still returns success — the user is never blocked.
+                if upload.video:
+                    from users.tasks import compress_upload_video
+                    compress_upload_video.delay(upload.id)
                 messages.success(request, "Image/video uploaded successfully.")
                 return redirect('profile')
             else:

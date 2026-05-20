@@ -46,8 +46,11 @@ class UploadForm(forms.ModelForm):
         if video:
             if video.content_type != 'video/mp4':
                 raise ValidationError("Only MP4 videos are supported.")
-            if video.size > 50 * 1024 * 1024:  # 50 MB limit
-                raise ValidationError("Video size must be under 50 MB.")
+            # Aligned with Nginx client_max_body_size (120 MB). Bigger files
+            # are rejected by Nginx before reaching Django; this limit gives
+            # a nicer Django-side error message for anything that gets through.
+            if video.size > 120 * 1024 * 1024:  # 120 MB limit
+                raise ValidationError("Video size must be under 120 MB. Keep clips to 60 seconds.")
         return video
 
 

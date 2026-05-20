@@ -81,6 +81,7 @@ INSTALLED_APPS = [
     "bookings",
     "rest_framework",
     "rest_framework.authtoken",
+    "sorl.thumbnail",
 ]
 
 
@@ -391,6 +392,25 @@ CACHES = {
 # Sessions: DB + cache (so reads are fast but still durable in Postgres)
 SESSION_ENGINE = "django.contrib.sessions.backends.cached_db"
 SESSION_CACHE_ALIAS = "default"
+
+# ------------------------------------------------------------------------------
+# Celery — background tasks (video compression). Broker + backend share Redis.
+# ------------------------------------------------------------------------------
+CELERY_BROKER_URL = REDIS_URL
+CELERY_RESULT_BACKEND = REDIS_URL
+CELERY_TASK_TIME_LIMIT = 300          # hard kill after 5 min
+CELERY_TASK_SOFT_TIME_LIMIT = 280     # soft signal at ~4m40s
+CELERY_TASK_ACKS_LATE = True          # re-queue if worker dies mid-task
+CELERY_WORKER_PREFETCH_MULTIPLIER = 1 # don't hoard tasks (fairness on heavy ffmpeg)
+
+# ------------------------------------------------------------------------------
+# sorl-thumbnail — on-demand image thumbnails served from R2 under cache/
+# Keyed in Redis (no model field, no migration).
+# ------------------------------------------------------------------------------
+THUMBNAIL_KVSTORE = "sorl.thumbnail.kvstores.redis_kvstore.KVStore"
+THUMBNAIL_REDIS_URL = REDIS_URL
+THUMBNAIL_FORMAT = "JPEG"
+THUMBNAIL_QUALITY = 80
 
 REST_FRAMEWORK = {
     # Token auth for Expo + Session auth for browsable API (nice for dev)
