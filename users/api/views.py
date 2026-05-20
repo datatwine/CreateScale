@@ -204,8 +204,13 @@ class MyUploadsAPIView(generics.ListCreateAPIView):
 
     def perform_create(self, serializer):
         profile = Profile.objects.get(user=self.request.user)
-        serializer.save(profile=profile)
+        upload = serializer.save(profile=profile)
         cache.delete(f"uploads:{self.request.user.id}")
+        # Background ffmpeg re-encode for videos (no-op for images).
+        # If the worker is offline, the message queues in Redis silently.
+        if upload.video:
+            from users.tasks import compress_upload_video
+            compress_upload_video.delay(upload.id)
 
 
 class MyUploadDeleteAPIView(generics.DestroyAPIView):

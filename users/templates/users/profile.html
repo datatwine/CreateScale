@@ -1,5 +1,6 @@
 {% extends 'users/base.html' %}
 {% load static %}
+{% load thumbnail %}
 
 {% block title %}{{ user.username }} · ArtKhoj{% endblock %}
 
@@ -156,7 +157,12 @@
                 {% if upload.image %}
                     <div class="upload-card">
                         <div class="media-wrap">
-                            <img src="{{ upload.image.url }}" alt="{{ upload.caption }}">
+                            {# 300x300 thumbnail via sorl-thumbnail (falls back to full image on any failure) #}
+                            {% thumbnail upload.image "300x300" crop="center" as t %}
+                                <img src="{{ t.url }}" alt="{{ upload.caption }}" loading="lazy">
+                            {% empty %}
+                                <img src="{{ upload.image.url }}" alt="{{ upload.caption }}" loading="lazy">
+                            {% endthumbnail %}
                         </div>
                         <div class="card-overlay">
                             <p class="caption">{{ upload.caption }}</p>
@@ -200,7 +206,7 @@
                         <span class="pick-icon">🎨</span>
                         <span class="pick-text">
                             Pick a photo
-                            <span class="pick-sub" id="image-name">JPG or PNG · max 5 MB</span>
+                            <span class="pick-sub" id="image-name">JPG or PNG · auto-compressed</span>
                         </span>
                         <span style="font-size:18px;">→</span>
                     </label>
@@ -213,10 +219,11 @@
                         <span class="pick-icon">🎬</span>
                         <span class="pick-text">
                             Pick a video
-                            <span class="pick-sub" id="video-name">MP4 only · max 50 MB</span>
+                            <span class="pick-sub" id="video-name">MP4 · max 60s ~120 MB</span>
                         </span>
                         <span style="font-size:18px;">→</span>
                     </label>
+                    <div id="video-error" class="upload-error" style="display:none; margin-top:8px; padding:10px 14px; border-radius:10px; background:#FFE6E0; border:1.5px solid #C5530B; color:#8f3400; font-size:13px; font-weight:500;"></div>
                 </div>
 
                 <div class="field-group">
@@ -236,73 +243,169 @@
 {% endblock %}
 
 {% block extra_js %}
+    {# Vendored client-side image compression library — handles browser image resize before upload #}
+    <script src="{% static 'users/js/browser-image-compression.min.js' %}"></script>
+
     {# Original editProfile.js — handles bio/location/profession inline edits + avatar click #}
     <script src="{% static 'users/scripts/editProfile.js' %}"></script>
 
     <script>
     document.addEventListener("DOMContentLoaded", function () {
 
-        // Avatar wrap click → trigger file input (editProfile.js handles #profile-pic click;
-        // this adds the overlay div as a click target too)
+        // ============================================================
+        // Click trampolines — open the hidden file dialog. UNCHANGED.
+        // ============================================================
         var avatarWrap = document.getElementById("avatar-wrap");
         var profilePicUpload = document.getElementById("profile-pic-upload");
-        var profilePic = document.getElementById("profile-pic");
         if (avatarWrap && profilePicUpload) {
-            avatarWrap.addEventListener("click", function () {
-                profilePicUpload.click();
-            });
-            // Live preview before save
-            profilePicUpload.addEventListener("change", function () {
-                var file = profilePicUpload.files[0];
-                if (file && profilePic) {
-                    var reader = new FileReader();
-                    reader.onload = function (e) { profilePic.src = e.target.result; };
-                    reader.readAsDataURL(file);
-                }
-            });
+            avatarWrap.addEventListener("click", function () { profilePicUpload.click(); });
         }
-
-        // Cover banner click → trigger cover file input + live preview before save
         var coverBanner = document.getElementById("cover-banner");
         var coverUpload = document.getElementById("cover-photo-upload");
-        var coverImg = document.getElementById("cover-img");
         if (coverBanner && coverUpload) {
-            coverBanner.addEventListener("click", function () {
-                coverUpload.click();
-            });
-            coverUpload.addEventListener("change", function () {
-                var file = coverUpload.files[0];
-                if (file && coverImg) {
-                    var reader = new FileReader();
-                    reader.onload = function (e) {
-                        coverImg.src = e.target.result;
-                        coverImg.hidden = false;
-                        coverBanner.classList.remove("cover-banner-empty");
-                    };
-                    reader.readAsDataURL(file);
-                }
+            coverBanner.addEventListener("click", function () { coverUpload.click(); });
+        }
+
+        // ============================================================
+        // Single combined handler per image input:
+        //   compress -> swap input.files -> render preview / update label
+        // Replaces the old FileReader.readAsDataURL listeners (which read
+        // the original file before our async compress could finish).
+        // ============================================================
+        async function handleImagePick(input, maxWH, opts) {
+            opts = opts || {};
+            var f = input.files[0];
+            if (!f || !f.type.startsWith("image/")) return;
+
+            // 1) Compress (safe: on any failure the original still uploads)
+            try {
+                if (typeof imageCompression !== "function") throw new Error("library missing");
+                var out = await imageCompression(f, {
+                    maxSizeMB: 1.2,
+                    maxWidthOrHeight: maxWH,
+                    useWebWorker: true,
+                    fileType: "image/jpeg",
+                });
+                var dt = new DataTransfer();
+                dt.items.add(new File([out], f.name.replace(/\.\w+$/, ".jpg"), { type: "image/jpeg" }));
+                input.files = dt.files;
+            } catch (e) {
+                console.warn("compress failed, uploading original", e);
+            }
+
+            // 2) Update preview / label from whatever is in input.files NOW
+            var current = input.files[0];
+            if (opts.previewImg && current) {
+                opts.previewImg.src = URL.createObjectURL(current);
+                if (opts.previewImg.hidden) opts.previewImg.hidden = false;
+                if (opts.onPreviewShown) opts.onPreviewShown();
+            }
+            if (opts.labelEl && current) {
+                var name = current.name;
+                opts.labelEl.textContent = name.length > 28 ? name.slice(0, 26) + "…" : name;
+                if (opts.labelBtn) opts.labelBtn.classList.add("has-file");
+            }
+        }
+
+        // ----- Wire each image input (REPLACES the old change listeners) -----
+        if (profilePicUpload) {
+            profilePicUpload.addEventListener("change", function (e) {
+                handleImagePick(e.target, 512, {
+                    previewImg: document.getElementById("profile-pic"),
+                });
             });
         }
 
-        // Custom file picker — show filename + turn button orange when file selected
-        ["image", "video"].forEach(function (type) {
-            var input = document.getElementById("pick-" + type);
-            var label = document.getElementById("label-" + type);
-            var nameEl = document.getElementById(type + "-name");
-            if (!input) return;
-            input.addEventListener("change", function () {
-                if (input.files && input.files[0]) {
-                    var name = input.files[0].name;
-                    nameEl.textContent = name.length > 28 ? name.slice(0, 26) + "…" : name;
-                    label.classList.add("has-file");
-                } else {
-                    nameEl.textContent = type === "image" ? "JPG or PNG · max 5 MB" : "MP4 only · max 50 MB";
-                    label.classList.remove("has-file");
-                }
+        if (coverUpload) {
+            coverUpload.addEventListener("change", function (e) {
+                handleImagePick(e.target, 1920, {
+                    previewImg: document.getElementById("cover-img"),
+                    onPreviewShown: function () {
+                        if (coverBanner) coverBanner.classList.remove("cover-banner-empty");
+                    },
+                });
             });
-        });
+        }
 
-        // Approval badge: show/hide when hirer checkbox is toggled
+        var pickImage = document.getElementById("pick-image");
+        if (pickImage) {
+            pickImage.addEventListener("change", function (e) {
+                handleImagePick(e.target, 1080, {
+                    labelEl: document.getElementById("image-name"),
+                    labelBtn: document.getElementById("label-image"),
+                });
+            });
+        }
+
+        // ============================================================
+        // Video: client-side pre-validation (no compression on web).
+        // Rejects oversize / too-long videos BEFORE upload starts so the
+        // user sees a friendly inline error instead of Nginx's 413.
+        // ============================================================
+        var MAX_VIDEO_BYTES = 120 * 1024 * 1024;  // matches Nginx + Django form limit
+        var MAX_VIDEO_SECS  = 62;                  // 60s policy + tiny grace
+
+        var pickVideo = document.getElementById("pick-video");
+        var videoErrorBox = document.getElementById("video-error");
+        var videoNameEl = document.getElementById("video-name");
+        var videoLabelBtn = document.getElementById("label-video");
+
+        function showVideoError(msg) {
+            if (!videoErrorBox) return;
+            videoErrorBox.textContent = msg;
+            videoErrorBox.style.display = "block";
+        }
+        function clearVideoError() {
+            if (videoErrorBox) {
+                videoErrorBox.textContent = "";
+                videoErrorBox.style.display = "none";
+            }
+        }
+
+        if (pickVideo) {
+            pickVideo.addEventListener("change", function (e) {
+                clearVideoError();
+                var f = e.target.files[0];
+                if (!f) {
+                    if (videoNameEl) videoNameEl.textContent = "MP4 · max 60s ~120 MB";
+                    if (videoLabelBtn) videoLabelBtn.classList.remove("has-file");
+                    return;
+                }
+                // Size check first — instant, no metadata load needed
+                if (f.size > MAX_VIDEO_BYTES) {
+                    showVideoError("That video is too large (over ~120 MB). Keep it under 60 seconds, or upload via the mobile app.");
+                    e.target.value = "";
+                    if (videoNameEl) videoNameEl.textContent = "MP4 · max 60s ~120 MB";
+                    if (videoLabelBtn) videoLabelBtn.classList.remove("has-file");
+                    return;
+                }
+                // Update label optimistically
+                if (videoNameEl) {
+                    videoNameEl.textContent = f.name.length > 28 ? f.name.slice(0, 26) + "…" : f.name;
+                }
+                if (videoLabelBtn) videoLabelBtn.classList.add("has-file");
+
+                // Duration check — uses a transient <video> element
+                var v = document.createElement("video");
+                v.preload = "metadata";
+                v.onloadedmetadata = function () {
+                    var dur = v.duration;
+                    URL.revokeObjectURL(v.src);
+                    if (isFinite(dur) && dur > MAX_VIDEO_SECS) {
+                        showVideoError("Video is too long — 60 seconds maximum.");
+                        e.target.value = "";
+                        if (videoNameEl) videoNameEl.textContent = "MP4 · max 60s ~120 MB";
+                        if (videoLabelBtn) videoLabelBtn.classList.remove("has-file");
+                    }
+                };
+                v.onerror = function () { URL.revokeObjectURL(v.src); };
+                v.src = URL.createObjectURL(f);
+            });
+        }
+
+        // ============================================================
+        // Approval badge: show/hide when hirer checkbox is toggled. UNCHANGED.
+        // ============================================================
         var hirerChk = document.getElementById("hirer-chk");
         var badge = document.getElementById("approval-badge");
         if (hirerChk && badge) {

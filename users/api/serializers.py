@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from sorl.thumbnail import get_thumbnail
 from users.models import Profile, Upload
 
 
@@ -17,12 +18,17 @@ def _abs_url(request, file_field) -> str:
 
 
 class UploadSerializer(serializers.ModelSerializer):
-    image_url = serializers.SerializerMethodField()
-    video_url = serializers.SerializerMethodField()
+    image_url           = serializers.SerializerMethodField()
+    image_thumbnail_url = serializers.SerializerMethodField()
+    video_url           = serializers.SerializerMethodField()
 
     class Meta:
         model = Upload
-        fields = ["id", "caption", "upload_date", "image", "video", "image_url", "video_url"]
+        fields = [
+            "id", "caption", "upload_date",
+            "image", "video",
+            "image_url", "image_thumbnail_url", "video_url",
+        ]
         extra_kwargs = {
             "image": {"write_only": True, "required": False},
             "video": {"write_only": True, "required": False},
@@ -30,6 +36,17 @@ class UploadSerializer(serializers.ModelSerializer):
 
     def get_image_url(self, obj):
         return _abs_url(self.context.get("request"), obj.image)
+
+    def get_image_thumbnail_url(self, obj):
+        """300x300 center-cropped JPEG via sorl-thumbnail. Falls back to None on
+        any error — the Expo client then uses image_url instead."""
+        if not obj.image:
+            return None
+        try:
+            t = get_thumbnail(obj.image, "300x300", crop="center", quality=80)
+            return _abs_url(self.context.get("request"), t)
+        except Exception:
+            return None
 
     def get_video_url(self, obj):
         return _abs_url(self.context.get("request"), obj.video)

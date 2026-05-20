@@ -3,8 +3,10 @@
 from django.db import models
 from django.contrib.auth.models import User
 
+from users.utils.image import process_image, is_fresh_upload
+
 class Profile(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE) 
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
     profession = models.CharField(max_length=100, blank=True, db_index=True)
     location = models.CharField(max_length=100, blank=True)
     profile_picture = models.ImageField(upload_to='profile_pics/', blank=True, null=True)
@@ -43,6 +45,14 @@ class Profile(models.Model):
     def __str__(self):
         return f'{self.user.username} Profile'
 
+    def save(self, *args, **kwargs):
+        # Compress only brand-new uploads. Re-saves (admin edits, etc.) skip this.
+        if is_fresh_upload(self.profile_picture):
+            self.profile_picture = process_image(self.profile_picture, "avatar")
+        if is_fresh_upload(self.cover_photo):
+            self.cover_photo = process_image(self.cover_photo, "cover")
+        super().save(*args, **kwargs)
+
 class Upload(models.Model):
     profile = models.ForeignKey(Profile, on_delete=models.CASCADE, related_name='uploads')
     image = models.ImageField(upload_to='profile_pics', blank=True, null=True)
@@ -52,6 +62,13 @@ class Upload(models.Model):
 
     def __str__(self):
         return f'{self.profile.user.username} Upload on {self.upload_date}'
+
+    def save(self, *args, **kwargs):
+        # Compress only brand-new uploads. The Celery video task re-saves .video
+        # but never re-uploads .image, so this won't re-process compressed images.
+        if is_fresh_upload(self.image):
+            self.image = process_image(self.image, "gallery")
+        super().save(*args, **kwargs)
     
 
 class Message(models.Model):

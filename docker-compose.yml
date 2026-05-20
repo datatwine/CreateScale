@@ -41,6 +41,26 @@ services:
     expose:
       - "8000"
 
+  # ---------------------------------------------------------------------------
+  # Celery worker — background video compression (users/tasks.py).
+  # Reuses the web image (same Dockerfile, now with ffmpeg installed).
+  # Concurrency: 2 → roughly 2 simultaneous ffmpeg jobs on a c7g.large.
+  # ---------------------------------------------------------------------------
+  worker:
+    build: .
+    restart: unless-stopped
+    user: "0:0"
+    command: celery -A myproject worker -l info --concurrency=2
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    volumes:
+      - media_volume:/vol/media
+
   nginx:
     image: nginx:1.27-alpine
     restart: unless-stopped
