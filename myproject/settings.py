@@ -207,8 +207,12 @@ DATABASES = {
         # Required for gevent: persistent connections held across greenlets
         # can interleave queries from different in-flight requests. The cost
         # is ~1 ms per request (psycopg2 connect is fast); for our workload
-        # the safety is worth it.
+        # the safety is worth it.  Also required for PgBouncer transaction mode.
         "CONN_MAX_AGE": 0,
+        # PgBouncer transaction mode reassigns server connections between
+        # transactions, which breaks server-side cursors (session-level objects).
+        # This flag forces Django to use client-side cursors for .iterator().
+        "DISABLE_SERVER_SIDE_CURSORS": True,
     }
     
 
