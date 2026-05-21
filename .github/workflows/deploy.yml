@@ -209,7 +209,6 @@ jobs:
             --parameters 'commands=[
               "set -eu",
               "su - ubuntu -c \"cd /home/ubuntu/AK && git fetch origin main && git reset --hard origin/main\"",
-              "rm -f /home/ubuntu/AK-WEB/docker-compose.web.yml && cp /home/ubuntu/AK/deploy/web/docker-compose.web.yml /home/ubuntu/AK-WEB/docker-compose.web.yml",
               "aws s3 cp /home/ubuntu/AK/deploy/web/docker-compose.web.yml s3://createscale-config/web/docker-compose.web.yml",
               "cd /home/ubuntu/AK-WEB",
               "aws s3 cp s3://createscale-config/web/.env /home/ubuntu/AK-WEB/.env",
