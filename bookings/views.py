@@ -102,15 +102,39 @@ def create_hire_request(request, performer_id):
     )
 
 
+# Maps Engagement.status → (CSS class, human label, front-end filter bucket).
+# Used by client_engagement_list to annotate each object for the template.
+_STATUS_DISPLAY = {
+    Engagement.STATUS_ACCEPTED:            ("status-accepted",  "Accepted",  "accepted"),
+    Engagement.STATUS_PENDING:             ("status-pending",   "Pending",   "pending"),
+    Engagement.STATUS_DECLINED:            ("status-declined",  "Declined",  "other"),
+    Engagement.STATUS_AUTO_EXPIRED:        ("status-expired",   "Expired",   "other"),
+    Engagement.STATUS_CANCELLED_CLIENT:    ("status-cancelled", "Cancelled", "other"),
+    Engagement.STATUS_CANCELLED_PERFORMER: ("status-cancelled", "Cancelled", "other"),
+}
+
+_STATUS_FALLBACK = ("status-cancelled", "Cancelled", "other")
+
+
 @login_required
 def client_engagement_list(request):
     """
-    Minimal 'dashboard' for the client showing their engagements.
-    (Rule 16 – basic version)
+    Client dashboard — card-based view with front-end status filtering.
+    (Rule 16)
     """
-    engagements = Engagement.objects.filter(client=request.user).select_related(
-        "performer"
+    engagements = list(
+        Engagement.objects.filter(client=request.user)
+        .select_related("performer")
     )
+
+    # Annotate each engagement with display metadata so the template
+    # can render badge classes and filter-bucket data-attributes directly.
+    for e in engagements:
+        cls, lbl, bucket = _STATUS_DISPLAY.get(e.status, _STATUS_FALLBACK)
+        e.badge_class = cls
+        e.badge_label = lbl
+        e.filter_bucket = bucket
+
     return render(
         request,
         "bookings/client_engagements.html",
