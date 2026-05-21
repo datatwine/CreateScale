@@ -145,12 +145,25 @@ def client_engagement_list(request):
 @login_required
 def performer_engagement_list(request):
     """
-    Minimal 'dashboard' for the performer showing requests & gigs.
-    (Rule 17 – basic version)
+    Performer dashboard — card-based view with front-end status filtering,
+    action pill for pending count, and "Respond within 24h" urgency badges.
+    (Rule 17)
     """
-    engagements = Engagement.objects.filter(performer=request.user).select_related(
-        "client"
+    engagements = list(
+        Engagement.objects.filter(performer=request.user)
+        .select_related("client")
     )
+
+    # Annotate each engagement with display metadata (reuses _STATUS_DISPLAY).
+    # Also sets is_pending / is_inactive for performer-specific UI elements.
+    for e in engagements:
+        cls, lbl, bucket = _STATUS_DISPLAY.get(e.status, _STATUS_FALLBACK)
+        e.badge_class = cls
+        e.badge_label = lbl
+        e.filter_bucket = bucket
+        e.is_pending = (bucket == "pending")
+        e.is_inactive = (bucket == "other")
+
     return render(
         request,
         "bookings/performer_engagements.html",
