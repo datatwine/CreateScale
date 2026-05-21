@@ -60,7 +60,7 @@ services:
   # ~50 real PG connections while multiplexing thousands of greenlet connections.
   # Web instances connect to DB_HOST:6432 instead of :5432.
   pgbouncer:
-    image: edoburu/pgbouncer:1.23.1
+    image: edoburu/pgbouncer:v1.25.1-p0
     restart: unless-stopped
     environment:
       DATABASE_URL: postgres://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
