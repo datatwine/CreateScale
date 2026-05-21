@@ -69,7 +69,7 @@ services:
       MAX_CLIENT_CONN: "5000"
       MAX_DB_CONNECTIONS: "150"
     ports:
-      - "6432:6432"
+      - "6432:5432"
     depends_on:
       db:
         condition: service_healthy
