@@ -208,7 +208,7 @@ jobs:
             --document-name "AWS-RunShellScript" \
             --parameters 'commands=[
               "set -eu",
-              "su - ubuntu -c \"cd /home/ubuntu/AK && git pull origin main\"",
+              "su - ubuntu -c \"cd /home/ubuntu/AK && git fetch origin main && git reset --hard origin/main\"",
               "cp /home/ubuntu/AK/deploy/web/docker-compose.web.yml /home/ubuntu/AK-WEB/docker-compose.web.yml",
               "aws s3 cp /home/ubuntu/AK/deploy/web/docker-compose.web.yml s3://createscale-config/web/docker-compose.web.yml",
               "cd /home/ubuntu/AK-WEB",
@@ -318,7 +318,7 @@ jobs:
             --document-name "AWS-RunShellScript" \
             --parameters 'commands=[
               "set -eu",
-              "su - ubuntu -c \"cd /home/ubuntu/AK && git pull origin main\"",
+              "su - ubuntu -c \"cd /home/ubuntu/AK && git fetch origin main && git reset --hard origin/main\"",
               "cd /home/ubuntu/AK/deploy/db",
               "docker compose -f docker-compose.data.yml build docker_stats_exporter",
               "docker compose -f docker-compose.data.yml up -d --remove-orphans",
@@ -385,7 +385,7 @@ jobs:
             --document-name "AWS-RunShellScript" \
             --parameters 'commands=[
               "set -eu",
-              "su - ubuntu -c \"cd /home/ubuntu/AK && git pull origin main\"",
+              "su - ubuntu -c \"cd /home/ubuntu/AK && git fetch origin main && git reset --hard origin/main\"",
               "cd /home/ubuntu/AK",
               "sudo cp deploy/nginx/artkhoj.conf /etc/nginx/sites-available/artkhoj",
               "sudo cp deploy/nginx/upstream.conf /etc/nginx/upstream.conf",
