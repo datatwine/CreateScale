@@ -192,12 +192,18 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: "Upload compose file to S3 for Spot fleet"
+        run: aws s3 cp deploy/web/docker-compose.web.yml s3://createscale-config/web/docker-compose.web.yml
 
       # --- Step A: Deploy to OD instance (canary) ---
       - name: "Deploy to OD Web Instance"
@@ -209,7 +215,6 @@ jobs:
             --parameters 'commands=[
               "set -eu",
               "su - ubuntu -c \"cd /home/ubuntu/AK && git fetch origin main && git reset --hard origin/main\"",
-              "aws s3 cp /home/ubuntu/AK/deploy/web/docker-compose.web.yml s3://createscale-config/web/docker-compose.web.yml",
               "cd /home/ubuntu/AK-WEB",
               "aws s3 cp s3://createscale-config/web/.env /home/ubuntu/AK-WEB/.env",
               "sed -i \"s/RUN_MIGRATIONS=0/RUN_MIGRATIONS=1/\" /home/ubuntu/AK-WEB/.env",
