@@ -1,40 +1,185 @@
 {% extends 'users/base.html' %}
+{% load static %}
 
-{% block content %}
-<div class="center-container">
-    <h2>Requests & bookings for me</h2>
+{% block title %}On My Stage · ArtKhoj{% endblock %}
 
-    {% if engagements %}
-        <table>
-            <thead>
-                <tr>
-                    <th>Date</th>
-                    <th>Time</th>
-                    <th>Client</th>
-                    <th>Venue</th>
-                    <th>Occasion</th>
-                    <th>Status</th>
-                    <th>Manage</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for e in engagements %}
-                    <tr>
-                        <td>{{ e.date }}</td>
-                        <td>{{ e.time }}</td>
-                        <td>{{ e.client.username }}</td>
-                        <td>{{ e.venue }}</td>
-                        <td>{{ e.occasion }}</td>
-                        <td>{{ e.get_status_display }}</td>
-                        <td>
-                            <a href="{% url 'bookings:engagement-detail' e.id %}">View / respond</a>
-                        </td>
-                    </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    {% else %}
-        <p>No one has requested you yet.</p>
+{% block extra_css %}
+    <link rel="stylesheet" href="{% static 'users/css/performer_engagements.css' %}">
+{% endblock %}
+
+{% block site_chrome %}{% endblock %}
+
+{% block content_wrap %}
+
+    <header class="topbar">
+        <a href="{% url 'global-feed' %}" class="brandmark">
+            <img src="{% static 'users/images/artkhojlogo.png' %}" alt="ArtKhoj" class="brandmark-img">
+        </a>
+    </header>
+
+    {% if messages %}
+        <div class="django-messages">
+            {% for message in messages %}
+                <div class="django-message django-message-{{ message.tags }}">{{ message }}</div>
+            {% endfor %}
+        </div>
     {% endif %}
-</div>
+
+    <div class="engagements-page">
+
+        <div class="page-header">
+            <div>
+                <h1 class="page-title">On my <span class="accent">stage</span></h1>
+                <p class="page-sub">Booking requests from clients</p>
+            </div>
+            {# Action pill — JS counts pending cards after render and shows this #}
+            <div class="action-pill" id="action-pill" style="display:none;">
+                <span class="action-dot"></span>
+                <span id="pending-count-label">0 need your response</span>
+            </div>
+        </div>
+
+        {% if engagements %}
+
+            <!-- Filter tabs (front-end JS, all cards already rendered) -->
+            <div class="filter-tabs">
+                <button class="filter-tab active" onclick="filterCards(this,'all')">
+                    All <span class="tab-count">{{ engagements|length }}</span>
+                </button>
+                <button class="filter-tab" onclick="filterCards(this,'pending')">
+                    Respond
+                </button>
+                <button class="filter-tab" onclick="filterCards(this,'accepted')">
+                    Accepted
+                </button>
+                <button class="filter-tab" onclick="filterCards(this,'other')">
+                    Other
+                </button>
+            </div>
+
+            <ul class="engagements-list">
+                {% for e in engagements %}
+
+                    <li class="engagement-card"
+                        data-status="{{ e.filter_bucket }}"
+                        {% if e.is_inactive %}style="opacity:0.72;"{% endif %}>
+
+                        <div class="card-stub {% if e.is_inactive %}inactive{% endif %}">
+                            <div class="stub-day">{{ e.date|date:"d" }}</div>
+                            <div class="stub-month">{{ e.date|date:"M" }}</div>
+                            <div class="stub-time">{{ e.time|time:"g:i A" }}</div>
+                        </div>
+
+                        <div class="card-body">
+                            <div class="card-main">
+                                <div class="card-occasion">{{ e.occasion }}</div>
+                                <div class="card-client">
+                                    From — <span class="client-name">{{ e.client.username }}</span>
+                                </div>
+                                <div class="card-venue">
+                                    <span class="pin">📍</span>{{ e.venue }}
+                                </div>
+                                {% if e.is_pending %}
+                                    <div class="action-needed">
+                                        <span class="a-dot"></span>Respond within 24h
+                                    </div>
+                                {% endif %}
+                            </div>
+                            <div class="card-right">
+                                <span class="status-badge {{ e.badge_class }}">
+                                    <span class="s-dot"></span>{{ e.badge_label }}
+                                </span>
+                                <a href="{% url 'bookings:engagement-detail' e.id %}"
+                                   class="btn-outline">
+                                    {% if e.is_pending %}Respond →{% else %}View →{% endif %}
+                                </a>
+                            </div>
+                        </div>
+
+                    </li>
+
+                {% endfor %}
+            </ul>
+
+        {% else %}
+
+            <div class="empty-state">
+                <span class="empty-emoji">🎭</span>
+                <strong>Your spotlight is ready</strong>
+                <p>Complete your profile and mark yourself as available — clients will start sending requests.</p>
+            </div>
+
+        {% endif %}
+
+    </div>
+
+    <!-- BOTTOM NAV -->
+    <nav class="bottom-nav" aria-label="Main navigation">
+        <div class="nav-items">
+
+            <a href="{% url 'global-feed' %}" class="nav-item" aria-label="Feed">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                    <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                </svg>
+                Feed
+            </a>
+
+            <a href="{% url 'profile' %}" class="nav-item active" aria-label="Profile">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="12" cy="7" r="4"></circle>
+                </svg>
+                Profile
+            </a>
+
+            <a href="{% url 'live-events' %}" class="nav-item" aria-label="Live Events">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                </svg>
+                Events
+            </a>
+
+            <form method="POST" action="{% url 'logout' %}" class="nav-logout-form">
+                {% csrf_token %}
+                <button type="submit" class="nav-item" aria-label="Log out">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                        <polyline points="16 17 21 12 16 7"></polyline>
+                        <line x1="21" y1="12" x2="9" y2="12"></line>
+                    </svg>
+                    Logout
+                </button>
+            </form>
+
+        </div>
+    </nav>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Filter tabs
+function filterCards(btn, status) {
+    document.querySelectorAll('.filter-tab').forEach(function(t){ t.classList.remove('active'); });
+    btn.classList.add('active');
+    document.querySelectorAll('.engagement-card').forEach(function(card) {
+        card.style.display = (status === 'all' || card.dataset.status === status) ? 'flex' : 'none';
+    });
+}
+
+// Action pill — count pending cards and show
+var pendingCards = document.querySelectorAll('.engagement-card[data-status="pending"]');
+if (pendingCards.length > 0) {
+    var pill = document.getElementById('action-pill');
+    var label = document.getElementById('pending-count-label');
+    if (pill && label) {
+        label.textContent = pendingCards.length + ' need' + (pendingCards.length === 1 ? 's' : '') + ' your response';
+        pill.style.display = 'inline-flex';
+    }
+}
+</script>
 {% endblock %}
