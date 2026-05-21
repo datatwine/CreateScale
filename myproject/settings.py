@@ -203,7 +203,12 @@ DATABASES = {
         "PASSWORD": os.getenv("DB_PASSWORD", "apppassword"),
         "HOST": os.getenv("DB_HOST", "db"),
         "PORT": os.getenv("DB_PORT", "5432"),
-        "CONN_MAX_AGE": 60,
+        # CONN_MAX_AGE=0 closes the DB connection after each request.
+        # Required for gevent: persistent connections held across greenlets
+        # can interleave queries from different in-flight requests. The cost
+        # is ~1 ms per request (psycopg2 connect is fast); for our workload
+        # the safety is worth it.
+        "CONN_MAX_AGE": 0,
     }
     
 
@@ -344,6 +349,14 @@ else:
     # Production: Silk middleware still loads but intercepts nothing (0%)
     SILKY_INTERCEPT_PERCENT = 0
 
+# Local-dev escape hatch — set SILK_OFF=1 to disable Silk capture even in DEBUG.
+# Silk's profiling tables deadlock under concurrent load (e.g. local load tests),
+# producing 500s that are NOT representative of production behavior since
+# SILKY_INTERCEPT_PERCENT=0 in production. Use this env var when load-testing
+# locally to get a clean signal.
+if os.getenv("SILK_OFF") == "1":
+    SILKY_INTERCEPT_PERCENT = 0
+
 
 #Sentry Logging below 
 
@@ -355,6 +368,10 @@ if SENTRY_DSN:
     import sentry_sdk
     from sentry_sdk.integrations.django import DjangoIntegration
 
+    # NOTE: sentry-sdk 2.x uses contextvars under the hood (which gevent
+    # monkey-patches), so request-scoping works correctly with greenlets
+    # WITHOUT a separate GeventIntegration. The dedicated integration was
+    # removed when 2.x switched off thread-locals.
     sentry_sdk.init(
         dsn=SENTRY_DSN,
         integrations=[DjangoIntegration()],

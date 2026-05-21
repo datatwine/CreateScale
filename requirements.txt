@@ -35,3 +35,5 @@ pytest-django>=4.8
 whitenoise>=6.5
 celery>=5.3
 sorl-thumbnail>=12.10
+gevent>=24.2,<25
+psycogreen>=1.0,<2

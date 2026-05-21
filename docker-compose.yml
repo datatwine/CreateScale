@@ -26,8 +26,10 @@ services:
     env_file:
       - .env
     environment:
+      # Gunicorn config (gevent is the entrypoint default).
+      # WEB_CONN caps greenlets per worker — only used by async worker classes.
       WEB_CONCURRENCY: "9"
-      WEB_THREADS: "4"
+      WEB_CONN: "1000"
       WEB_TIMEOUT: "30"
     depends_on:
       db:

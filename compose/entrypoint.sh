@@ -39,11 +39,18 @@ chown -R appuser:appuser "$PROMETHEUS_MULTIPROC_DIR"
 
 # 6) Start Gunicorn as the unprivileged user
 #    exec ensures Gunicorn becomes PID 1 for proper signal handling
+#
+#    Worker model: gevent (cooperative greenlets) is the default. Set
+#    WEB_CLASS=gthread to fall back to threaded sync without rebuilding —
+#    that's our rollback lever if gevent surfaces an issue in production.
+#
+#    --worker-connections caps greenlets per worker (memory safety). Only
+#    used by async worker classes; gthread ignores it.
 exec su -s /bin/sh -c "exec gunicorn myproject.wsgi:application \
   --bind 0.0.0.0:8000  \
-  --worker-class gthread \
-  --workers ${WEB_CONCURRENCY:-3} \
-  --threads  ${WEB_THREADS:-2} \
+  --worker-class ${WEB_CLASS:-gevent} \
+  --workers ${WEB_CONCURRENCY:-9} \
+  --worker-connections ${WEB_CONN:-1000} \
   --timeout  ${WEB_TIMEOUT:-30} \
   --access-logfile - \
   --error-logfile - \

@@ -3,7 +3,18 @@ services:
     volumes:
       - .:/app:rw,delegated
       - static_volume:/vol/static
+    environment:
+      # Disable Silk's request capture for local load testing. Silk's own
+      # profiling tables deadlock under concurrent writes, producing 500s
+      # that don't happen in production (where SILKY_INTERCEPT_PERCENT=0).
+      SILK_OFF: "1"
+    # Local dev: migrate + collectstatic + gunicorn with the gevent worker class.
+    # --worker-class gevent makes Gunicorn run monkey.patch_all() BEFORE any
+    # other module is imported in the worker process — this is the only way to
+    # avoid the "ssl already imported" warning that the sync worker triggers.
+    # --reload is compatible with gevent; the file watcher runs in a separate
+    # process, not a thread.
     command: >
       sh -lc "python manage.py migrate --noinput &&
               python manage.py collectstatic --noinput &&
-              gunicorn myproject.wsgi:application --bind 0.0.0.0:8000 --workers 3 --reload"
+              gunicorn myproject.wsgi:application --bind 0.0.0.0:8000 --worker-class gevent --workers 9 --worker-connections 1000 --reload"
