@@ -55,6 +55,21 @@ def create_hire_request(request, performer_id):
         )
         return redirect("profile-detail", user_id=performer_profile.user.id)
 
+    # Stats for the hire-card footer (cheap aggregates, computed once).
+    stats = {
+        "total_events": Engagement.objects.filter(
+            status=Engagement.STATUS_ACCEPTED
+        ).count(),
+        "total_artists": Profile.objects.filter(is_performer=True).count(),
+        "total_artforms": (
+            Profile.objects.filter(is_performer=True)
+            .exclude(profession="")
+            .values("profession")
+            .distinct()
+            .count()
+        ),
+    }
+
     if request.method == "POST":
         form = EngagementRequestForm(request.POST)
         if form.is_valid():
@@ -64,7 +79,6 @@ def create_hire_request(request, performer_id):
             engagement.client = request.user
             engagement.performer = performer_profile.user
 
-
             try:
                 engagement.full_clean()  # runs model.clean()
             except ValidationError as e:
@@ -72,7 +86,7 @@ def create_hire_request(request, performer_id):
                 return render(
                     request,
                     "bookings/hire_form.html",
-                    {"form": form, "performer_profile": performer_profile},
+                    {"form": form, "performer_profile": performer_profile, **stats},
                 )
 
             engagement.save()
@@ -84,7 +98,7 @@ def create_hire_request(request, performer_id):
     return render(
         request,
         "bookings/hire_form.html",
-        {"form": form, "performer_profile": performer_profile},
+        {"form": form, "performer_profile": performer_profile, **stats},
     )
 
 
