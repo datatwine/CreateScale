@@ -1,66 +1,287 @@
 {% extends 'users/base.html' %}
+{% load static %}
 
-{% block content %}
-<div class="center-container">
-    <h2>Booking with {{ engagement.performer.username }} on {{ engagement.date }}</h2>
+{% block title %}Booking · {{ engagement.occasion }} · ArtKhoj{% endblock %}
 
-    <p><strong>Time:</strong> {{ engagement.time }}</p>
-    <p><strong>Venue:</strong> {{ engagement.venue }}</p>
-    <p><strong>Occasion:</strong> {{ engagement.occasion }}</p>
-    <p><strong>Status:</strong> {{ engagement.get_status_display }}</p>
-    <p><strong>Client:</strong> {{ engagement.client.username }}</p>
-    <p><strong>Performer:</strong> {{ engagement.performer.username }}</p>
+{% block extra_css %}
+    <link rel="stylesheet" href="{% static 'users/css/engagement_detail.css' %}">
+{% endblock %}
 
-    <hr>
+{% block site_chrome %}{% endblock %}
 
-    {% if is_performer %}
-        <h3>Performer actions</h3>
+{% block content_wrap %}
 
-        {% if engagement.status == 'pending' %}
-            <form method="post" style="margin-bottom: 1rem;">
-                {% csrf_token %}
-                <input type="hidden" name="action" value="accept">
-                <button type="submit">Accept booking</button>
-            </form>
+    {#
+      CSS colour switch — zero backend magic needed.
+      The view already sets is_client / is_performer booleans.
+      We add the matching class to <body> via a template tag below.
+      Client → orange theme. Performer → dark charcoal theme.
+    #}
 
-            <form method="post">
-                {% csrf_token %}
-                <input type="hidden" name="action" value="decline">
-                <button type="submit">Decline booking</button>
-            </form>
-        {% endif %}
-
-        {% if engagement.status == 'pending' or engagement.status == 'accepted' %}
-            <h4>Cancel booking</h4>
-            <form method="post">
-                {% csrf_token %}
-                <input type="hidden" name="action" value="cancel_performer">
-                {{ form.as_p }}
-                <button type="submit">Cancel as performer</button>
-            </form>
-        {% endif %}
-    {% endif %}
-
-    {% if is_client %}
-        <h3>Client actions</h3>
-
-        {% if engagement.status == 'pending' or engagement.status == 'accepted' %}
-            <h4>Cancel booking</h4>
-            <form method="post">
-                {% csrf_token %}
-                <input type="hidden" name="action" value="cancel_client">
-                {{ form.as_p }}
-                <button type="submit">Cancel as client</button>
-            </form>
-        {% endif %}
-    {% endif %}
-
-    <p style="margin-top: 1rem;">
+    <!-- TOPBAR -->
+    <header class="topbar">
         {% if is_client %}
-            <a href="{% url 'bookings:client-engagements' %}">Back to my bookings</a>
+            <a href="{% url 'bookings:client-engagements' %}" class="back-btn">← My requests</a>
         {% elif is_performer %}
-            <a href="{% url 'bookings:performer-engagements' %}">Back to my requests</a>
+            <a href="{% url 'bookings:performer-engagements' %}" class="back-btn">← On my stage</a>
+        {% else %}
+            <a href="/" class="back-btn">← Back</a>
         {% endif %}
-    </p>
-</div>
+        <a href="{% url 'global-feed' %}" class="brandmark">
+            <img src="{% static 'users/images/artkhojlogo.png' %}" alt="ArtKhoj" class="brandmark-img">
+        </a>
+    </header>
+
+    {% if messages %}
+        <div class="django-messages">
+            {% for message in messages %}
+                <div class="django-message django-message-{{ message.tags }}">{{ message }}</div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <div class="detail-page">
+
+        <!-- Role pill -->
+        <div class="role-pill">
+            {% if is_client %}👤 You are the client
+            {% elif is_performer %}🎤 You are the performer
+            {% endif %}
+        </div>
+
+        <!-- BOOKING TICKET -->
+        <div class="booking-ticket">
+
+            <div class="ticket-header">
+                <div class="ticket-occasion">{{ engagement.occasion }}</div>
+
+                {# Status badge #}
+                {% if engagement.status == 'pending' %}
+                    <span class="status-badge status-pending"><span class="s-dot"></span>Pending</span>
+                {% elif engagement.status == 'accepted' %}
+                    <span class="status-badge status-accepted"><span class="s-dot"></span>Accepted</span>
+                {% elif engagement.status == 'declined' %}
+                    <span class="status-badge status-declined"><span class="s-dot"></span>Declined</span>
+                {% elif engagement.status == 'auto_expired' %}
+                    <span class="status-badge status-expired"><span class="s-dot"></span>Expired</span>
+                {% else %}
+                    <span class="status-badge status-cancelled"><span class="s-dot"></span>Cancelled</span>
+                {% endif %}
+            </div>
+
+            <div class="ticket-body">
+
+                <div class="detail-row">
+                    <div class="detail-icon">📅</div>
+                    <div>
+                        <div class="detail-label">Date & Time</div>
+                        <div class="detail-value">
+                            {{ engagement.date|date:"d M Y" }} · <span class="highlight">{{ engagement.time|time:"g:i A" }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="detail-row">
+                    <div class="detail-icon">📍</div>
+                    <div>
+                        <div class="detail-label">Venue</div>
+                        <div class="detail-value">{{ engagement.venue }}</div>
+                    </div>
+                </div>
+
+                <div class="detail-row">
+                    <div class="detail-icon">🎭</div>
+                    <div>
+                        <div class="detail-label">Performer</div>
+                        <div class="detail-value">
+                            <span class="highlight">{{ engagement.performer.username }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="detail-row">
+                    <div class="detail-icon">👤</div>
+                    <div>
+                        <div class="detail-label">Client</div>
+                        <div class="detail-value">{{ engagement.client.username }}</div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Live countdown -->
+            <div class="countdown-strip"
+                 data-datetime="{{ engagement.date|date:'Y-m-d' }}T{{ engagement.time|time:'H:i:s' }}">
+                <div class="countdown-label-txt">Event in</div>
+                <div class="countdown-nums" id="countdown">
+                    <div class="cd-unit">
+                        <div class="cd-num" id="cd-days">--</div>
+                        <div class="cd-lbl">Days</div>
+                    </div>
+                    <div class="cd-sep">:</div>
+                    <div class="cd-unit">
+                        <div class="cd-num" id="cd-hours">--</div>
+                        <div class="cd-lbl">Hrs</div>
+                    </div>
+                    <div class="cd-sep">:</div>
+                    <div class="cd-unit">
+                        <div class="cd-num" id="cd-mins">--</div>
+                        <div class="cd-lbl">Min</div>
+                    </div>
+                    <div class="cd-sep">:</div>
+                    <div class="cd-unit">
+                        <div class="cd-num" id="cd-secs">--</div>
+                        <div class="cd-lbl">Sec</div>
+                    </div>
+                </div>
+            </div>
+
+        </div><!-- /booking-ticket -->
+
+        <!-- ===== PERFORMER ACTIONS ===== -->
+        {% if is_performer %}
+
+            {% if engagement.status == 'pending' %}
+                <div class="actions-section">
+                    <div class="actions-title">Your response</div>
+                    <div class="action-row">
+                        <form method="POST" style="flex:1;">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="accept">
+                            <button type="submit" class="btn-accept" style="width:100%;">
+                                ✓ Accept booking
+                            </button>
+                        </form>
+                        <form method="POST" style="flex:1;">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="decline">
+                            <button type="submit" class="btn-decline" style="width:100%;">
+                                ✗ Decline
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            {% endif %}
+
+            {% if engagement.status == 'pending' or engagement.status == 'accepted' %}
+                <div class="actions-section">
+                    <div class="cancel-card">
+                        <div class="cancel-card-title">🚨 Cancel booking</div>
+                        <p class="cancel-hint">
+                            Cancelling within 24 hours of the event requires an emergency reason.
+                        </p>
+                        <form method="POST">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="cancel_performer">
+                            <textarea name="emergency_reason" rows="2"
+                                placeholder="Emergency reason (required only within 24h)…"></textarea>
+                            <button type="submit" class="btn-cancel">Cancel as performer</button>
+                        </form>
+                    </div>
+                </div>
+            {% endif %}
+
+        {% endif %}
+
+        <!-- ===== CLIENT ACTIONS ===== -->
+        {% if is_client %}
+
+            {% if engagement.status == 'pending' or engagement.status == 'accepted' %}
+                <div class="actions-section">
+                    <div class="cancel-card">
+                        <div class="cancel-card-title">🚨 Cancel booking</div>
+                        <p class="cancel-hint">
+                            Cancelling within 24 hours of the event requires an emergency reason.
+                        </p>
+                        <form method="POST">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="cancel_client">
+                            <textarea name="emergency_reason" rows="2"
+                                placeholder="Emergency reason (required only within 24h)…"></textarea>
+                            <button type="submit" class="btn-cancel">Cancel booking</button>
+                        </form>
+                    </div>
+                </div>
+            {% endif %}
+
+        {% endif %}
+
+    </div><!-- /detail-page -->
+
+    <!-- BOTTOM NAV -->
+    <nav class="bottom-nav" aria-label="Main navigation">
+        <div class="nav-items">
+
+            <a href="{% url 'global-feed' %}" class="nav-item" aria-label="Feed">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                    <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                </svg>
+                Feed
+            </a>
+
+            <a href="{% url 'profile' %}" class="nav-item" aria-label="Profile">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="12" cy="7" r="4"></circle>
+                </svg>
+                Profile
+            </a>
+
+            <a href="{% url 'live-events' %}" class="nav-item" aria-label="Live Events">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                </svg>
+                Events
+            </a>
+
+            <form method="POST" action="{% url 'logout' %}" class="nav-logout-form">
+                {% csrf_token %}
+                <button type="submit" class="nav-item" aria-label="Log out">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                        <polyline points="16 17 21 12 16 7"></polyline>
+                        <line x1="21" y1="12" x2="9" y2="12"></line>
+                    </svg>
+                    Logout
+                </button>
+            </form>
+
+        </div>
+    </nav>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// ── CSS colour switch: inject role class onto <body> ──
+document.body.classList.add('{% if is_client %}role-client{% elif is_performer %}role-performer{% else %}role-client{% endif %}');
+
+// ── Live countdown ──
+var strip = document.querySelector('.countdown-strip[data-datetime]');
+if (strip) {
+    var eventDt = new Date(strip.dataset.datetime);
+
+    function pad(n) { return String(n).padStart(2, '0'); }
+
+    function tick() {
+        var diff = eventDt - new Date();
+        if (diff <= 0) {
+            document.getElementById('countdown').innerHTML =
+                '<span class="countdown-past">Event has passed</span>';
+            return;
+        }
+        document.getElementById('cd-days').textContent  = pad(Math.floor(diff / 86400000));
+        document.getElementById('cd-hours').textContent = pad(Math.floor((diff % 86400000) / 3600000));
+        document.getElementById('cd-mins').textContent  = pad(Math.floor((diff % 3600000)  / 60000));
+        document.getElementById('cd-secs').textContent  = pad(Math.floor((diff % 60000)    / 1000));
+    }
+
+    tick();
+    setInterval(tick, 1000);
+}
+</script>
 {% endblock %}
