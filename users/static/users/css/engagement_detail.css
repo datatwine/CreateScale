@@ -1,0 +1,459 @@
+/* ArtKhoj — Engagement Detail
+   CSS custom properties switch accent between client (orange) and performer (charcoal)
+   via .role-client / .role-performer class on <body>.
+*/
+
+:root {
+  --ink: #1F1A17;
+  --ink-soft: #5A4F47;
+  --ink-mute: #8C8077;
+  --paper: #FFF8EE;
+  --card: #FFFFFF;
+  --cream: #FFF1E0;
+  --peach: #FFD9B0;
+  --orange: #e68a00;
+  --orange-deep: #b56b00;
+  --grey-line: #E9E2D8;
+  --grey-soft: #F2EDE5;
+
+  /* Role accent — overridden per role below */
+  --accent: #e68a00;
+  --accent-deep: #b56b00;
+  --accent-soft: #FFF1E0;
+  --accent-border: #FFD9B0;
+  --stub-bg: #e68a00;
+  --stub-text: #1F1A17;
+
+  --shadow-stamp: 4px 4px 0 var(--ink);
+  --radius-pill: 999px;
+  --radius-chunky: 18px;
+  --radius-card: 16px;
+  --nav-h: 64px;
+}
+
+/* ── Client: orange theme ── */
+body.role-client {
+  --accent: #e68a00;
+  --accent-deep: #b56b00;
+  --accent-soft: #FFF1E0;
+  --accent-border: #FFD9B0;
+  --stub-bg: #e68a00;
+  --stub-text: #1F1A17;
+}
+
+/* ── Performer: dark charcoal theme ── */
+body.role-performer {
+  --accent: #2A2420;
+  --accent-deep: #1F1A17;
+  --accent-soft: #F2EDE5;
+  --accent-border: #E9E2D8;
+  --stub-bg: #2A2420;
+  --stub-text: #FFF8EE;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: "Outfit", system-ui, sans-serif;
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  padding-bottom: calc(var(--nav-h) + 16px);
+}
+a { color: inherit; text-decoration: none; }
+
+/* ==================== TOPBAR ==================== */
+.topbar {
+  position: sticky; top: 0; z-index: 40;
+  display: flex; align-items: center;
+  justify-content: space-between;
+  padding: 0 32px; height: 56px;
+  background: rgba(255,248,238,0.92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1.5px solid var(--grey-line);
+}
+.back-btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-family: "Bricolage Grotesque", sans-serif;
+  font-weight: 600; font-size: 14px;
+  color: var(--ink-soft);
+  padding: 7px 14px;
+  border: 1.5px solid var(--grey-line);
+  border-radius: var(--radius-pill);
+  background: var(--card);
+  transition: border-color .15s, color .15s;
+}
+.back-btn:hover { border-color: var(--ink); color: var(--ink); }
+.brandmark {
+  display: flex; align-items: center; gap: 10px;
+}
+.brandmark .dot {
+  width: 30px; height: 30px; background: var(--ink);
+  border-radius: 50%; display: grid; place-items: center;
+  color: var(--orange);
+  font-family: "Bricolage Grotesque", sans-serif;
+  font-weight: 800; font-size: 15px;
+}
+.brandmark .wordmark {
+  font-family: "Bricolage Grotesque", sans-serif;
+  font-weight: 700; font-size: 17px; letter-spacing: -.02em;
+}
+.brandmark-img { height: 34px; width: auto; display: block; }
+
+/* ==================== PAGE ==================== */
+.detail-page {
+  max-width: 620px;
+  margin: 40px auto 24px;
+  padding: 0 20px;
+}
+
+/* ==================== BOOKING TICKET CARD ==================== */
+.booking-ticket {
+  background: var(--card);
+  border: 2px solid var(--ink);
+  border-radius: 22px;
+  box-shadow: 6px 6px 0 var(--ink);
+  overflow: hidden;
+  margin-bottom: 24px;
+}
+
+/* Ticket header band */
+.ticket-header {
+  background: var(--stub-bg);
+  padding: 20px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border-bottom: 2px solid var(--ink);
+  position: relative;
+}
+/* Punch holes */
+.ticket-header::before,
+.ticket-header::after {
+  content: "";
+  position: absolute;
+  bottom: -11px;
+  width: 22px; height: 22px;
+  background: var(--paper);
+  border-radius: 50%;
+  border: 1.5px dashed var(--grey-line);
+  z-index: 2;
+}
+.ticket-header::before { left: -11px; }
+.ticket-header::after  { right: -11px; }
+
+.ticket-occasion {
+  font-family: "Bricolage Grotesque", sans-serif;
+  font-weight: 700; font-size: 22px;
+  letter-spacing: -.02em;
+  color: var(--stub-text);
+  line-height: 1.15;
+}
+
+/* Status badge in header */
+.status-badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 12px; font-weight: 700;
+  padding: 5px 12px;
+  border-radius: var(--radius-pill);
+  border: 1.5px solid transparent;
+  white-space: nowrap; flex-shrink: 0;
+}
+.status-badge .s-dot { width: 6px; height: 6px; border-radius: 50%; }
+
+.status-pending  { background: rgba(255,255,255,0.85); border-color: var(--peach); color: var(--orange-deep); }
+.status-pending .s-dot { background: var(--orange); }
+.status-accepted { background: #EDFBEE; border-color: #a8e6b0; color: #1a7f2e; }
+.status-accepted .s-dot { background: #2ecc71; }
+.status-declined { background: #FFE6E0; border-color: #C5530B; color: #8f3400; }
+.status-declined .s-dot { background: #C5530B; }
+.status-cancelled { background: var(--grey-soft); border-color: var(--grey-line); color: var(--ink-mute); }
+.status-cancelled .s-dot { background: var(--ink-mute); }
+.status-expired { background: #F5F0FF; border-color: #C4B5FD; color: #5B21B6; }
+.status-expired .s-dot { background: #7C3AED; }
+
+/* Ticket body */
+.ticket-body {
+  padding: 24px;
+  display: flex; flex-direction: column; gap: 0;
+}
+
+/* Detail rows */
+.detail-row {
+  display: flex; align-items: flex-start;
+  gap: 12px; padding: 12px 0;
+  border-bottom: 1.5px solid var(--grey-line);
+}
+.detail-row:last-of-type { border-bottom: none; }
+
+.detail-icon {
+  font-size: 18px; flex-shrink: 0;
+  width: 28px; text-align: center;
+  margin-top: 1px;
+}
+.detail-label {
+  font-size: 11px; font-weight: 700;
+  letter-spacing: .07em; text-transform: uppercase;
+  color: var(--ink-mute);
+  margin-bottom: 2px;
+}
+.detail-value {
+  font-family: "Bricolage Grotesque", sans-serif;
+  font-weight: 600; font-size: 16px;
+  color: var(--ink);
+  letter-spacing: -.01em;
+}
+.detail-value .highlight {
+  color: var(--accent);
+}
+
+/* Countdown strip */
+.countdown-strip {
+  background: var(--stub-bg);
+  padding: 16px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border-top: 2px solid var(--ink);
+}
+.countdown-label-txt {
+  font-size: 12px; font-weight: 600;
+  color: var(--stub-text); opacity: .6;
+  letter-spacing: .04em; text-transform: uppercase;
+}
+.countdown-nums {
+  display: flex; align-items: center; gap: 6px;
+}
+.cd-unit {
+  display: flex; flex-direction: column;
+  align-items: center; gap: 1px;
+}
+.cd-num {
+  font-family: "Bricolage Grotesque", sans-serif;
+  font-weight: 700; font-size: 24px;
+  letter-spacing: -.04em;
+  color: var(--stub-text);
+  line-height: 1;
+}
+body.role-performer .cd-num { color: var(--orange); }
+.cd-lbl {
+  font-size: 9px; font-weight: 600;
+  color: var(--stub-text); opacity: .5;
+  letter-spacing: .06em; text-transform: uppercase;
+}
+.cd-sep {
+  font-family: "Bricolage Grotesque", sans-serif;
+  font-size: 20px; font-weight: 700;
+  color: var(--stub-text); opacity: .3;
+  margin-bottom: 10px;
+}
+.countdown-past {
+  font-family: "Bricolage Grotesque", sans-serif;
+  font-weight: 600; font-size: 14px;
+  color: var(--stub-text); opacity: .6;
+}
+
+/* ==================== ACTIONS SECTION ==================== */
+.actions-section {
+  margin-bottom: 20px;
+}
+.actions-title {
+  font-family: "Bricolage Grotesque", sans-serif;
+  font-weight: 700; font-size: 16px;
+  letter-spacing: -.01em;
+  margin-bottom: 14px;
+  color: var(--ink-soft);
+  display: flex; align-items: center; gap: 8px;
+}
+.actions-title::before {
+  content: "";
+  display: inline-block;
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+/* Accept / Decline row */
+.action-row {
+  display: flex; gap: 12px; flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+/* Chunky CTA */
+.btn-accept {
+  flex: 1;
+  display: inline-flex; align-items: center;
+  justify-content: center; gap: 10px;
+  background: #2ecc71; color: var(--ink);
+  font-family: "Bricolage Grotesque", sans-serif;
+  font-weight: 700; font-size: 16px;
+  padding: 17px 22px;
+  border: 2px solid var(--ink);
+  border-radius: var(--radius-chunky);
+  box-shadow: 4px 4px 0 var(--ink);
+  cursor: pointer;
+  transition: transform .12s, box-shadow .12s, background .12s;
+}
+.btn-accept:hover {
+  transform: translate(-2px,-2px);
+  box-shadow: 6px 6px 0 var(--ink);
+  background: #27ae60;
+}
+.btn-accept:active {
+  transform: translate(2px,2px);
+  box-shadow: 0 0 0 var(--ink);
+}
+
+.btn-decline {
+  flex: 1;
+  display: inline-flex; align-items: center;
+  justify-content: center; gap: 10px;
+  background: var(--card); color: var(--ink);
+  font-family: "Bricolage Grotesque", sans-serif;
+  font-weight: 700; font-size: 16px;
+  padding: 17px 22px;
+  border: 2px solid var(--ink);
+  border-radius: var(--radius-chunky);
+  box-shadow: 4px 4px 0 var(--ink);
+  cursor: pointer;
+  transition: transform .12s, box-shadow .12s, background .12s;
+}
+.btn-decline:hover {
+  transform: translate(-2px,-2px);
+  box-shadow: 6px 6px 0 var(--ink);
+  background: #FFE6E0;
+}
+.btn-decline:active {
+  transform: translate(2px,2px);
+  box-shadow: 0 0 0 var(--ink);
+}
+
+/* Cancel section — 35% smaller, red on hover */
+.cancel-card {
+  background: var(--grey-soft);
+  border: 1.5px solid var(--grey-line);
+  border-radius: 14px;
+  padding: 13px 16px;
+  margin-top: 6px;
+}
+.cancel-card-title {
+  font-family: "Bricolage Grotesque", sans-serif;
+  font-weight: 700; font-size: 12.5px;
+  color: var(--ink-soft);
+  margin-bottom: 7px;
+  display: flex; align-items: center; gap: 6px;
+}
+.cancel-hint {
+  font-size: 11px; color: var(--ink-mute);
+  line-height: 1.45; margin-bottom: 8px;
+}
+.cancel-card textarea {
+  width: 100%;
+  background: var(--card);
+  border: 1.5px solid var(--grey-line);
+  border-radius: 9px;
+  padding: 8px 10px;
+  font-family: inherit; font-size: 13px;
+  color: var(--ink); outline: none;
+  resize: vertical; min-height: 46px;
+  margin-bottom: 8px;
+  transition: border-color .15s, box-shadow .15s;
+}
+.cancel-card textarea:focus {
+  border-color: var(--orange);
+  box-shadow: 0 0 0 2px rgba(230,138,0,.15);
+}
+.cancel-card textarea::placeholder { color: var(--ink-mute); }
+
+.btn-cancel {
+  display: inline-flex; align-items: center;
+  justify-content: center; gap: 6px;
+  background: var(--card); color: #8f3400;
+  font-family: "Bricolage Grotesque", sans-serif;
+  font-weight: 700; font-size: 12.5px;
+  padding: 8px 14px;
+  border: 1.5px solid #C5530B;
+  border-radius: 12px;
+  box-shadow: 2px 2px 0 var(--ink);
+  cursor: pointer;
+  transition: transform .12s, box-shadow .12s, background .12s, color .12s, border-color .12s;
+}
+.btn-cancel:hover {
+  transform: translate(-2px,-2px);
+  box-shadow: 4px 4px 0 var(--ink);
+  background: #C5530B;
+  color: #ffffff;
+  border-color: #C5530B;
+}
+.btn-cancel:active {
+  transform: translate(2px,2px);
+  box-shadow: 0 0 0 var(--ink);
+}
+
+/* Role indicator pill */
+.role-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 12px; font-weight: 700;
+  padding: 5px 12px;
+  border-radius: var(--radius-pill);
+  background: var(--accent-soft);
+  border: 1.5px solid var(--accent-border);
+  color: var(--accent-deep);
+  margin-bottom: 20px;
+}
+
+/* ==================== DJANGO MESSAGES ==================== */
+.django-messages {
+  max-width: 620px; margin: 12px auto 0;
+  padding: 0 20px;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.django-message {
+  padding: 12px 16px; border-radius: 12px;
+  font-size: 14px; font-weight: 500;
+}
+.django-message-success { background:#EDFBEE; border:1.5px solid #a8e6b0; color:#1a7f2e; }
+.django-message-error   { background:#FFE6E0; border:1.5px solid #C5530B; color:#8f3400; }
+
+/* ==================== BOTTOM NAV ==================== */
+.bottom-nav {
+  position: fixed; bottom: 0; left: 0; right: 0;
+  z-index: 50; height: var(--nav-h);
+  background: var(--card);
+  border-top: 1.5px solid var(--grey-line);
+  display: flex; align-items: stretch;
+}
+.nav-items {
+  display: flex; flex: 1; align-items: stretch;
+  max-width: 600px; margin: 0 auto;
+}
+.nav-item {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 4px; text-decoration: none;
+  color: var(--ink-mute); font-size: 11px;
+  font-weight: 600; letter-spacing: .02em;
+  border: 0; background: transparent;
+  cursor: pointer; font-family: inherit;
+  padding: 0; position: relative; transition: color .15s;
+}
+.nav-item svg {
+  width: 22px; height: 22px; stroke: currentColor;
+  fill: none; stroke-width: 1.8;
+  stroke-linecap: round; stroke-linejoin: round;
+}
+.nav-item:hover { color: var(--orange); }
+.nav-logout-form { flex: 1; display: contents; }
+
+/* ==================== RESPONSIVE ==================== */
+@media (max-width: 520px) {
+  .detail-page { margin-top: 24px; padding: 0 14px; }
+  .topbar { padding: 0 16px; }
+  .ticket-occasion { font-size: 18px; }
+  .action-row { flex-direction: column; }
+  .countdown-strip { flex-direction: column; gap: 8px; align-items: flex-start; }
+}
