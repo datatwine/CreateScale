@@ -7,7 +7,7 @@ guard the business rules:
   - Reason is mandatory and at least non-empty
   - accept() stamps accepted_at
 """
-from datetime import date, time, timedelta
+from datetime import date, timedelta
 
 import pytest
 from django.core.exceptions import ValidationError

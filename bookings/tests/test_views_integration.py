@@ -6,7 +6,7 @@ checks, response shapes) without touching the network.
 import hashlib
 import hmac
 import json
-from datetime import date, time, timedelta
+from datetime import date, timedelta
 
 import pytest
 from django.test import Client
