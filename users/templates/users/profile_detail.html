@@ -115,6 +115,18 @@
             <div class="hire-section">
                 <div class="hire-section-title">Book this artist</div>
 
+                {# Performer's standard fee — snapshotted into engagement at hire time. #}
+                {% if profile.performer_fee %}
+                    <div class="performer-fee" style="margin:12px 0;padding:10px 16px;background:#FFF1E0;border:1.5px solid #FFD9B0;border-radius:12px;display:inline-flex;align-items:center;gap:10px;">
+                        <span style="font-size:13px;color:#5A4F47;">Standard rate</span>
+                        <span style="font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:20px;color:#1F1A17;">₹{{ profile.performer_fee }}</span>
+                    </div>
+                {% else %}
+                    <div class="performer-fee" style="margin:12px 0;padding:10px 16px;background:#F2EDE5;border-radius:12px;font-size:13px;color:#8C8077;display:inline-block;">
+                        Fee not set — performer hasn't published a rate yet.
+                    </div>
+                {% endif %}
+
                 {% if request.user.profile.client_blacklisted %}
                     <div class="hire-info blocked">
                         <span class="info-icon">🚫</span>

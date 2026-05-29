@@ -18,13 +18,37 @@ class EngagementRequestForm(forms.ModelForm):
         }
 
 
-class EmergencyCancelForm(forms.Form):
+class CancelEngagementForm(forms.Form):
     """
-    Simple form used on the engagement-detail page when cancelling close to the event.
+    Mandatory cancellation reason. Replaces the old EmergencyCancelForm —
+    cancellation is now blocked entirely within 24h, and outside that window
+    a reason is always required (it's surfaced to the other party).
     """
-    emergency_reason = forms.CharField(
-        required=False,
-        widget=forms.Textarea(attrs={"rows": 3}),
-        help_text="Required only if you are cancelling within 24 hours of the event.",
-        label="Emergency reason",
+    cancellation_reason = forms.CharField(
+        required=True,
+        min_length=10,
+        max_length=500,
+        widget=forms.Textarea(attrs={
+            "rows": 3,
+            "placeholder": "Why are you cancelling? The other party will see this.",
+        }),
+        label="Cancellation reason",
+    )
+
+
+class DisputeForm(forms.Form):
+    """
+    Client raises an issue against a paid engagement within the 24h
+    post-event dispute window. Once submitted, the Celery payout task
+    skips this engagement until an admin resolves it.
+    """
+    dispute_reason = forms.CharField(
+        required=True,
+        min_length=10,
+        max_length=1000,
+        widget=forms.Textarea(attrs={
+            "rows": 4,
+            "placeholder": "What went wrong? Please describe in detail. An admin will review.",
+        }),
+        label="Issue description",
     )

@@ -1,0 +1,95 @@
+{% comment %}
+  Settings drawer partial.
+
+  Included from profile_detail.html only when viewing your OWN profile.
+  Hidden by default; triggered by the gear icon in the topbar.
+
+  Contents:
+    - Performer Payment Setup section (only for performers) — KYC status badge,
+      summary of saved details, edit link.
+    - Your Payments section — links to client_payments + performer_payouts.
+
+  Self-contained CSS at the bottom of this file so we don't need to touch
+  the main stylesheet. Inline styles + the <style> block belong together
+  for easy iteration.
+{% endcomment %}
+<div id="settings-drawer" class="settings-drawer" style="display:none;">
+
+    <div class="drawer-overlay"
+         onclick="document.getElementById('settings-drawer').style.display='none'"></div>
+
+    <div class="drawer-panel">
+        <div class="drawer-header">
+            <h3 style="margin:0;font-family:'Bricolage Grotesque',sans-serif;">Settings</h3>
+            <button type="button"
+                    onclick="document.getElementById('settings-drawer').style.display='none'"
+                    class="drawer-close" aria-label="Close settings">✕</button>
+        </div>
+
+        {# ── Performer payment setup — KYC + bank ── #}
+        {% if profile.is_performer %}
+            <div class="drawer-section">
+                <h4>Payment Setup</h4>
+
+                <div class="kyc-status">
+                    {% if profile.razorpay_kyc_status == 'approved' %}
+                        <span class="kyc-badge kyc-ok">✅ Approved — ready for payouts</span>
+                    {% elif profile.razorpay_kyc_status == 'pending' %}
+                        <span class="kyc-badge kyc-pending">⏳ Pending RBI review (5-7 days)</span>
+                    {% elif profile.razorpay_kyc_status == 'rejected' %}
+                        <span class="kyc-badge kyc-rejected">⚠️ Rejected — please re-submit</span>
+                    {% else %}
+                        <span class="kyc-badge kyc-none">⚠️ Not set up — clients cannot pay you</span>
+                    {% endif %}
+                </div>
+
+                {% if profile.performer_fee %}
+                    <div class="kyc-detail">Standard fee: <strong>₹{{ profile.performer_fee }}</strong></div>
+                {% endif %}
+                {% if profile.bank_account_number %}
+                    {# Mask all but the last 4 digits of the account number. #}
+                    <div class="kyc-detail">Bank: {{ profile.bank_ifsc }} ****{{ profile.bank_account_number|slice:"-4:" }}</div>
+                {% endif %}
+
+                <a href="{% url 'update-payment-details' %}" class="btn-outline drawer-edit-btn">
+                    {% if profile.razorpay_account_id %}Edit payment details{% else %}Set up payment details{% endif %}
+                </a>
+            </div>
+        {% endif %}
+
+        {# ── Payment history — clients see one link, performers see both ── #}
+        <div class="drawer-section">
+            <h4>Your Payments</h4>
+            {% if profile.is_performer %}
+                <a href="{% url 'bookings:performer-payouts' %}" class="drawer-link">📥 View payouts received</a>
+            {% endif %}
+            <a href="{% url 'bookings:client-payments' %}" class="drawer-link">📤 View payments made</a>
+        </div>
+
+    </div>
+</div>
+
+<style>
+.settings-drawer { position:fixed; inset:0; z-index:1000; }
+.drawer-overlay  { position:absolute; inset:0; background:rgba(0,0,0,0.5); }
+.drawer-panel    { position:absolute; right:0; top:0; bottom:0; width:min(420px, 90vw);
+                   background:#FFF8EE; padding:24px; overflow-y:auto;
+                   box-shadow:-4px 0 24px rgba(0,0,0,0.2); animation:slide-in .25s ease; }
+@keyframes slide-in { from { transform: translateX(100%); } to { transform: translateX(0); } }
+.drawer-header   { display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; }
+.drawer-close    { background:none; border:none; font-size:22px; cursor:pointer; color:#5A4F47; }
+.drawer-section  { margin-bottom:24px; padding-bottom:16px; border-bottom:1px solid #E9E2D8; }
+.drawer-section:last-child { border-bottom:none; }
+.drawer-section h4 { font-family:"Bricolage Grotesque",sans-serif; margin:0 0 12px 0; font-size:15px; color:#1F1A17; }
+.kyc-badge       { display:inline-block; padding:6px 12px; border-radius:999px; font-weight:700; font-size:13px; }
+.kyc-ok          { background:#EDFBEE; color:#1a7f2e; }
+.kyc-pending     { background:#FFF1E0; color:#b56b00; }
+.kyc-rejected    { background:#FFE6E0; color:#8f3400; }
+.kyc-none        { background:#F2EDE5; color:#5A4F47; }
+.kyc-detail      { font-size:13px; color:#5A4F47; margin:8px 0; }
+.drawer-edit-btn { display:inline-block; margin-top:10px; padding:8px 14px; border:1.5px solid #C5530B;
+                   color:#C5530B; border-radius:8px; text-decoration:none; font-weight:600; font-size:13px; }
+.drawer-edit-btn:hover { background:#C5530B; color:#fff; }
+.drawer-link     { display:block; padding:10px 0; color:#1F1A17; text-decoration:none; font-weight:600; font-size:14px; }
+.drawer-link:hover { color:#C5530B; }
+</style>

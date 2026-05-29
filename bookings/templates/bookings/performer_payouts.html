@@ -1,0 +1,146 @@
+{% extends 'users/base.html' %}
+{% load static %}
+
+{% block title %}My payouts · ArtKhoj{% endblock %}
+
+{% block extra_css %}
+    {# Reuse the performer engagements stylesheet — same card layout. #}
+    <link rel="stylesheet" href="{% static 'users/css/performer_engagements.css' %}">
+{% endblock %}
+
+{% block site_chrome %}{% endblock %}
+
+{% block content_wrap %}
+
+    <header class="topbar">
+        <a href="{% url 'bookings:performer-engagements' %}" class="back-btn">← My stage</a>
+        <a href="{% url 'global-feed' %}" class="brandmark">
+            <img src="{% static 'users/images/artkhojlogo.png' %}" alt="ArtKhoj" class="brandmark-img">
+        </a>
+    </header>
+
+    {% if messages %}
+        <div class="django-messages">
+            {% for message in messages %}
+                <div class="django-message django-message-{{ message.tags }}">{{ message }}</div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <div class="engagements-page">
+
+        <div class="page-header">
+            <div>
+                <h1 class="page-title">My <span class="accent">payouts</span></h1>
+                <p class="page-sub">Money flowing your way from completed gigs</p>
+            </div>
+        </div>
+
+        {% if engagements %}
+
+            <ul class="engagements-list">
+                {% for e in engagements %}
+
+                    <li class="engagement-card" data-status="{{ e.payment_status }}">
+
+                        <div class="card-stub">
+                            <div class="stub-day">{{ e.date|date:"d" }}</div>
+                            <div class="stub-month">{{ e.date|date:"M" }}</div>
+                            <div class="stub-time">{{ e.time|time:"g:i A" }}</div>
+                        </div>
+
+                        <div class="card-body">
+                            <div class="card-main">
+                                <div class="card-occasion">{{ e.occasion }}</div>
+                                <div class="card-client">
+                                    From — <span class="client-name">{{ e.client.username }}</span>
+                                </div>
+                                <div class="card-venue">
+                                    <span class="pin">📍</span>{{ e.venue|truncatechars:40 }}
+                                </div>
+                            </div>
+                            <div class="card-right">
+                                <div style="font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:20px;">
+                                    ₹{{ e.fee }}
+                                </div>
+                                {% if e.disputed_at and not e.dispute_resolved_at %}
+                                    <span class="status-badge status-declined">
+                                        <span class="s-dot"></span>🚩 Disputed
+                                    </span>
+                                {% elif e.payment_status == 'paid' %}
+                                    <span class="status-badge status-pending">
+                                        <span class="s-dot"></span>In escrow
+                                    </span>
+                                {% elif e.payment_status == 'released' %}
+                                    <span class="status-badge status-accepted">
+                                        <span class="s-dot"></span>Paid out
+                                    </span>
+                                {% elif e.payment_status == 'refunded' %}
+                                    <span class="status-badge status-cancelled">
+                                        <span class="s-dot"></span>Refunded
+                                    </span>
+                                {% endif %}
+                                <a href="{% url 'bookings:engagement-detail' e.id %}" class="btn-outline">
+                                    View →
+                                </a>
+                            </div>
+                        </div>
+
+                    </li>
+
+                {% endfor %}
+            </ul>
+
+        {% else %}
+
+            <div class="empty-state">
+                <span class="empty-emoji">💸</span>
+                <strong>No payouts yet</strong>
+                <p>Once clients pay for your accepted bookings, they'll show up here.</p>
+            </div>
+
+        {% endif %}
+
+    </div>
+
+    {# Reuse the same bottom nav pattern from performer_engagements.html #}
+    <nav class="bottom-nav" aria-label="Main navigation">
+        <div class="nav-items">
+            <a href="{% url 'global-feed' %}" class="nav-item" aria-label="Feed">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                    <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                </svg>
+                Feed
+            </a>
+            <a href="{% url 'profile' %}" class="nav-item active" aria-label="Profile">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="12" cy="7" r="4"></circle>
+                </svg>
+                Profile
+            </a>
+            <a href="{% url 'live-events' %}" class="nav-item" aria-label="Live Events">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                </svg>
+                Events
+            </a>
+            <form method="POST" action="{% url 'logout' %}" class="nav-logout-form">
+                {% csrf_token %}
+                <button type="submit" class="nav-item" aria-label="Log out">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                        <polyline points="16 17 21 12 16 7"></polyline>
+                        <line x1="21" y1="12" x2="9" y2="12"></line>
+                    </svg>
+                    Logout
+                </button>
+            </form>
+        </div>
+    </nav>
+
+{% endblock %}

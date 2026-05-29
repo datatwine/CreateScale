@@ -13,4 +13,7 @@ urlpatterns = [
     path('inbox/', views.inbox, name='inbox'),
     path('message_thread/<int:user_id>/', views.message_thread, name='message-thread'),
     path('live-events/', views.live_events, name='live-events'),
+
+    # Razorpay KYC + bank details — only the logged-in user can edit their own
+    path('settings/payment/', views.update_payment_details, name='update-payment-details'),
 ]

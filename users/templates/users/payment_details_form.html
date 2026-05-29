@@ -1,0 +1,121 @@
+{% extends 'users/base.html' %}
+{% load static %}
+
+{% block title %}Payment details · ArtKhoj{% endblock %}
+
+{% block content_wrap %}
+
+    <header class="topbar">
+        <a href="{% url 'profile' %}" class="back-btn">← Back to profile</a>
+        <a href="{% url 'global-feed' %}" class="brandmark">
+            <img src="{% static 'users/images/artkhojlogo.png' %}" alt="ArtKhoj" class="brandmark-img">
+        </a>
+    </header>
+
+    {% if messages %}
+        <div class="django-messages">
+            {% for message in messages %}
+                <div class="django-message django-message-{{ message.tags }}">{{ message }}</div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <div class="form-page">
+
+        <h1 class="form-title">
+            Payment <span class="accent">details</span>
+        </h1>
+        <p class="form-sub">
+            Required for receiving payouts from your bookings. Razorpay verifies
+            your PAN and bank details directly with the issuing authorities —
+            we never see your bank balance or transaction history.
+        </p>
+
+        <form method="POST" novalidate>
+            {% csrf_token %}
+
+            <div class="form-field">
+                <label for="id_performer_fee">Your standard fee (₹)</label>
+                {{ form.performer_fee }}
+                {% if form.performer_fee.errors %}<div class="form-error">{{ form.performer_fee.errors|join:" " }}</div>{% endif %}
+                <small class="form-hint">Between ₹500 and ₹5,00,000. Shown on your profile to clients.</small>
+            </div>
+
+            <div class="form-field">
+                <label for="id_phone_number">Phone number</label>
+                {{ form.phone_number }}
+                {% if form.phone_number.errors %}<div class="form-error">{{ form.phone_number.errors|join:" " }}</div>{% endif %}
+                <small class="form-hint">10-digit Indian mobile. Razorpay uses this for KYC.</small>
+            </div>
+
+            <div class="form-field">
+                <label for="id_pan_number">PAN number</label>
+                {{ form.pan_number }}
+                {% if form.pan_number.errors %}<div class="form-error">{{ form.pan_number.errors|join:" " }}</div>{% endif %}
+                <small class="form-hint">Format: ABCDE1234F. Verified against Income Tax records.</small>
+            </div>
+
+            <div class="form-field">
+                <label for="id_bank_account_holder_name">Bank account holder name</label>
+                {{ form.bank_account_holder_name }}
+                {% if form.bank_account_holder_name.errors %}<div class="form-error">{{ form.bank_account_holder_name.errors|join:" " }}</div>{% endif %}
+                <small class="form-hint">Exactly as it appears in your bank records.</small>
+            </div>
+
+            <div class="form-field">
+                <label for="id_bank_account_number">Bank account number</label>
+                {{ form.bank_account_number }}
+                {% if form.bank_account_number.errors %}<div class="form-error">{{ form.bank_account_number.errors|join:" " }}</div>{% endif %}
+            </div>
+
+            <div class="form-field">
+                <label for="id_bank_ifsc">IFSC code</label>
+                {{ form.bank_ifsc }}
+                {% if form.bank_ifsc.errors %}<div class="form-error">{{ form.bank_ifsc.errors|join:" " }}</div>{% endif %}
+                <small class="form-hint">Format: 4 letters + 0 + 6 alphanumerics (e.g. HDFC0001234).</small>
+            </div>
+
+            <button type="submit" class="btn-primary">Save payment details</button>
+        </form>
+
+        {% if request.user.profile.razorpay_kyc_status == 'pending' %}
+            <div class="form-callout">
+                ⏳ Razorpay is reviewing your details. This usually takes 5-7 business days.
+                You can still receive booking requests in the meantime.
+            </div>
+        {% elif request.user.profile.razorpay_kyc_status == 'approved' %}
+            <div class="form-callout form-callout-ok">
+                ✅ Your linked account is approved. You're ready to receive payouts.
+            </div>
+        {% elif request.user.profile.razorpay_kyc_status == 'rejected' %}
+            <div class="form-callout form-callout-err">
+                ⚠️ Razorpay rejected your details. Please double-check PAN/IFSC/account
+                number and re-submit.
+            </div>
+        {% endif %}
+
+    </div>
+
+<style>
+.form-page { max-width:560px; margin:24px auto; padding:0 16px; }
+.form-title { font-family:"Bricolage Grotesque",sans-serif; font-size:32px; margin:0 0 6px; color:#1F1A17; }
+.form-title .accent { color:#C5530B; }
+.form-sub { color:#5A4F47; font-size:14px; margin:0 0 24px; line-height:1.5; }
+.form-field { margin-bottom:18px; }
+.form-field label { display:block; font-weight:700; font-size:14px; color:#1F1A17; margin-bottom:6px; }
+.form-field input, .form-field textarea, .form-field select {
+    width:100%; padding:10px 12px; border:1.5px solid #E9E2D8; border-radius:8px;
+    font-family:"Outfit",sans-serif; font-size:14px; background:#fff;
+}
+.form-field input:focus, .form-field textarea:focus { outline:none; border-color:#C5530B; }
+.form-hint { display:block; margin-top:4px; color:#8C8077; font-size:12px; }
+.form-error { color:#C5530B; font-size:13px; margin-top:4px; }
+.btn-primary { background:#C5530B; color:#fff; border:none; padding:12px 22px; border-radius:10px;
+    font-weight:700; font-size:15px; cursor:pointer; width:100%; }
+.btn-primary:hover { background:#a8460a; }
+.form-callout { margin-top:20px; padding:12px 16px; background:#FFF1E0; border-radius:10px; font-size:13px; color:#8f3400; }
+.form-callout-ok  { background:#EDFBEE; color:#1a7f2e; }
+.form-callout-err { background:#FFE6E0; color:#8f3400; }
+</style>
+
+{% endblock %}

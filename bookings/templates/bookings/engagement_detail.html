@@ -138,6 +138,13 @@
 
         </div><!-- /booking-ticket -->
 
+        {# ── Universal 24h warning banner — shown to both parties when event is <24h away. #}
+        {% if engagement.is_within_24h_of_event and engagement.status != 'declined' and engagement.status != 'auto_expired' %}
+            <div class="warning-banner" style="background:#FFE6E0;border:1.5px solid #C5530B;padding:12px 16px;border-radius:8px;margin:12px 0;color:#8f3400;font-weight:600;">
+                ⚠️ This event is within 24 hours — cancellation is not allowed by either party.
+            </div>
+        {% endif %}
+
         <!-- ===== PERFORMER ACTIONS ===== -->
         {% if is_performer %}
 
@@ -163,22 +170,44 @@
                 </div>
             {% endif %}
 
-            {% if engagement.status == 'pending' or engagement.status == 'accepted' %}
+            {# ── Paid in escrow indicator — performer side ── #}
+            {% if engagement.payment_status == 'paid' %}
                 <div class="actions-section">
-                    <div class="cancel-card">
-                        <div class="cancel-card-title">🚨 Cancel booking</div>
-                        <p class="cancel-hint">
-                            Cancelling within 24 hours of the event requires an emergency reason.
-                        </p>
-                        <form method="POST">
-                            {% csrf_token %}
-                            <input type="hidden" name="action" value="cancel_performer">
-                            <textarea name="emergency_reason" rows="2"
-                                placeholder="Emergency reason (required only within 24h)…"></textarea>
-                            <button type="submit" class="btn-cancel">Cancel as performer</button>
-                        </form>
+                    <div class="cancel-card" style="background:#EDFBEE;border:1.5px solid #a8e6b0;">
+                        <div class="cancel-card-title" style="color:#1a7f2e;">✓ Client paid ₹{{ engagement.fee }}</div>
+                        <p class="cancel-hint">Money is held in escrow. Released to your account 24h after the event.</p>
                     </div>
                 </div>
+            {% elif engagement.payment_status == 'released' %}
+                <div class="actions-section">
+                    <div class="cancel-card" style="background:#EDFBEE;border:1.5px solid #a8e6b0;">
+                        <div class="cancel-card-title" style="color:#1a7f2e;">💰 Payout sent · ₹{{ engagement.fee }}</div>
+                        <p class="cancel-hint">Released on {{ engagement.released_at|date:"d M Y" }}.</p>
+                    </div>
+                </div>
+            {% endif %}
+
+            {# ── Cancel form — only shown when allowed (>24h away). Mandatory reason. #}
+            {% if engagement.status == 'pending' or engagement.status == 'accepted' %}
+                {% if not engagement.is_within_24h_of_event %}
+                    <div class="actions-section">
+                        <div class="cancel-card">
+                            <div class="cancel-card-title">🚨 Cancel booking</div>
+                            <p class="cancel-hint">
+                                A reason is required and will be shared with the client.
+                                {% if engagement.payment_status == 'paid' %}The client will be refunded automatically.{% endif %}
+                            </p>
+                            <form method="POST">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="cancel_performer">
+                                <textarea name="cancellation_reason" rows="3" required
+                                    minlength="10" maxlength="500"
+                                    placeholder="Why are you cancelling? (10–500 characters)"></textarea>
+                                <button type="submit" class="btn-cancel">Cancel as performer</button>
+                            </form>
+                        </div>
+                    </div>
+                {% endif %}
             {% endif %}
 
         {% endif %}
@@ -186,22 +215,103 @@
         <!-- ===== CLIENT ACTIONS ===== -->
         {% if is_client %}
 
-            {% if engagement.status == 'pending' or engagement.status == 'accepted' %}
+            {# ── Pay Now button — accepted + unpaid + performer can receive ── #}
+            {% if engagement.status == 'accepted' and engagement.payment_status == 'unpaid' %}
+                {% if engagement.fee %}
+                    <div class="actions-section">
+                        <button id="pay-now-btn" class="btn-accept" style="width:100%;font-size:16px;">
+                            💳 Pay ₹{{ engagement.fee }} now
+                        </button>
+                        {% if engagement.payment_deadline %}
+                            <p class="cancel-hint" style="margin-top:8px;text-align:center;">
+                                Payment deadline: {{ engagement.payment_deadline|date:"d M Y, g:i A" }}
+                            </p>
+                        {% endif %}
+                    </div>
+                {% else %}
+                    <div class="actions-section">
+                        <div class="cancel-card" style="background:#F2EDE5;">
+                            <div class="cancel-card-title">⏳ Awaiting fee</div>
+                            <p class="cancel-hint">This performer hasn't set their rate yet. Payment will become available once they do.</p>
+                        </div>
+                    </div>
+                {% endif %}
+            {% endif %}
+
+            {# ── Paid status — client side ── #}
+            {% if engagement.payment_status == 'paid' %}
+                <div class="actions-section">
+                    <div class="cancel-card" style="background:#EDFBEE;border:1.5px solid #a8e6b0;">
+                        <div class="cancel-card-title" style="color:#1a7f2e;">✓ Paid ₹{{ engagement.fee }}</div>
+                        <p class="cancel-hint">Money is held in escrow. Released to the performer 24h after the event.</p>
+                    </div>
+                </div>
+            {% elif engagement.payment_status == 'released' %}
+                <div class="actions-section">
+                    <div class="cancel-card" style="background:#EDFBEE;border:1.5px solid #a8e6b0;">
+                        <div class="cancel-card-title" style="color:#1a7f2e;">💰 Paid out to performer</div>
+                        <p class="cancel-hint">Released on {{ engagement.released_at|date:"d M Y" }}.</p>
+                    </div>
+                </div>
+            {% elif engagement.payment_status == 'refunded' %}
+                <div class="actions-section">
+                    <div class="cancel-card" style="background:#FFF1E0;">
+                        <div class="cancel-card-title">↩️ Refunded ₹{{ engagement.fee }}</div>
+                        <p class="cancel-hint">Refund processed {{ engagement.refunded_at|date:"d M Y" }}. Reason: {{ engagement.cancellation_reason|default:"—" }}</p>
+                    </div>
+                </div>
+            {% endif %}
+
+            {# ── Report Issue button — only within 24h post-event dispute window ── #}
+            {% if engagement.can_dispute %}
                 <div class="actions-section">
                     <div class="cancel-card">
-                        <div class="cancel-card-title">🚨 Cancel booking</div>
+                        <div class="cancel-card-title">🚩 Something went wrong?</div>
                         <p class="cancel-hint">
-                            Cancelling within 24 hours of the event requires an emergency reason.
+                            Report an issue within 24h of the event end. Money stays held until an admin reviews.
                         </p>
-                        <form method="POST">
+                        <form method="POST" action="{% url 'bookings:raise-dispute' engagement.pk %}">
                             {% csrf_token %}
-                            <input type="hidden" name="action" value="cancel_client">
-                            <textarea name="emergency_reason" rows="2"
-                                placeholder="Emergency reason (required only within 24h)…"></textarea>
-                            <button type="submit" class="btn-cancel">Cancel booking</button>
+                            <textarea name="dispute_reason" rows="3" required
+                                minlength="10" maxlength="1000"
+                                placeholder="What went wrong? Please describe in detail."></textarea>
+                            <button type="submit" class="btn-cancel">Report issue</button>
                         </form>
                     </div>
                 </div>
+            {% endif %}
+
+            {# ── Already disputed indicator ── #}
+            {% if engagement.disputed_at and not engagement.dispute_resolved_at %}
+                <div class="actions-section">
+                    <div class="cancel-card" style="background:#FFE6E0;border:1.5px solid #C5530B;">
+                        <div class="cancel-card-title">🚩 Issue raised — under review</div>
+                        <p class="cancel-hint">"{{ engagement.dispute_reason|truncatechars:200 }}"</p>
+                    </div>
+                </div>
+            {% endif %}
+
+            {# ── Cancel form — only when allowed (>24h away). Mandatory reason. #}
+            {% if engagement.status == 'pending' or engagement.status == 'accepted' %}
+                {% if not engagement.is_within_24h_of_event %}
+                    <div class="actions-section">
+                        <div class="cancel-card">
+                            <div class="cancel-card-title">🚨 Cancel booking</div>
+                            <p class="cancel-hint">
+                                A reason is required and will be shared with the performer.
+                                {% if engagement.payment_status == 'paid' %}You will be refunded automatically.{% endif %}
+                            </p>
+                            <form method="POST">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="cancel_client">
+                                <textarea name="cancellation_reason" rows="3" required
+                                    minlength="10" maxlength="500"
+                                    placeholder="Why are you cancelling? (10–500 characters)"></textarea>
+                                <button type="submit" class="btn-cancel">Cancel booking</button>
+                            </form>
+                        </div>
+                    </div>
+                {% endif %}
             {% endif %}
 
         {% endif %}
@@ -284,4 +394,86 @@ if (strip) {
     setInterval(tick, 1000);
 }
 </script>
+
+{# ── Razorpay checkout integration — loads only when Pay button is present. ── #}
+{% if is_client and engagement.status == 'accepted' and engagement.payment_status == 'unpaid' and engagement.fee %}
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<script>
+// The flow:
+//   1. Client clicks "Pay Now" → JS POSTs to /pay/ → backend creates a
+//      Razorpay Order with the performer's share marked on_hold=1.
+//   2. JS opens the Razorpay-hosted modal (UPI/card/net-banking).
+//   3. On success Razorpay calls our `handler` with order_id + payment_id
+//      + HMAC signature. JS POSTs those to /verify/ → backend re-computes
+//      HMAC and marks the payment captured.
+//   4. Page reloads — the Pay button disappears and the "Paid" badge shows.
+const payBtn = document.getElementById('pay-now-btn');
+if (payBtn) {
+  payBtn.addEventListener('click', async () => {
+    payBtn.disabled = true;
+    payBtn.textContent = 'Preparing payment...';
+    const csrf = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+    let order;
+    try {
+      const r = await fetch("{% url 'bookings:create-payment-order' engagement.pk %}", {
+        method: 'POST',
+        headers: {'X-CSRFToken': csrf},
+      });
+      order = await r.json();
+      if (order.error) {
+        alert(order.error);
+        payBtn.disabled = false;
+        payBtn.textContent = '💳 Pay ₹{{ engagement.fee }} now';
+        return;
+      }
+    } catch (e) {
+      alert('Network error: ' + e.message);
+      payBtn.disabled = false;
+      payBtn.textContent = '💳 Pay ₹{{ engagement.fee }} now';
+      return;
+    }
+
+    const rzp = new Razorpay({
+      key:         order.key_id,
+      amount:      order.amount,
+      currency:    order.currency,
+      order_id:    order.order_id,
+      name:        'ArtKhoj',
+      description: '{{ engagement.occasion|escapejs }}',
+      prefill: {
+        name:  '{{ request.user.get_full_name|default:request.user.username|escapejs }}',
+        email: '{{ request.user.email|escapejs }}',
+      },
+      theme: { color: '#e68a00' },
+      handler: async (response) => {
+        try {
+          const v = await fetch("{% url 'bookings:verify-payment' engagement.pk %}", {
+            method: 'POST',
+            headers: {'X-CSRFToken': csrf, 'Content-Type': 'application/json'},
+            body: JSON.stringify(response),
+          });
+          const result = await v.json();
+          if (result.status === 'ok') {
+            alert('Payment successful!');
+            location.reload();
+          } else {
+            alert('Verification failed: ' + (result.error || 'unknown error'));
+          }
+        } catch (e) {
+          alert('Payment captured but verification failed. Please contact support with order ID: ' + order.order_id);
+        }
+      },
+      modal: {
+        ondismiss: () => {
+          payBtn.disabled = false;
+          payBtn.textContent = '💳 Pay ₹{{ engagement.fee }} now';
+        },
+      },
+    });
+    rzp.open();
+  });
+}
+</script>
+{% endif %}
 {% endblock %}

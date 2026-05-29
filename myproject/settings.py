@@ -168,18 +168,37 @@ AUTHENTICATION_BACKENDS = [
 
 ROOT_URLCONF = 'myproject.urls'
 
+# Django 5.1 made cached.Loader the unconditional default for the template
+# loaders chain. In dev this means template edits don't reach long-running
+# gunicorn workers until the worker restarts — gunicorn --reload watches
+# Python modules, not .html files. We gate the cached wrapper on DEBUG so
+# dev gets fresh templates on every render while prod keeps the perf
+# benefit of compiled-template caching.
+_DEFAULT_TEMPLATE_LOADERS = [
+    "django.template.loaders.filesystem.Loader",
+    "django.template.loaders.app_directories.Loader",
+]
+
 TEMPLATES = [
     {
-        'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / 'users/templates'],
-        'APP_DIRS': True,
-        'OPTIONS': {
-            'context_processors': [
-                'django.template.context_processors.debug',
-                'django.template.context_processors.request',
-                'django.contrib.auth.context_processors.auth',
-                'django.contrib.messages.context_processors.messages',
+        "BACKEND": "django.template.backends.django.DjangoTemplates",
+        "DIRS": [BASE_DIR / "users/templates"],
+        # NOTE: APP_DIRS is intentionally NOT set here. Django forbids combining
+        # APP_DIRS=True with an explicit OPTIONS.loaders list. The
+        # app_directories.Loader inside _DEFAULT_TEMPLATE_LOADERS gives us the
+        # same behavior (auto-scan each installed app's templates/ dir).
+        "OPTIONS": {
+            "context_processors": [
+                "django.template.context_processors.debug",
+                "django.template.context_processors.request",
+                "django.contrib.auth.context_processors.auth",
+                "django.contrib.messages.context_processors.messages",
             ],
+            "loaders": (
+                _DEFAULT_TEMPLATE_LOADERS
+                if DEBUG
+                else [("django.template.loaders.cached.Loader", _DEFAULT_TEMPLATE_LOADERS)]
+            ),
         },
     },
 ]
@@ -444,4 +463,18 @@ REST_FRAMEWORK = {
         "rest_framework.permissions.IsAuthenticated",
     ],
 }
+
+# ------------------------------------------------------------------------------
+# Razorpay — payment integration for bookings (Route + escrow + refunds).
+# All keys read from env so secrets stay out of code. Empty defaults make
+# payment views fail loudly ("Razorpay not configured") instead of silently
+# using fake values. RAZORPAY_PLATFORM_FEE_PERCENT / PAYMENT_WINDOW_HOURS /
+# DISPUTE_WINDOW_HOURS are our own business knobs, not Razorpay's.
+# ------------------------------------------------------------------------------
+RAZORPAY_KEY_ID         = os.environ.get("RAZORPAY_KEY_ID", "")
+RAZORPAY_KEY_SECRET     = os.environ.get("RAZORPAY_KEY_SECRET", "")
+RAZORPAY_WEBHOOK_SECRET = os.environ.get("RAZORPAY_WEBHOOK_SECRET", "")
+RAZORPAY_PLATFORM_FEE_PERCENT = int(os.environ.get("RAZORPAY_PLATFORM_FEE_PERCENT", "5"))
+RAZORPAY_PAYMENT_WINDOW_HOURS = int(os.environ.get("RAZORPAY_PAYMENT_WINDOW_HOURS", "24"))
+RAZORPAY_DISPUTE_WINDOW_HOURS = int(os.environ.get("RAZORPAY_DISPUTE_WINDOW_HOURS", "24"))
 
