@@ -16,6 +16,11 @@
             <img src="{% static 'users/images/artkhojlogo.png' %}" alt="ArtKhoj" class="brandmark-img">
         </a>
         <div class="topbar-right">
+            {# Settings gear — opens Razorpay KYC + payment history drawer. #}
+            <button type="button"
+                    onclick="document.getElementById('settings-drawer').style.display='block'"
+                    class="settings-gear" aria-label="Settings"
+                    style="background:none;border:none;cursor:pointer;font-size:22px;margin-right:8px;vertical-align:middle;">⚙️</button>
             <form method="POST" action="{% url 'logout' %}" style="display:inline;">
                 {% csrf_token %}
                 <button type="submit" class="btn-secondary">Log out</button>
@@ -78,26 +83,26 @@
                 <div class="profile-tags">
                     <span class="profile-tag">
                         <span class="tag-dot"></span>
-                        <span id="profession-text">{{ user.profile.profession }}</span>
+                        <span id="profession-text"{% if not user.profile.profession %} class="field-placeholder"{% endif %}>{{ user.profile.profession|default:"Add profession" }}</span>
                         <span class="edit-icon edit-profession" title="Edit profession">✎</span>
                         <input type="text" id="profession-input" name="profession"
-                               value="{{ user.profile.profession }}" style="display:none;">
+                               value="{{ user.profile.profession }}" placeholder="Profession" style="display:none;">
                     </span>
                     <span class="profile-tag">
                         <span class="tag-dot"></span>
-                        <span id="location-text">{{ user.profile.location }}</span>
+                        <span id="location-text"{% if not user.profile.location %} class="field-placeholder"{% endif %}>{{ user.profile.location|default:"Add location" }}</span>
                         <span class="edit-icon edit-location" title="Edit location">✎</span>
                         <input type="text" id="location-input" name="location"
-                               value="{{ user.profile.location }}" style="display:none;">
+                               value="{{ user.profile.location }}" placeholder="Location" style="display:none;">
                     </span>
                 </div>
 
                 <!-- Bio inline edit -->
                 <div class="bio-row">
-                    <span id="bio-text">{{ user.profile.bio }}</span>
+                    <span id="bio-text"{% if not user.profile.bio %} class="field-placeholder"{% endif %}>{{ user.profile.bio|default:"Tell people about yourself" }}</span>
                     <span class="edit-icon edit-bio" title="Edit bio">✎</span>
                     <input type="text" id="bio-input" name="bio"
-                           value="{{ user.profile.bio }}" style="display:none;">
+                           value="{{ user.profile.bio }}" placeholder="Bio — a short note about your craft" style="display:none;">
                 </div>
 
                 <!-- Performer / Hirer toggle switches -->
@@ -239,6 +244,9 @@
         </div>
 
     </div><!-- /profile-page -->
+
+    {# Settings drawer — hidden by default, triggered by the gear button in topbar. #}
+    {% include "users/_settings_drawer.html" %}
 
 {% endblock %}
 

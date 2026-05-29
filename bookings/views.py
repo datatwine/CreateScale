@@ -1,3 +1,5 @@
+import json
+from datetime import timedelta
 from django.shortcuts import render
 
 # Create your views here.
@@ -5,11 +7,16 @@ from django.shortcuts import render
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied, ValidationError
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect
+from django.utils import timezone
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_POST
 
 from users.models import Profile
-from .forms import EngagementRequestForm, EmergencyCancelForm
+from .forms import EngagementRequestForm, CancelEngagementForm, DisputeForm
 from .models import Engagement
+from .services.payments import PaymentService
 
 
 @login_required
@@ -78,6 +85,13 @@ def create_hire_request(request, performer_id):
             # Attach client & performer BEFORE running model validation
             engagement.client = request.user
             engagement.performer = performer_profile.user
+
+            # Snapshot the performer's current fee onto this engagement so
+            # later changes to the profile fee can't affect open bookings.
+            # Falls back to None if the performer hasn't set a fee yet —
+            # the engagement is still legal, it just can't be paid until
+            # the performer sets a fee (the Pay button won't render).
+            engagement.fee = performer_profile.performer_fee
 
             try:
                 engagement.full_clean()  # runs model.clean()
@@ -188,7 +202,9 @@ def engagement_detail(request, pk):
 
     if request.method == "POST":
         action = request.POST.get("action")
-        form = EmergencyCancelForm(request.POST)
+        # CancelEngagementForm enforces a mandatory 10-500 char reason for
+        # both cancel paths. The model layer re-validates as defense-in-depth.
+        cancel_form = CancelEngagementForm(request.POST)
 
         try:
             if action == "accept" and is_performer:
@@ -198,17 +214,39 @@ def engagement_detail(request, pk):
                 engagement.decline()
                 messages.success(request, "You declined this booking.")
             elif action == "cancel_client" and is_client:
-                if form.is_valid():
+                if cancel_form.is_valid():
                     engagement.cancel_by_client(
-                        emergency_reason=form.cleaned_data["emergency_reason"]
+                        reason=cancel_form.cleaned_data["cancellation_reason"]
                     )
-                    messages.success(request, "You cancelled this booking.")
+                    # If money was already in escrow, trigger the Razorpay
+                    # refund right here. refund_to_client is idempotent and
+                    # a no-op when payment_status != PAID, so this is safe
+                    # even though we just changed engagement.status above.
+                    if engagement.payment_status == Engagement.PAYMENT_PAID:
+                        PaymentService.refund_to_client(engagement)
+                        messages.success(request, "Booking cancelled. Refund initiated.")
+                    else:
+                        messages.success(request, "Booking cancelled.")
+                else:
+                    messages.error(
+                        request,
+                        "A cancellation reason of at least 10 characters is required.",
+                    )
             elif action == "cancel_performer" and is_performer:
-                if form.is_valid():
+                if cancel_form.is_valid():
                     engagement.cancel_by_performer(
-                        emergency_reason=form.cleaned_data["emergency_reason"]
+                        reason=cancel_form.cleaned_data["cancellation_reason"]
                     )
-                    messages.success(request, "You cancelled this booking.")
+                    if engagement.payment_status == Engagement.PAYMENT_PAID:
+                        PaymentService.refund_to_client(engagement)
+                        messages.success(request, "Booking cancelled. Client will be refunded.")
+                    else:
+                        messages.success(request, "Booking cancelled.")
+                else:
+                    messages.error(
+                        request,
+                        "A cancellation reason of at least 10 characters is required.",
+                    )
             else:
                 messages.error(request, "Invalid action.")
         except ValidationError as e:
@@ -221,7 +259,7 @@ def engagement_detail(request, pk):
         return redirect("admin:index")
 
     else:
-        form = EmergencyCancelForm()
+        cancel_form = CancelEngagementForm()
 
     return render(
         request,
@@ -230,6 +268,171 @@ def engagement_detail(request, pk):
             "engagement": engagement,
             "is_client": is_client,
             "is_performer": is_performer,
-            "form": form,
+            "form": cancel_form,
         },
+    )
+
+
+# ============================================================================
+# Payment endpoints — these are called by JavaScript (checkout.js) and by
+# Razorpay's server (webhook). Users never see them directly.
+# ============================================================================
+
+@login_required
+@require_POST
+def create_payment_order(request, pk):
+    """
+    Step 1 of checkout: JS posts here when the client clicks "Pay Now".
+    Returns the Razorpay order_id + key_id so JS can open the modal.
+    """
+    engagement = get_object_or_404(Engagement, pk=pk)
+    if engagement.client != request.user:
+        raise PermissionDenied
+    try:
+        order_data = PaymentService.create_order(engagement)
+        return JsonResponse(order_data)
+    except (ValueError, RuntimeError) as e:
+        return JsonResponse({"error": str(e)}, status=400)
+
+
+@login_required
+@require_POST
+def verify_payment(request, pk):
+    """
+    Step 2 of checkout: JS posts here AFTER the Razorpay modal succeeds.
+    Body is JSON containing the order_id, payment_id, and HMAC signature
+    that Razorpay returned to the browser. We verify and mark captured.
+    """
+    engagement = get_object_or_404(Engagement, pk=pk)
+    if engagement.client != request.user:
+        raise PermissionDenied
+    try:
+        data = json.loads(request.body)
+        PaymentService.verify_and_capture(
+            data["razorpay_order_id"],
+            data["razorpay_payment_id"],
+            data["razorpay_signature"],
+        )
+        return JsonResponse({"status": "ok"})
+    except (ValueError, KeyError, json.JSONDecodeError) as e:
+        return JsonResponse({"error": str(e)}, status=400)
+
+
+@login_required
+@require_POST
+def raise_dispute(request, pk):
+    """
+    Client flags an issue against a paid engagement within the 24h
+    post-event dispute window. Sets disputed_at on the engagement —
+    release_completed_event_payouts skips engagements with disputed_at
+    set, so the money stays held until an admin acts.
+    """
+    engagement = get_object_or_404(Engagement, pk=pk)
+    if engagement.client != request.user:
+        raise PermissionDenied
+
+    # Window check: event must have ended, but no more than 24h ago.
+    now = timezone.now()
+    event_end = engagement.event_datetime()
+    dispute_window_end = event_end + timedelta(hours=24)
+    if not (event_end <= now <= dispute_window_end):
+        messages.error(request, "Dispute window is not open for this booking.")
+        return redirect("bookings:engagement-detail", pk=pk)
+
+    if engagement.payment_status != Engagement.PAYMENT_PAID:
+        messages.error(
+            request,
+            "Only paid bookings (with money in escrow) can be disputed.",
+        )
+        return redirect("bookings:engagement-detail", pk=pk)
+
+    if engagement.disputed_at is not None:
+        messages.info(request, "You have already raised an issue on this booking.")
+        return redirect("bookings:engagement-detail", pk=pk)
+
+    form = DisputeForm(request.POST)
+    if not form.is_valid():
+        messages.error(
+            request,
+            "Please provide a valid issue description (10-1000 chars).",
+        )
+        return redirect("bookings:engagement-detail", pk=pk)
+
+    engagement.disputed_at = now
+    engagement.dispute_reason = form.cleaned_data["dispute_reason"]
+    engagement.save(update_fields=["disputed_at", "dispute_reason"])
+    messages.success(
+        request,
+        "Issue raised. An admin will review and contact you within 24-48 hours.",
+    )
+    return redirect("bookings:engagement-detail", pk=pk)
+
+
+@csrf_exempt
+@require_POST
+def razorpay_webhook(request):
+    """
+    Backup confirmation channel — Razorpay's server posts here directly,
+    so we can't use Django CSRF protection (no browser involved). HMAC
+    signature verification on the raw body replaces CSRF here.
+
+    All downstream handlers are idempotent: webhook firing twice (or
+    racing with the browser callback) is harmless.
+    """
+    signature = request.headers.get("X-Razorpay-Signature", "")
+    if not PaymentService.verify_webhook_signature(request.body, signature):
+        return HttpResponse(status=400)
+    try:
+        event = json.loads(request.body)
+        PaymentService.handle_webhook_event(event)
+    except (json.JSONDecodeError, KeyError):
+        return HttpResponse(status=400)
+    return HttpResponse(status=200)
+
+
+@login_required
+def performer_payouts(request):
+    """Performer's payments dashboard — paid/released/refunded engagements."""
+    engagements = (Engagement.objects
+        .filter(
+            performer=request.user,
+            payment_status__in=[
+                Engagement.PAYMENT_PAID,
+                Engagement.PAYMENT_RELEASED,
+                Engagement.PAYMENT_REFUNDED,
+            ],
+        )
+        .select_related("client")
+        .prefetch_related("payments")
+        .order_by("-date", "-time"))
+    return render(
+        request,
+        "bookings/performer_payouts.html",
+        {"engagements": engagements},
+    )
+
+
+@login_required
+def client_payments(request):
+    """Client's payment history — paid/released/refunded engagements."""
+    engagements = (Engagement.objects
+        .filter(
+            client=request.user,
+            payment_status__in=[
+                Engagement.PAYMENT_PAID,
+                Engagement.PAYMENT_RELEASED,
+                Engagement.PAYMENT_REFUNDED,
+            ],
+        )
+        .select_related("performer")
+        .prefetch_related("payments")
+        .order_by("-paid_at"))
+    # Annotate each row with its latest Payment so the template can show
+    # Razorpay reference IDs without a query per row.
+    for e in engagements:
+        e.latest_payment = e.payments.order_by("-created_at").first()
+    return render(
+        request,
+        "bookings/client_payments.html",
+        {"engagements": engagements},
     )

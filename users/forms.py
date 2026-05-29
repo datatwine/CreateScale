@@ -96,3 +96,62 @@ class MessageForm(forms.ModelForm):
         widgets = {
             'content': forms.Textarea(attrs={'rows': 3, 'placeholder': 'Write your message here...'})
         }
+
+
+# ---------------------------------------------------------------------------
+# Razorpay KYC + payment details for performers
+# ---------------------------------------------------------------------------
+PAN_RE   = re.compile(r"^[A-Z]{5}[0-9]{4}[A-Z]$")
+IFSC_RE  = re.compile(r"^[A-Z]{4}0[A-Z0-9]{6}$")
+PHONE_RE = re.compile(r"^[6-9]\d{9}$")  # Indian mobile: starts 6/7/8/9, 10 digits
+
+
+class PaymentDetailsForm(forms.ModelForm):
+    """
+    Performer's KYC + bank details used to spin up a Razorpay linked
+    account. Razorpay does the deep validation (PAN match against Income
+    Tax records, IFSC against NPCI, account number via penny-test) — our
+    form just checks formats so we don't ping their API with junk.
+    """
+    class Meta:
+        model = Profile
+        fields = [
+            "performer_fee",
+            "phone_number",
+            "pan_number",
+            "bank_account_number",
+            "bank_ifsc",
+            "bank_account_holder_name",
+        ]
+        widgets = {
+            "performer_fee":            forms.NumberInput(attrs={"min": 500, "max": 500000, "placeholder": "e.g. 3000"}),
+            "phone_number":             forms.TextInput(attrs={"placeholder": "10-digit mobile (e.g. 9876543210)", "maxlength": 10}),
+            "pan_number":               forms.TextInput(attrs={"placeholder": "ABCDE1234F", "maxlength": 10}),
+            "bank_account_number":      forms.TextInput(attrs={"placeholder": "1234567890"}),
+            "bank_ifsc":                forms.TextInput(attrs={"placeholder": "HDFC0001234"}),
+            "bank_account_holder_name": forms.TextInput(attrs={"placeholder": "As per bank records"}),
+        }
+
+    def clean_performer_fee(self):
+        fee = self.cleaned_data.get("performer_fee")
+        if fee is not None and (fee < 500 or fee > 500000):
+            raise ValidationError("Fee must be between ₹500 and ₹5,00,000.")
+        return fee
+
+    def clean_phone_number(self):
+        phone = (self.cleaned_data.get("phone_number") or "").strip()
+        if phone and not PHONE_RE.match(phone):
+            raise ValidationError("Enter a valid 10-digit Indian mobile number.")
+        return phone
+
+    def clean_pan_number(self):
+        pan = (self.cleaned_data.get("pan_number") or "").upper().strip()
+        if pan and not PAN_RE.match(pan):
+            raise ValidationError("Invalid PAN format. Expected: ABCDE1234F")
+        return pan
+
+    def clean_bank_ifsc(self):
+        ifsc = (self.cleaned_data.get("bank_ifsc") or "").upper().strip()
+        if ifsc and not IFSC_RE.match(ifsc):
+            raise ValidationError("Invalid IFSC code format.")
+        return ifsc

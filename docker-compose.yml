@@ -63,6 +63,25 @@ services:
     volumes:
       - media_volume:/vol/media
 
+  # ---------------------------------------------------------------------------
+  # Celery beat — periodic task scheduler. Triggers Razorpay payment
+  # automation (expire unpaid engagements hourly, release payouts daily).
+  # ONE container only — running multiple beat processes would fire each
+  # scheduled task multiple times.
+  # ---------------------------------------------------------------------------
+  beat:
+    build: .
+    restart: unless-stopped
+    user: "0:0"
+    command: celery -A myproject beat -l info
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
   nginx:
     image: nginx:1.27-alpine
     restart: unless-stopped

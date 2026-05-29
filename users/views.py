@@ -8,8 +8,12 @@ from django.shortcuts import render, redirect
 from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth import login, authenticate
 from django.contrib import messages
-from .forms import UserRegisterForm, UploadForm, ProfileUpdateForm
+from .forms import UserRegisterForm, UploadForm, ProfileUpdateForm, PaymentDetailsForm
 from .models import Profile, Upload
+
+# Razorpay client is loaded lazily inside the payment-details view so the
+# rest of users/views.py keeps working even when razorpay isn't configured
+# (e.g. during local dev without payment env vars).
 
 
 # Sign-up view
@@ -438,6 +442,95 @@ def live_events(request):
         "past_events": past_events,
     }
     return render(request, "users/live_events.html", context)
+
+
+# ---------------------------------------------------------------------------
+# Payment / KYC settings — Razorpay linked account onboarding
+# ---------------------------------------------------------------------------
+@login_required
+def update_payment_details(request):
+    """
+    Performer-facing form to save PAN + bank + phone, then spin up a
+    Razorpay linked account in the background.
+
+    Flow:
+      1. User opens settings drawer on their own profile → clicks
+         "Set up payment details" → lands here.
+      2. They fill PAN, IFSC, account number, phone, fee → submit.
+      3. We save to Profile (plaintext for Phase 1; encrypt later).
+      4. If all required fields are filled AND no Razorpay linked
+         account exists yet, we call Razorpay's Account API to create
+         one. Razorpay does RBI review in 5-7 business days; status
+         flips to "approved" via webhook later.
+      5. Redirect them back to their own profile page.
+
+    Always operates on request.user.profile — there's no user_id in the
+    URL, so a performer can never edit another performer's bank details.
+    """
+    profile = request.user.profile
+
+    if request.method == "POST":
+        form = PaymentDetailsForm(request.POST, instance=profile)
+        if form.is_valid():
+            profile = form.save()
+
+            # Razorpay linked-account creation only when:
+            #   - User is actually a performer (clients never need KYC)
+            #   - No linked account exists yet (idempotent on re-submit)
+            #   - All Razorpay-required fields are now filled
+            should_onboard = (
+                profile.is_performer
+                and not profile.razorpay_account_id
+                and profile.pan_number
+                and profile.bank_account_number
+                and profile.bank_ifsc
+                and profile.phone_number
+            )
+            if should_onboard:
+                try:
+                    # Lazy import so this view loads even without razorpay.
+                    from bookings.services.razorpay_client import get_client
+                    client = get_client()
+                    account = client.account.create({
+                        "type": "route",
+                        "reference_id": f"user_{profile.user.id}",
+                        "email": profile.user.email or f"user{profile.user.id}@artkhoj.local",
+                        "phone": profile.phone_number,
+                        "legal_business_name": profile.bank_account_holder_name,
+                        "business_type": "individual",
+                        "contact_name": profile.bank_account_holder_name,
+                        "profile": {
+                            "category": "ecommerce",
+                            "subcategory": "marketplace",
+                        },
+                        "legal_info": {"pan": profile.pan_number},
+                    })
+                    profile.razorpay_account_id = account["id"]
+                    profile.razorpay_kyc_status = "pending"
+                    profile.save(update_fields=[
+                        "razorpay_account_id", "razorpay_kyc_status",
+                    ])
+                    messages.success(
+                        request,
+                        "Payment details saved. KYC submitted for Razorpay "
+                        "review (5-7 business days)."
+                    )
+                except Exception as e:
+                    # Razorpay onboarding failed — keep the saved details so
+                    # the performer can retry without re-entering everything.
+                    messages.error(
+                        request,
+                        f"Saved your details but Razorpay onboarding failed: {e}",
+                    )
+            else:
+                messages.success(request, "Payment details updated.")
+            # After saving payment details, return user to their OWN profile dashboard
+            # (profile.html), not the public-facing profile_detail.html.
+            return redirect("profile")
+    else:
+        form = PaymentDetailsForm(instance=profile)
+
+    return render(request, "users/payment_details_form.html", {"form": form})
 
 
 

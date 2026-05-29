@@ -32,6 +32,44 @@ services:
         max-size: "10m"
         max-file: "3"
 
+  # ---- Celery worker ----
+  # Processes background tasks: video compression, payment expiry, payout release.
+  # Runs on ALL web instances (OD + Spot). Tasks are distributed via Redis queue.
+  worker:
+    image: ghcr.io/datatwine/createscale:latest
+    restart: unless-stopped
+    user: "0:0"
+    env_file:
+      - .env
+    command: celery -A myproject worker -l info --concurrency=2
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ---- Celery beat (OD only) ----
+  # Periodic task scheduler. Must run on exactly ONE instance to avoid
+  # duplicate task firing. Gated on RUN_BEAT env var (1 on OD, 0 on Spot).
+  beat:
+    image: ghcr.io/datatwine/createscale:latest
+    restart: "no"
+    user: "0:0"
+    env_file:
+      - .env
+    command: >
+      sh -c '
+        if [ "$${RUN_BEAT:-0}" = "1" ]; then
+          exec celery -A myproject beat -l info
+        else
+          echo "Beat disabled (RUN_BEAT!=1) — exiting."
+        fi'
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
   promtail:
     image: grafana/promtail:2.9.0
     hostname: ${HOSTNAME:-ak-web}

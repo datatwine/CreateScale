@@ -738,3 +738,12 @@ form.info-col {
   border: 2px solid var(--ink);
   box-shadow: 2px 2px 0 var(--ink);
 }
+
+/* Muted hint text shown in profession/location/bio spans when the user
+   hasn't filled in that field yet. Disappears the moment a real value
+   is saved (the conditional class in the template stops applying). */
+.field-placeholder {
+  color: #8C8077;
+  font-style: italic;
+  opacity: 0.85;
+}

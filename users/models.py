@@ -42,6 +42,42 @@ class Profile(models.Model):
         help_text="If true, this user cannot hire performers.",
     )
 
+    # --- Payment setup (performers only; clients don't need KYC) ---
+    # Standard fee per engagement, shown on profile + snapshotted into
+    # Engagement.fee at hire time so opens bookings are immutable.
+    performer_fee = models.PositiveIntegerField(
+        null=True, blank=True,
+        help_text="Standard fee per engagement in rupees (shown on public profile).",
+    )
+
+    # Razorpay linked account (per-performer). Empty until KYC submitted.
+    razorpay_account_id = models.CharField(max_length=64, blank=True, db_index=True)
+    razorpay_kyc_status = models.CharField(
+        max_length=16, blank=True,
+        choices=[
+            ("",         "Not started"),
+            ("pending",  "Pending RBI review"),
+            ("approved", "Approved — ready for payouts"),
+            ("rejected", "Rejected — contact support"),
+        ],
+        default="",
+    )
+
+    # KYC details (Phase 1 plaintext; encryption is a Phase 2 enhancement).
+    pan_number               = models.CharField(max_length=10, blank=True)
+    bank_account_number      = models.CharField(max_length=20, blank=True)
+    bank_ifsc                = models.CharField(max_length=11, blank=True)
+    bank_account_holder_name = models.CharField(max_length=120, blank=True)
+    phone_number             = models.CharField(
+        max_length=10, blank=True,
+        help_text="10-digit Indian mobile — required by Razorpay for linked account KYC.",
+    )
+
+    @property
+    def can_receive_payments(self) -> bool:
+        """True only when the performer's Razorpay linked account is approved."""
+        return bool(self.razorpay_account_id) and self.razorpay_kyc_status == "approved"
+
     def __str__(self):
         return f'{self.user.username} Profile'
 
