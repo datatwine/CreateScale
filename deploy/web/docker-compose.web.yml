@@ -22,7 +22,7 @@ services:
       - .env
     environment:
       WEB_CONCURRENCY: "9"
-      WEB_CONN: "1000"
+      WEB_CONN: "250"
       WEB_TIMEOUT: "30"
     ports:
       - "8000:8000"
