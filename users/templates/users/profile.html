@@ -472,6 +472,13 @@
                         submitBtn.disabled = false;
                         submitBtn.textContent = origText;
                     }
+                    // .submit() omits button names per HTML spec — inject one so
+                    // Django sees 'upload_submit' in request.POST.
+                    var hidden = document.createElement("input");
+                    hidden.type = "hidden";
+                    hidden.name = "upload_submit";
+                    hidden.value = "1";
+                    uploadForm.appendChild(hidden);
                     uploadForm.submit();
                     return;
                 }
