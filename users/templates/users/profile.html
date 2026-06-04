@@ -201,7 +201,7 @@
         <!-- ===== UPLOAD FORM ===== -->
         <div class="upload-form-card">
             <h3>Upload new media</h3>
-            <form method="POST" enctype="multipart/form-data">
+            <form id="upload-form" method="POST" enctype="multipart/form-data">
                 {% csrf_token %}
 
                 <div class="field-group">
@@ -425,5 +425,99 @@
         }
 
     });
+    </script>
+
+    <!-- ============================================================
+         Presigned URL upload — bypasses OD for file bytes.
+         Intercepts the upload form submit, does 3-step presigned flow,
+         falls back to normal form POST if presign returns 501 (USE_S3=0).
+         ============================================================ -->
+    <script>
+    (function() {
+        var uploadForm = document.getElementById("upload-form");
+        if (!uploadForm) return;
+
+        uploadForm.addEventListener("submit", async function(e) {
+            var imageInput = document.getElementById("pick-image");
+            var videoInput = document.getElementById("pick-video");
+            var captionEl = document.getElementById("id_caption");
+            var file = (imageInput && imageInput.files[0]) || (videoInput && videoInput.files[0]);
+
+            if (!file) return;  // let Django handle empty-form validation
+
+            e.preventDefault();  // stop the normal multipart POST
+
+            var contentType = file.type.startsWith("video") ? "video/mp4" : "image/jpeg";
+            var submitBtn = uploadForm.querySelector('button[name="upload_submit"]');
+            var origText = submitBtn ? submitBtn.textContent : "";
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.textContent = "Uploading…";
+            }
+
+            try {
+                // Step 1: Get presigned URL from Django
+                var presignRes = await fetch("/api/users/me/uploads/presign/", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-CSRFToken": document.querySelector("[name=csrfmiddlewaretoken]").value,
+                    },
+                    body: JSON.stringify({ content_type: contentType }),
+                });
+
+                // Fallback to normal form submit if presign unavailable (USE_S3=0)
+                if (presignRes.status === 501) {
+                    if (submitBtn) {
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = origText;
+                    }
+                    uploadForm.submit();
+                    return;
+                }
+                if (!presignRes.ok) throw new Error("Presign failed: " + presignRes.status);
+
+                var presignData = await presignRes.json();
+
+                // Step 2: Upload directly to R2
+                var fd = new FormData();
+                Object.entries(presignData.fields).forEach(function(kv) {
+                    fd.append(kv[0], kv[1]);
+                });
+                fd.append("file", file);
+
+                var r2Res = await fetch(presignData.url, { method: "POST", body: fd });
+                if (!r2Res.ok && r2Res.status !== 204) {
+                    throw new Error("R2 upload failed: " + r2Res.status);
+                }
+
+                // Step 3: Confirm with Django
+                var confirmRes = await fetch("/api/users/me/uploads/", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-CSRFToken": document.querySelector("[name=csrfmiddlewaretoken]").value,
+                    },
+                    body: JSON.stringify({
+                        key: presignData.key,
+                        caption: captionEl ? captionEl.value : "",
+                    }),
+                });
+
+                if (!confirmRes.ok) throw new Error("Confirm failed: " + confirmRes.status);
+
+                // Success — reload page to show new upload
+                window.location.reload();
+
+            } catch (err) {
+                console.error("Presigned upload failed:", err);
+                alert("Upload failed — please try again.");
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = origText;
+                }
+            }
+        });
+    })();
     </script>
 {% endblock %}

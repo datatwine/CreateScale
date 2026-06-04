@@ -11,6 +11,7 @@ from .views import (
     MeProfileAPIView,
     MyUploadsAPIView,
     MyUploadDeleteAPIView,
+    PresignUploadAPIView,
     GlobalFeedAPIView,
     ProfileDetailAPIView,
     ProfessionsAPIView,
@@ -37,6 +38,7 @@ urlpatterns = [
     # -------------------------
     path("users/me/", MeProfileAPIView.as_view(), name="api-users-me"),
     path("users/me/uploads/", MyUploadsAPIView.as_view(), name="api-users-me-uploads"),
+    path("users/me/uploads/presign/", PresignUploadAPIView.as_view(), name="api-users-me-uploads-presign"),
     path("users/me/uploads/<int:upload_id>/", MyUploadDeleteAPIView.as_view(), name="api-users-me-upload-delete"),
 
     # Global feed (other users) — mirrors users.views.global_feed

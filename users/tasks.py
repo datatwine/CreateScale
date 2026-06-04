@@ -5,7 +5,10 @@ Celery tasks for the users app.
 in the background. The user's upload completes immediately with the raw video;
 the worker swaps in the compressed version ~10-30s later, transparently.
 
-Non-regression contract: ON ANY FAILURE the raw video stays in R2 unchanged —
+`process_uploaded_image` conditionally resizes/strips EXIF for presigned image
+uploads > 2 MB. Files ≤ 2 MB are assumed client-compressed and skipped.
+
+Non-regression contract: ON ANY FAILURE the raw file stays in R2 unchanged —
 the Upload row is never broken; the file just stays at its original size.
 """
 
@@ -90,3 +93,62 @@ def compress_upload_video(upload_id):
                     os.unlink(p)
             except Exception:
                 pass
+
+
+@shared_task(time_limit=120, soft_time_limit=110)
+def process_uploaded_image(upload_id):
+    """Conditionally resize/strip EXIF on presigned uploads > 2 MB.
+
+    - Files ≤ 2 MB: client already compressed (browser-image-compression / Expo
+      ImageManipulator). Skip — saves a download + re-upload round trip.
+    - Files > 2 MB: download from R2 → Pillow → re-upload.
+    - On ANY failure: original file stays untouched in R2.
+    """
+    from users.models import Upload
+    from users.utils.image import process_image
+
+    try:
+        upload = Upload.objects.get(pk=upload_id)
+    except Upload.DoesNotExist:
+        return "upload not found"
+
+    if not upload.image:
+        return "no image"
+
+    # Check file size via storage backend (HEAD request, no download)
+    try:
+        size = upload.image.storage.size(upload.image.name)
+    except Exception:
+        return "size check failed — skipping"
+
+    if size <= 2 * 1024 * 1024:  # 2 MB
+        return f"skipped — {size} bytes (under 2 MB)"
+
+    # Download, process, re-upload
+    try:
+        from io import BytesIO
+
+        with upload.image.open("rb") as f:
+            raw = BytesIO(f.read())
+            raw.name = upload.image.name.split("/")[-1]
+
+        processed = process_image(raw, "gallery")
+        if processed is raw:
+            return "pillow returned original unchanged"
+
+        # Save processed file — overwrites the R2 key
+        old_name = upload.image.name
+        upload.image.save(old_name.split("/")[-1], processed, save=True)
+
+        # Delete original if key changed (unlikely with same name pattern)
+        if upload.image.name != old_name:
+            try:
+                upload.image.storage.delete(old_name)
+            except Exception as e:
+                log.warning("Could not delete original image %s: %s", old_name, e)
+
+        return f"processed — {size} → {upload.image.size} bytes"
+
+    except Exception as e:
+        log.warning("process_uploaded_image(%s) failed: %s — original untouched", upload_id, e)
+        return f"error: {e}"
