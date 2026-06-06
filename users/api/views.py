@@ -278,16 +278,22 @@ class MyUploadsAPIView(generics.ListCreateAPIView):
             compress_upload_video.delay(upload.id)
 
 
-class MyUploadDeleteAPIView(generics.DestroyAPIView):
+class MyUploadDeleteAPIView(generics.UpdateAPIView, generics.DestroyAPIView):
     """
-    DELETE /api/users/me/uploads/<upload_id>/
-    Strictly scoped: user can delete only their own uploads.
+    PATCH /api/users/me/uploads/<upload_id>/  — edit caption
+    DELETE /api/users/me/uploads/<upload_id>/ — delete upload
+    Strictly scoped: user can only modify their own uploads.
     """
     permission_classes = [IsAuthenticated]
+    serializer_class = UploadSerializer
     lookup_url_kwarg = "upload_id"
 
     def get_queryset(self):
         return Upload.objects.filter(profile__user=self.request.user)
+
+    def perform_update(self, serializer):
+        serializer.save()
+        cache.delete(f"uploads:{self.request.user.id}")
 
     def perform_destroy(self, instance):
         super().perform_destroy(instance)

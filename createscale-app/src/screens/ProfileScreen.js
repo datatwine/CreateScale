@@ -231,9 +231,10 @@ const makeMediaUrl = (pathOrUrl) => {
  */
 // Tiny presentational helper so the main component stays readable.
 // Now shows a thumbnail for image uploads instead of just text.
-function UploadCard({ upload }) {
-  // What we display as text under the preview
-  console.log("UPLOAD CARD DATA", upload);
+function UploadCard({ upload, onDelete, onEdit }) {
+  const [editing, setEditing] = useState(false);
+  const [editText, setEditText] = useState(upload.caption || "");
+
   const caption = upload.caption || "";
 
   // Prefer the explicit *_url fields; fall back to raw file fields.
@@ -256,8 +257,6 @@ function UploadCard({ upload }) {
           resizeMode="cover"
         />
       ) : hasVideo ? (
-        // For now we just show a nice placeholder. Later you can drop in
-        // expo-av's <Video> using this same videoUri.
         <View style={styles.uploadFallback}>
           <Text style={styles.uploadFallbackText}>Video upload</Text>
         </View>
@@ -267,8 +266,45 @@ function UploadCard({ upload }) {
         </View>
       )}
 
-      {/* Caption */}
-      {caption ? (
+      {/* Three-dot menu — only when edit/delete callbacks are provided */}
+      {onDelete && (
+        <TouchableOpacity
+          style={styles.uploadMenuBtn}
+          onPress={() => {
+            Alert.alert("Upload options", null, [
+              { text: "Edit caption", onPress: () => { setEditText(upload.caption || ""); setEditing(true); } },
+              { text: "Delete", style: "destructive", onPress: () => onDelete(upload.id) },
+              { text: "Cancel", style: "cancel" },
+            ]);
+          }}
+        >
+          <Ionicons name="ellipsis-vertical" size={18} color="#fff" />
+        </TouchableOpacity>
+      )}
+
+      {/* Caption — inline edit or plain text */}
+      {editing ? (
+        <View style={styles.uploadEditRow}>
+          <TextInput
+            style={styles.uploadEditInput}
+            value={editText}
+            onChangeText={setEditText}
+            multiline
+            autoFocus
+          />
+          <View style={styles.uploadEditBtns}>
+            <TouchableOpacity
+              style={styles.uploadEditSaveBtn}
+              onPress={() => { onEdit(upload.id, editText); setEditing(false); }}
+            >
+              <Text style={{ color: "#fff", fontWeight: "600" }}>Save</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => { setEditText(upload.caption || ""); setEditing(false); }}>
+              <Text style={{ color: COLORS.textMuted }}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      ) : caption ? (
         <Text style={styles.uploadCaption} numberOfLines={1}>
           {caption}
         </Text>
@@ -634,6 +670,61 @@ export default function ProfileScreen() {
       setUploadingMedia(false);
     }
   };
+
+  /* ========== Upload Edit / Delete handlers ========== */
+
+  async function handleDeleteUpload(uploadId) {
+    Alert.alert("Delete upload?", "This cannot be undone.", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            const res = await fetch(
+              `${API_BASE_URL}/users/me/uploads/${uploadId}/`,
+              { method: "DELETE", headers: { Authorization: `Token ${token}` } }
+            );
+            if (res.ok) {
+              setUploads((prev) => prev.filter((u) => u.id !== uploadId));
+            } else {
+              Alert.alert("Error", "Could not delete upload.");
+            }
+          } catch {
+            Alert.alert("Error", "Network error.");
+          }
+        },
+      },
+    ]);
+  }
+
+  async function handleEditCaption(uploadId, newCaption) {
+    try {
+      const res = await fetch(
+        `${API_BASE_URL}/users/me/uploads/${uploadId}/`,
+        {
+          method: "PATCH",
+          headers: {
+            Authorization: `Token ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ caption: newCaption }),
+        }
+      );
+      if (res.ok) {
+        const updated = await res.json();
+        setUploads((prev) =>
+          prev.map((u) =>
+            u.id === uploadId ? { ...u, caption: updated.caption } : u
+          )
+        );
+      } else {
+        Alert.alert("Error", "Could not update caption.");
+      }
+    } catch {
+      Alert.alert("Error", "Network error.");
+    }
+  }
 
   /**
    * Best-effort location autofill using device GPS.
@@ -1006,7 +1097,7 @@ return (
                (backend already sorts by -upload_date) */
             <View>
               {uploads.map((u) => (
-                <UploadCard key={u.id} upload={u} />
+                <UploadCard key={u.id} upload={u} onDelete={handleDeleteUpload} onEdit={handleEditCaption} />
               ))}
             </View>
           ) : (
@@ -1419,6 +1510,46 @@ const styles = StyleSheet.create({
     marginTop: 6,
     color: COLORS.textMuted,
     fontSize: 11,
+  },
+
+  /* Upload edit / delete */
+  uploadMenuBtn: {
+    position: "absolute",
+    top: 18,
+    right: 18,
+    zIndex: 5,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  uploadEditRow: {
+    marginTop: 8,
+  },
+  uploadEditInput: {
+    backgroundColor: "#222",
+    color: COLORS.textPrimary,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: COLORS.accent,
+    padding: 10,
+    fontSize: 13,
+    minHeight: 60,
+    textAlignVertical: "top",
+  },
+  uploadEditBtns: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginTop: 8,
+  },
+  uploadEditSaveBtn: {
+    backgroundColor: COLORS.accent,
+    borderRadius: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 6,
   },
 
 });
