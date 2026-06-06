@@ -13,6 +13,7 @@ class ProfileAdmin(admin.ModelAdmin):
         "performer_blacklisted",
         "client_blacklisted",
     )
+    list_select_related = ("user",)
     list_filter = (
         "is_performer",
         "is_potential_client",
@@ -22,4 +23,8 @@ class ProfileAdmin(admin.ModelAdmin):
     )
     search_fields = ("user__username",)
 
-admin.site.register(Upload)
+
+@admin.register(Upload)
+class UploadAdmin(admin.ModelAdmin):
+    list_display = ("id", "profile", "caption", "upload_date")
+    list_select_related = ("profile__user",)

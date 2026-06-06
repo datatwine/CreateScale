@@ -28,6 +28,7 @@ import { Ionicons } from "@expo/vector-icons"; // only once
 
 import { AuthContext } from "../context/AuthContext";
 import { API_BASE_URL } from "../config/api";
+import { uploadMedia } from "../api/upload";
 
 // ---------------------------------------------------------------------------
 // Client-side media compression helpers
@@ -609,44 +610,17 @@ export default function ProfileScreen() {
       console.warn("media compress failed, uploading original", e);
     }
 
-    const formData = new FormData();
-    const fieldName = isVideo ? "video" : "image";
-
-    formData.append(fieldName, {
-      uri: finalUri,
-      name: isVideo ? "upload.mp4" : "upload.jpg",
-      type: isVideo ? "video/mp4" : "image/jpeg",
-    });
-
-    if (newUploadCaption.trim().length > 0) {
-      formData.append("caption", newUploadCaption.trim());
-    }
-
-    setUploadingMedia(true);
+    // 3-step presigned upload: presign → R2 direct → confirm.
+    // Falls back to legacy multipart if presign returns 501 (local dev).
     try {
-      const response = await fetch(
-        buildApiUrl("/users/me/uploads/"),
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Token ${token}`,
-            Accept: "application/json",
-          },
-          body: formData,
-        }
-      );
+      await uploadMedia({
+        token,
+        fileUri: finalUri,
+        fileName: isVideo ? "upload.mp4" : "upload.jpg",
+        contentType: isVideo ? "video/mp4" : "image/jpeg",
+        caption: newUploadCaption.trim(),
+      });
 
-      if (!response.ok) {
-        const text = await response.text();
-        console.warn(
-          "Upload failed:",
-          response.status,
-          text
-        );
-        throw new Error("Failed to upload media");
-      }
-
-      await response.json(); // we don't really need the body
       setNewUploadCaption("");
       await loadUploads(); // refresh list
       Alert.alert("Uploaded", "Your media has been added.");

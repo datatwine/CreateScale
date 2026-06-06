@@ -96,6 +96,12 @@ class Upload(models.Model):
     caption = models.TextField(blank=True)
     upload_date = models.DateTimeField(auto_now_add=True)
 
+    class Meta:
+        indexes = [
+            # Covers filter(profile=X).order_by("-upload_date") in one B-tree scan
+            models.Index(fields=["profile", "-upload_date"]),
+        ]
+
     def __str__(self):
         return f'{self.profile.user.username} Upload on {self.upload_date}'
 

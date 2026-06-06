@@ -60,7 +60,7 @@ def signin(request):
 
 @login_required
 def profile(request):
-    user_profile = Profile.objects.get(user=request.user)
+    user_profile = request.user.profile
     unread_count = Message.objects.filter(recipient=request.user, is_read=False).count()
 
     if request.method == 'POST':

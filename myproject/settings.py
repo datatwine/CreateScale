@@ -146,7 +146,6 @@ PASSWORD_HASHERS = [
 
 MIDDLEWARE = [
     'django_prometheus.middleware.PrometheusBeforeMiddleware',
-    'silk.middleware.SilkyMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -154,12 +153,15 @@ MIDDLEWARE = [
     'django.middleware.http.ConditionalGetMiddleware',   # ETag + 304 support
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'users.middleware.EnsureProfileMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'allauth.account.middleware.AccountMiddleware',
     'django_prometheus.middleware.PrometheusAfterMiddleware',
 ]
+
+# Silk profiler only in dev — runs per-request checks even at 0% intercept
+if DEBUG:
+    MIDDLEWARE.insert(1, 'silk.middleware.SilkyMiddleware')
 
 AUTHENTICATION_BACKENDS = [
     "django.contrib.auth.backends.ModelBackend",
@@ -320,6 +322,13 @@ if USE_S3:
     AWS_S3_FILE_OVERWRITE = False
     AWS_DEFAULT_ACL = None
     AWS_QUERYSTRING_AUTH = False
+
+    # Presigned URL endpoint — the URL the CLIENT uses to POST files.
+    # In production: not set → presign.py falls back to AWS_S3_ENDPOINT_URL.
+    # In local dev with MinIO: http://localhost:9000 (host port mapping).
+    _presign = os.getenv("PRESIGN_ENDPOINT_URL", "")
+    if _presign:
+        PRESIGN_ENDPOINT_URL = _presign
 
     STORAGES = {
         "default": {
