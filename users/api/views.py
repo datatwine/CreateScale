@@ -7,6 +7,8 @@ from django.shortcuts import get_object_or_404
 from django.utils.decorators import method_decorator
 from django.views.decorators.cache import cache_control
 
+from django.conf import settings as django_settings
+
 from rest_framework import generics, status
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
@@ -17,10 +19,12 @@ from rest_framework.authtoken.models import Token
 from users.models import Profile, Upload
 from bookings.models import Engagement
 
+from .presign import generate_upload_presign
 from .serializers import (
     MeProfileSerializer,
     GlobalFeedProfileSerializer,
     PublicProfileDetailSerializer,
+    PresignedUploadSerializer,
     UploadSerializer,
     SignupSerializer,
 )
@@ -171,6 +175,30 @@ class MeProfileAPIView(generics.RetrieveUpdateAPIView):
         return response
 
 
+class PresignUploadAPIView(APIView):
+    """POST /api/users/me/uploads/presign/ — returns presigned POST data for R2."""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        if not getattr(django_settings, "USE_S3", False):
+            return Response(
+                {"error": "Direct upload not available in local dev (USE_S3=0)"},
+                status=status.HTTP_501_NOT_IMPLEMENTED,
+            )
+
+        content_type = request.data.get("content_type", "image/jpeg")
+        allowed = ("image/jpeg", "image/png", "video/mp4")
+        if content_type not in allowed:
+            return Response(
+                {"error": f"content_type must be one of {allowed}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        max_bytes = 120 * 1024 * 1024 if "video" in content_type else 25 * 1024 * 1024
+        data = generate_upload_presign(request.user.id, content_type, max_bytes)
+        return Response(data)
+
+
 class MyUploadsAPIView(generics.ListCreateAPIView):
     """
     GET/POST /api/users/me/uploads/
@@ -183,7 +211,7 @@ class MyUploadsAPIView(generics.ListCreateAPIView):
     parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     def get_queryset(self):
-        profile = Profile.objects.get(user=self.request.user)
+        profile = self.request.user.profile
         qs = Upload.objects.filter(profile=profile).order_by("-upload_date")
 
         if profile.profile_picture:
@@ -202,8 +230,45 @@ class MyUploadsAPIView(generics.ListCreateAPIView):
 
         return Response(_cached(key, 30, compute))
 
+    def create(self, request, *args, **kwargs):
+        # --- Presigned flow: JSON body with { key, caption } ---
+        if "key" in request.data and "image" not in request.FILES and "video" not in request.FILES:
+            ser = PresignedUploadSerializer(data=request.data)
+            ser.is_valid(raise_exception=True)
+
+            profile = request.user.profile
+            key = ser.validated_data["key"]
+            caption = ser.validated_data.get("caption", "")
+
+            upload = Upload(profile=profile, caption=caption)
+            is_video = key.endswith(".mp4")
+
+            if is_video:
+                upload.video.name = key    # points django-storages at the R2 object
+            else:
+                upload.image.name = key    # same — no re-upload, no Pillow in save()
+
+            upload.save()  # is_fresh_upload() returns False (name is already committed)
+
+            cache.delete(f"uploads:{request.user.id}")
+
+            # Background tasks
+            if is_video:
+                from users.tasks import compress_upload_video
+                compress_upload_video.delay(upload.id)
+            else:
+                from users.tasks import process_uploaded_image
+                process_uploaded_image.delay(upload.id)
+
+            out = UploadSerializer(upload, context={"request": request})
+            return Response(out.data, status=status.HTTP_201_CREATED)
+
+        # --- Legacy multipart flow (web forms, old clients) ---
+        return super().create(request, *args, **kwargs)
+
     def perform_create(self, serializer):
-        profile = Profile.objects.get(user=self.request.user)
+        """Legacy multipart path — called by super().create() above."""
+        profile = self.request.user.profile
         upload = serializer.save(profile=profile)
         cache.delete(f"uploads:{self.request.user.id}")
         # Background ffmpeg re-encode for videos (no-op for images).

@@ -58,6 +58,17 @@ class UploadSerializer(serializers.ModelSerializer):
         return attrs
 
 
+class PresignedUploadSerializer(serializers.Serializer):
+    """Accepts an R2 key (from presigned flow) instead of file bytes."""
+    key = serializers.CharField(max_length=500)
+    caption = serializers.CharField(max_length=2000, required=False, default="")
+
+    def validate_key(self, value):
+        if not value.startswith("profile_pics/") and not value.startswith("profile_videos/"):
+            raise serializers.ValidationError("Invalid storage key.")
+        return value
+
+
 class GlobalFeedProfileSerializer(serializers.ModelSerializer):
     """
     GLOBAL FEED serializer (other users). Mirrors users.views.global_feed:
@@ -140,7 +151,7 @@ class PublicProfileDetailSerializer(serializers.ModelSerializer):
 
     def get_uploads(self, obj):
         request = self.context.get("request")
-        qs = Upload.objects.filter(profile=obj).order_by("-upload_date")
+        qs = Upload.objects.filter(profile=obj).order_by("-upload_date")[:50]
         return UploadSerializer(qs, many=True, context={"request": request}).data
 
 
