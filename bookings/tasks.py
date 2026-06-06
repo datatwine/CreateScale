@@ -41,15 +41,18 @@ def expire_unpaid_engagements() -> int:
         accepted_at__isnull=False,
     )
 
-    expired_count = 0
     now = timezone.now()
-    for e in candidates:
-        deadline = e.payment_deadline()
-        if deadline and now > deadline:
-            e.status = Engagement.STATUS_AUTO_EXPIRED
-            e.save(update_fields=["status"])
-            expired_count += 1
+    to_expire = [
+        e.pk for e in candidates
+        if (d := e.payment_deadline()) and now > d
+    ]
 
+    if to_expire:
+        Engagement.objects.filter(pk__in=to_expire).update(
+            status=Engagement.STATUS_AUTO_EXPIRED
+        )
+
+    expired_count = len(to_expire)
     logger.info(
         "expire_unpaid_engagements: marked %d engagements as expired",
         expired_count,
@@ -72,7 +75,7 @@ def release_completed_event_payouts() -> int:
         status=Engagement.STATUS_ACCEPTED,
         payment_status=Engagement.PAYMENT_PAID,
         disputed_at__isnull=True,    # critical: skip disputed
-    )
+    ).prefetch_related("payments")
 
     released_count = 0
     for e in ready:
