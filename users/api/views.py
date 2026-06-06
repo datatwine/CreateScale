@@ -211,7 +211,7 @@ class MyUploadsAPIView(generics.ListCreateAPIView):
     parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     def get_queryset(self):
-        profile = Profile.objects.get(user=self.request.user)
+        profile = self.request.user.profile
         qs = Upload.objects.filter(profile=profile).order_by("-upload_date")
 
         if profile.profile_picture:
@@ -236,7 +236,7 @@ class MyUploadsAPIView(generics.ListCreateAPIView):
             ser = PresignedUploadSerializer(data=request.data)
             ser.is_valid(raise_exception=True)
 
-            profile = Profile.objects.get(user=request.user)
+            profile = request.user.profile
             key = ser.validated_data["key"]
             caption = ser.validated_data.get("caption", "")
 
@@ -268,7 +268,7 @@ class MyUploadsAPIView(generics.ListCreateAPIView):
 
     def perform_create(self, serializer):
         """Legacy multipart path — called by super().create() above."""
-        profile = Profile.objects.get(user=self.request.user)
+        profile = self.request.user.profile
         upload = serializer.save(profile=profile)
         cache.delete(f"uploads:{self.request.user.id}")
         # Background ffmpeg re-encode for videos (no-op for images).

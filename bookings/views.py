@@ -7,15 +7,17 @@ from django.shortcuts import render
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied, ValidationError
+from django.db.models import Prefetch
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
+from django.core.cache import cache
 from django.views.decorators.http import require_POST
 
 from users.models import Profile
 from .forms import EngagementRequestForm, CancelEngagementForm, DisputeForm
-from .models import Engagement
+from .models import Engagement, Payment
 from .services.payments import PaymentService
 
 
@@ -62,20 +64,23 @@ def create_hire_request(request, performer_id):
         )
         return redirect("profile-detail", user_id=performer_profile.user.id)
 
-    # Stats for the hire-card footer (cheap aggregates, computed once).
-    stats = {
-        "total_events": Engagement.objects.filter(
-            status=Engagement.STATUS_ACCEPTED
-        ).count(),
-        "total_artists": Profile.objects.filter(is_performer=True).count(),
-        "total_artforms": (
-            Profile.objects.filter(is_performer=True)
-            .exclude(profession="")
-            .values("profession")
-            .distinct()
-            .count()
-        ),
-    }
+    # Stats for the hire-card footer — cached 5 min (slowly-changing data).
+    stats = cache.get("hire_form:stats")
+    if stats is None:
+        stats = {
+            "total_events": Engagement.objects.filter(
+                status=Engagement.STATUS_ACCEPTED
+            ).count(),
+            "total_artists": Profile.objects.filter(is_performer=True).count(),
+            "total_artforms": (
+                Profile.objects.filter(is_performer=True)
+                .exclude(profession="")
+                .values("profession")
+                .distinct()
+                .count()
+            ),
+        }
+        cache.set("hire_form:stats", stats, 300)
 
     if request.method == "POST":
         form = EngagementRequestForm(request.POST)
@@ -425,12 +430,18 @@ def client_payments(request):
             ],
         )
         .select_related("performer")
-        .prefetch_related("payments")
+        .prefetch_related(
+            Prefetch(
+                "payments",
+                queryset=Payment.objects.order_by("-created_at"),
+            )
+        )
         .order_by("-paid_at"))
     # Annotate each row with its latest Payment so the template can show
     # Razorpay reference IDs without a query per row.
     for e in engagements:
-        e.latest_payment = e.payments.order_by("-created_at").first()
+        prefetched = e.payments.all()   # hits prefetch cache, no DB query
+        e.latest_payment = prefetched[0] if prefetched else None
     return render(
         request,
         "bookings/client_payments.html",

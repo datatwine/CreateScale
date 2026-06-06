@@ -1,4 +1,5 @@
 from django.core.exceptions import ValidationError, PermissionDenied
+from django.db.models import Q
 from django.shortcuts import get_object_or_404
 
 from rest_framework import status, viewsets
@@ -88,9 +89,7 @@ class EngagementViewSet(viewsets.ViewSet):
         if self._is_admin(request):
             return Engagement.objects.all().select_related("client", "performer")
         return Engagement.objects.filter(
-            client=request.user
-        ).select_related("client", "performer") | Engagement.objects.filter(
-            performer=request.user
+            Q(client=request.user) | Q(performer=request.user)
         ).select_related("client", "performer")
 
     def list(self, request):

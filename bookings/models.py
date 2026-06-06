@@ -82,7 +82,7 @@ class Engagement(models.Model):
 
     # Timestamps for payment-driven state machine
     accepted_at = models.DateTimeField(null=True, blank=True)
-    paid_at     = models.DateTimeField(null=True, blank=True)
+    paid_at     = models.DateTimeField(null=True, blank=True, db_index=True)
     released_at = models.DateTimeField(null=True, blank=True)
     refunded_at = models.DateTimeField(null=True, blank=True)
 
@@ -353,8 +353,8 @@ class Payment(models.Model):
     # Razorpay references — opaque IDs returned by Razorpay's API.
     razorpay_order_id    = models.CharField(max_length=64, unique=True)
     razorpay_payment_id  = models.CharField(max_length=64, blank=True, db_index=True)
-    razorpay_transfer_id = models.CharField(max_length=64, blank=True)
-    razorpay_refund_id   = models.CharField(max_length=64, blank=True)
+    razorpay_transfer_id = models.CharField(max_length=64, blank=True, db_index=True)
+    razorpay_refund_id   = models.CharField(max_length=64, blank=True, db_index=True)
 
     STATUS_CHOICES = [
         ("created",  "Order created"),

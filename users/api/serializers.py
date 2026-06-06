@@ -151,7 +151,7 @@ class PublicProfileDetailSerializer(serializers.ModelSerializer):
 
     def get_uploads(self, obj):
         request = self.context.get("request")
-        qs = Upload.objects.filter(profile=obj).order_by("-upload_date")
+        qs = Upload.objects.filter(profile=obj).order_by("-upload_date")[:50]
         return UploadSerializer(qs, many=True, context={"request": request}).data
 
 

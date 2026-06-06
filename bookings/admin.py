@@ -10,6 +10,7 @@ class EngagementAdmin(admin.ModelAdmin):
         "id", "client", "performer", "date", "status",
         "payment_status", "fee", "disputed_at",
     )
+    list_select_related = ("client", "performer")
     list_filter = ("status", "payment_status", "disputed_at")
     search_fields = (
         "client__username", "performer__username",
@@ -54,6 +55,7 @@ class PaymentAdmin(admin.ModelAdmin):
         "id", "engagement", "amount", "status",
         "razorpay_payment_id", "created_at",
     )
+    list_select_related = ("engagement",)
     list_filter = ("status",)
     search_fields = (
         "razorpay_order_id", "razorpay_payment_id", "razorpay_refund_id",
