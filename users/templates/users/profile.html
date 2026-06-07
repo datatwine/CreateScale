@@ -160,7 +160,7 @@
         <div class="uploads-grid">
             {% for upload in uploads %}
                 {% if upload.image %}
-                    <div class="upload-card">
+                    <div class="upload-card" data-upload-id="{{ upload.id }}">
                         <div class="media-wrap">
                             {# 300x300 thumbnail via sorl-thumbnail (falls back to full image on any failure) #}
                             {% thumbnail upload.image "300x300" crop="center" as t %}
@@ -169,13 +169,27 @@
                                 <img src="{{ upload.image.url }}" alt="{{ upload.caption }}" loading="lazy">
                             {% endthumbnail %}
                         </div>
+                        <button class="upload-menu-btn" onclick="toggleUploadMenu(this)" aria-label="Upload options">
+                            <svg viewBox="0 0 24 24" width="18" height="18" fill="white"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
+                        </button>
+                        <div class="upload-menu-dropdown">
+                            <button onclick="startEditCaption(this)">Edit caption</button>
+                            <button class="danger" onclick="confirmDeleteUpload(this)">Delete</button>
+                        </div>
                         <div class="card-overlay">
                             <p class="caption">{{ upload.caption }}</p>
                             <p class="upload-date">{{ upload.upload_date|date:"d M Y" }}</p>
                         </div>
+                        <div class="upload-edit-form" style="display:none">
+                            <textarea class="upload-edit-input">{{ upload.caption }}</textarea>
+                            <div class="upload-edit-actions">
+                                <button class="edit-save" onclick="saveCaption(this)">Save</button>
+                                <button class="edit-cancel" onclick="cancelEditCaption(this)">Cancel</button>
+                            </div>
+                        </div>
                     </div>
                 {% elif upload.video %}
-                    <div class="upload-card">
+                    <div class="upload-card" data-upload-id="{{ upload.id }}">
                         <div class="media-wrap">
                             <video muted playsinline preload="metadata">
                                 <source src="{{ upload.video.url }}" type="video/mp4">
@@ -184,9 +198,23 @@
                         <span class="play-badge" aria-hidden="true">
                             <svg viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3" fill="white"></polygon></svg>
                         </span>
+                        <button class="upload-menu-btn" onclick="toggleUploadMenu(this)" aria-label="Upload options">
+                            <svg viewBox="0 0 24 24" width="18" height="18" fill="white"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
+                        </button>
+                        <div class="upload-menu-dropdown">
+                            <button onclick="startEditCaption(this)">Edit caption</button>
+                            <button class="danger" onclick="confirmDeleteUpload(this)">Delete</button>
+                        </div>
                         <div class="card-overlay">
                             <p class="caption">{{ upload.caption }}</p>
                             <p class="upload-date">{{ upload.upload_date|date:"d M Y" }}</p>
+                        </div>
+                        <div class="upload-edit-form" style="display:none">
+                            <textarea class="upload-edit-input">{{ upload.caption }}</textarea>
+                            <div class="upload-edit-actions">
+                                <button class="edit-save" onclick="saveCaption(this)">Save</button>
+                                <button class="edit-cancel" onclick="cancelEditCaption(this)">Cancel</button>
+                            </div>
                         </div>
                     </div>
                 {% endif %}

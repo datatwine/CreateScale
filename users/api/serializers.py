@@ -52,7 +52,10 @@ class UploadSerializer(serializers.ModelSerializer):
         return _abs_url(self.context.get("request"), obj.video)
 
     def validate(self, attrs):
-        # Mirror your UploadForm intent: require at least one media field.
+        # On update (PATCH), media fields aren't required — only caption changes.
+        if self.instance is not None:
+            return attrs
+        # On create, require at least one media field.
         if not attrs.get("image") and not attrs.get("video"):
             raise serializers.ValidationError("Upload requires an image or a video.")
         return attrs
