@@ -21,7 +21,6 @@ import {
 import { useNavigation } from "@react-navigation/native";
 import * as ImagePicker from "expo-image-picker";
 import * as ImageManipulator from "expo-image-manipulator";
-import { Video as VideoCompressor } from "react-native-compressor";
 import * as Location from "expo-location";
 import { Ionicons } from "@expo/vector-icons"; // only once
 
@@ -37,9 +36,8 @@ import { uploadMedia } from "../api/upload";
 //   Per-kind max dimension. Output JPEG quality 0.82. Idempotent if the image
 //   is already smaller than maxWidth.
 //
-// compressVideo: hardware-accelerated video re-encode via react-native-compressor.
-//   Uses AVFoundation (iOS) / MediaCodec (Android). A 10s 4K clip lands at
-//   ~5-6 MB and takes ~1-3s on modern phones — drastically less than ffmpeg.
+// Note: Video compression removed for Expo Go compatibility.
+//   For production, use eas build with a custom development client.
 //
 // Both are wrapped in try/catch by callers: on any failure they fall back
 // to the original URI so the upload still works.
@@ -53,18 +51,12 @@ async function shrinkImage(uri, maxWidth) {
   return out.uri;
 }
 
+// Video compression disabled for Expo Go compatibility
+// In production, replace with native module via eas build
 async function compressVideo(uri) {
-  return await VideoCompressor.compress(
-    uri,
-    {
-      compressionMethod: "manual",
-      maxSize: 1920,           // longest side cap (1080p target)
-      bitrate: 4_000_000,      // 4 Mbps — strong quality for social video
-    },
-    // Progress callback (0..1). No-op for now; could drive a progress bar
-    // by lifting state into the component if desired.
-    () => {}
-  );
+  // For now, return the original URI without compression
+  // This allows the feature to work with Expo Go on iOS/Android
+  return uri;
 }
 
 /**

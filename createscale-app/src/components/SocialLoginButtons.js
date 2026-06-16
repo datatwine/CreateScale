@@ -126,38 +126,32 @@ export default function SocialLoginButtons() {
 
     return (
         <View style={styles.container}>
-            <Text style={styles.dividerText}>or continue with</Text>
+            <Text style={styles.dividerText}>or continue with (temporarily disabled)</Text>
             <View style={styles.row}>
                 <TouchableOpacity
-                    style={[styles.button, { backgroundColor: "#4285F4" }]}
-                    onPress={() => googlePromptAsync()}
-                    disabled={!googleRequest || loading === "google"}
+                    style={[styles.button, { backgroundColor: "#4285F4", opacity: 0.5 }]}
+                    disabled
                 >
-                    <Text style={styles.buttonText}>
-                        {loading === "google" ? "..." : "Google"}
-                    </Text>
+                    <Text style={styles.buttonText}>Google</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                    style={[styles.button, { backgroundColor: "#1DA1F2" }]}
-                    onPress={() => twitterPromptAsync()}
-                    disabled={!twitterRequest || loading === "twitter"}
+                    style={[styles.button, { backgroundColor: "#1DA1F2", opacity: 0.5 }]}
+                    disabled
                 >
-                    <Text style={styles.buttonText}>
-                        {loading === "twitter" ? "..." : "Twitter"}
-                    </Text>
+                    <Text style={styles.buttonText}>Twitter</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                    style={[styles.button, { backgroundColor: "#0077B5" }]}
-                    onPress={() => linkedinPromptAsync()}
-                    disabled={!linkedinRequest || loading === "linkedin"}
+                    style={[styles.button, { backgroundColor: "#0077B5", opacity: 0.5 }]}
+                    disabled
                 >
-                    <Text style={styles.buttonText}>
-                        {loading === "linkedin" ? "..." : "LinkedIn"}
-                    </Text>
+                    <Text style={styles.buttonText}>LinkedIn</Text>
                 </TouchableOpacity>
             </View>
+            <Text style={styles.disabledNote}>
+                ⓘ OAuth redirect URIs need to be registered with providers. Use email/password for now.
+            </Text>
         </View>
     );
 }
@@ -187,5 +181,12 @@ const styles = StyleSheet.create({
         color: "#fff",
         fontWeight: "600",
         fontSize: 13,
+    },
+    disabledNote: {
+        color: "#888",
+        fontSize: 12,
+        textAlign: "center",
+        marginTop: 8,
+        fontStyle: "italic",
     },
 });
