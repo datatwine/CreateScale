@@ -303,6 +303,7 @@ class Engagement(models.Model):
     def decline(self):
         """Performer declines."""
         self._ensure_pending()
+        self._ensure_accept_within_24h()
         self.status = self.STATUS_DECLINED
         self.save(update_fields=["status"])
 
