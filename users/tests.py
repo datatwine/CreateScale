@@ -677,4 +677,3 @@ class HiringRequestSelfConflictTestCase(TestCase):
             hiring_status="pending"
         )
         self.assertEqual(pending_hirings.count(), 0)
-
