@@ -3,7 +3,6 @@ from unittest.mock import patch
 
 from django.test import TestCase
 from django.contrib.auth.models import User
-from django.utils import timezone
 from rest_framework.test import APIClient
 from rest_framework.authtoken.models import Token
 
@@ -117,7 +116,7 @@ class TestCancelAPIIntegration(TestCase):
         client_user, client_token = self._create_user("client.soon", role="client")
         eng_id = self._hire(performer, performer_token, client_token)
 
-        soon = date.today() + timedelta(days=1)
+        soon = date.today()
         Engagement.objects.filter(id=eng_id).update(date=soon)
 
         resp = self._action(eng_id, "cancel_client", client_token,

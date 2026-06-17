@@ -167,11 +167,13 @@ class EngagementViewSet(viewsets.ViewSet):
                 engagement.cancel_by_client(reason=reason)
                 if engagement.payment_status == Engagement.PAYMENT_PAID:
                     PaymentService.refund_to_client(engagement)
+                return Response({"detail": "Cancelled by client."})
 
             if action == "cancel_performer" and is_performer:
                 engagement.cancel_by_performer(reason=reason)
                 if engagement.payment_status == Engagement.PAYMENT_PAID:
                     PaymentService.refund_to_client(engagement)
+                return Response({"detail": "Cancelled by performer."})
 
             return Response({"detail": "Invalid action for your role."}, status=status.HTTP_403_FORBIDDEN)
 
