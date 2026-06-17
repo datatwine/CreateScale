@@ -303,6 +303,7 @@ class Engagement(models.Model):
     def decline(self):
         """Performer declines."""
         self._ensure_pending()
+        self._ensure_accept_within_24h()
         self.status = self.STATUS_DECLINED
         self.save(update_fields=["status"])
 
@@ -318,6 +319,10 @@ class Engagement(models.Model):
             raise ValidationError("Only pending or accepted bookings can be cancelled.")
         if not reason or not reason.strip():
             raise ValidationError("A cancellation reason is required.")
+        if len(reason) < 10:
+            raise ValidationError("Cancellation reason must be at least 10 characters.")
+        if len(reason) > 500:
+            raise ValidationError("Cancellation reason must be under 500 characters.")
         self._check_within_24h_cancellation_block()
         self.cancellation_reason = reason
         self.cancelled_by = "client"
@@ -330,6 +335,10 @@ class Engagement(models.Model):
             raise ValidationError("Only pending or accepted bookings can be cancelled.")
         if not reason or not reason.strip():
             raise ValidationError("A cancellation reason is required.")
+        if len(reason) < 10:
+            raise ValidationError("Cancellation reason must be at least 10 characters.")
+        if len(reason) > 500:
+            raise ValidationError("Cancellation reason must be under 500 characters.")
         self._check_within_24h_cancellation_block()
         self.cancellation_reason = reason
         self.cancelled_by = "performer"

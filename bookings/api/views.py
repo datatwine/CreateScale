@@ -10,6 +10,7 @@ from rest_framework.views import APIView
 
 from users.models import Profile
 from bookings.models import Engagement
+from bookings.services.payments import PaymentService
 from .serializers import EngagementSerializer, EngagementCreateSerializer, EngagementActionSerializer
 
 
@@ -57,6 +58,10 @@ class CreateHireRequestAPIView(APIView):
             venue=ser.validated_data["venue"],
             occasion=ser.validated_data["occasion"],
         )
+
+        # Snapshot the performer's current fee onto this engagement so
+        # later changes to the profile fee can't affect open bookings.
+        engagement.fee = performer_profile.performer_fee
 
         # Critical: keep all business rules in Engagement.clean() :contentReference[oaicite:15]{index=15}
         try:
@@ -159,12 +164,14 @@ class EngagementViewSet(viewsets.ViewSet):
                 return Response({"detail": "Declined."})
 
             if action == "cancel_client" and is_client:
-                engagement.cancel_by_client(emergency_reason=reason)
-                return Response({"detail": "Cancelled by client."})
+                engagement.cancel_by_client(reason=reason)
+                if engagement.payment_status == Engagement.PAYMENT_PAID:
+                    PaymentService.refund_to_client(engagement)
 
             if action == "cancel_performer" and is_performer:
-                engagement.cancel_by_performer(emergency_reason=reason)
-                return Response({"detail": "Cancelled by performer."})
+                engagement.cancel_by_performer(reason=reason)
+                if engagement.payment_status == Engagement.PAYMENT_PAID:
+                    PaymentService.refund_to_client(engagement)
 
             return Response({"detail": "Invalid action for your role."}, status=status.HTTP_403_FORBIDDEN)
 
