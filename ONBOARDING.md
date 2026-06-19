@@ -97,18 +97,19 @@ Every section below zooms into one part of this picture. Read them in order for 
 6. [REST API (DRF)](#6-rest-api-drf)
 7. [Authentication and OAuth](#7-authentication-and-oauth)
 8. [The Booking / Hiring System](#8-the-booking--hiring-system)
-9. [React Native / Expo Frontend](#9-react-native--expo-frontend)
-10. [Docker and Containerization](#10-docker-and-containerization)
-11. [AWS Infrastructure](#11-aws-infrastructure)
-12. [Nginx and Load Balancing](#12-nginx-and-load-balancing)
-13. [CI/CD Pipeline](#13-cicd-pipeline)
-14. [Git Workflow](#14-git-workflow)
-15. [Monitoring and Observability](#15-monitoring-and-observability)
-16. [Django Admin, Grafana and GlitchTip](#16-django-admin-grafana-and-glitchtip)
-17. [Environment Variables Reference](#17-environment-variables-reference)
-18. [Common Commands Cheat Sheet](#18-common-commands-cheat-sheet)
-19. [DOs and DON'Ts](#19-dos-and-donts)
-20. [Further Reading](#20-further-reading)
+9. [Payments and Payouts](#9-payments-and-payouts)
+10. [React Native / Expo Frontend](#10-react-native--expo-frontend)
+11. [Docker and Containerization](#11-docker-and-containerization)
+12. [AWS Infrastructure](#12-aws-infrastructure)
+13. [Nginx and Load Balancing](#13-nginx-and-load-balancing)
+14. [CI/CD Pipeline](#14-cicd-pipeline)
+15. [Git Workflow](#15-git-workflow)
+16. [Monitoring and Observability](#16-monitoring-and-observability)
+17. [Django Admin, Grafana and GlitchTip](#17-django-admin-grafana-and-glitchtip)
+18. [Environment Variables Reference](#18-environment-variables-reference)
+19. [Common Commands Cheat Sheet](#19-common-commands-cheat-sheet)
+20. [DOs and DON'Ts](#20-dos-and-donts)
+21. [Further Reading](#21-further-reading)
 
 ---
 
@@ -533,7 +534,271 @@ These are not yet implemented but the data model supports them:
 
 ---
 
-## 9. React Native / Expo Frontend
+## 9. Payments and Payouts
+
+Money moves through **Razorpay Route** — an escrow-style payout system.
+
+Clients pay upfront. The platform holds the **performer's share** in escrow until the event completes, then releases it. If something goes wrong, it refunds instead.
+
+This section covers KYC onboarding, checkout, refunds, disputes, webhooks, and scheduled payouts.
+
+### Architecture — Razorpay Escrow
+
+All payments use [Razorpay Route](https://razorpay.com/docs/route/) with held transfers. When a client pays, the amount splits immediately:
+
+- **Platform fee** (default 5%) — available at capture time
+- **Performer's share** — placed on hold (`on_hold=1`) in Razorpay's ledger
+
+The hold releases only after the **event date + 24h dispute window**. If cancelled, Razorpay unwinds the transfer and refunds the full amount.
+
+```
+Client pays ₹1000 (total)
+         │
+         ▼
+   Razorpay captures ₹1000
+         │
+    ┌────┴────┐
+    ▼         ▼
+₹50          ₹950
+(platform    (performer's share)
+ fee 5%)          │
+available     held in escrow
+ immediately   (on_hold=1)
+                   │
+        ┌──────────┴──────────┐
+        ▼                     ▼
+   Event OK              Cancellation
+   + 24h passes          or dispute
+        │                     │
+        ▼                     ▼
+   release_to_performer()   refund_to_client()
+   (unhold transfer)        (reverse_all=1)
+        │                     │
+        ▼                     ▼
+   Performer gets ₹950     Client gets ₹1000 back
+```
+
+### Engagement Payment State Machine
+
+The `payment_status` field on the Engagement model tracks the money lifecycle through these states:
+
+```
+unpaid ──(pay)──→ paid ──(release)────→ released
+                     │
+                     ├──(cancel)──────→ refunded
+                     │
+                     └──(dispute)────→ [stays paid, escrow frozen]
+```
+
+- **unpaid** — No payment started. Engagements expire if unpaid past `payment_deadline()`.
+- **paid** — Client paid. Money held in Razorpay escrow.
+- **released** — Performer received their share. Platform fee already settled.
+- **refunded** — Full amount returned to client via `reverse_all=1`.
+- **disputed** — Client raised an issue. Money stays frozen until admin resolves.
+
+### Performer KYC Onboarding (users/models.py, users/views.py)
+
+Performers must complete **Razorpay Route KYC** before they can receive payments. All fields live on the `Profile` model:
+
+- **`performer_fee`** (`PositiveIntegerField`, 500–500,000 INR) — Standard fee. Snapshotted at hire time.
+- **`razorpay_account_id`** (`CharField(64)`, unique) — Route linked account ID. Set after creation.
+- **`razorpay_kyc_status`** (`CharField`) — `""` → `"pending"` → `"approved"` / `"rejected"`
+- **`pan_number`** (`CharField(10)`, regex validated) — Permanent Account Number
+- **`bank_account_number`** (`CharField(20)`) — Bank account for payouts
+- **`bank_ifsc`** (`CharField(11)`, regex validated) — IFSC code
+- **`bank_account_holder_name`** (`CharField(120)`) — Name on bank account
+- **`phone_number`** (`CharField(10)`, regex validated) — Indian mobile (required by Razorpay)
+
+**KYC flow** (`users/views.py:update_payment_details`):
+
+1. Performer submits `PaymentDetailsForm` (PAN, bank, phone, fee)
+2. If all fields filled + no existing `razorpay_account_id` → creates a Razorpay Route linked account via `client.account.create()`
+3. Saves `razorpay_account_id` and `razorpay_kyc_status = "pending"` to the Profile
+4. Razorpay reviews the KYC (5-7 business days)
+5. Status webhook not yet implemented — updates may be manual
+
+**Gate:** `Profile.can_receive_payments` returns `True` only when both `razorpay_account_id` is set **and** `razorpay_kyc_status == "approved"`. `PaymentService.create_order()` rejects unapproved performers.
+
+### Payment Models (bookings/models.py)
+
+Two models track payment data.
+
+**Engagement** — payment fields on the engagement itself:
+
+- **`fee`** (`PositiveIntegerField`) — Snapshot of performer's fee at hire time. Immutable.
+- **`payment_status`** (`CharField`) — `unpaid` → `paid` → `released` / `refunded`
+- **`accepted_at`** (`DateTimeField`) — Starts the payment deadline clock
+- **`paid_at`** (`DateTimeField`, indexed) — When Razorpay captured the payment
+- **`released_at`** (`DateTimeField`) — When money reached the performer
+- **`refunded_at`** (`DateTimeField`) — When money returned to the client
+- **`disputed_at`** (`DateTimeField`) — Client raised a dispute
+- **`dispute_reason`** (`TextField`) — 10–1000 char description
+- **`dispute_resolved_at`** (`DateTimeField`) — Admin resolved it
+
+Key methods:
+
+- `payment_deadline()` — Deadline for the client to pay. **24h after `accepted_at`**, clamped to `event_time - 2h` for short-notice bookings. Controlled by `RAZORPAY_PAYMENT_WINDOW_HOURS`.
+- `can_dispute` — `True` when `payment_status == "paid"`, no prior dispute, and within 24h of event end (`RAZORPAY_DISPUTE_WINDOW_HOURS`).
+
+**Payment** — Razorpay audit trail. One Engagement can have multiple Payment rows (failed attempts, retries). The latest `status="captured"` row is the source of truth:
+
+- **`engagement`** (`ForeignKey`) — Parent engagement
+- **`amount`** (`PositiveIntegerField`) — Total in rupees
+- **`platform_fee`** (`PositiveIntegerField`) — ArtKhoj's cut
+- **`performer_share`** (`PositiveIntegerField`) — `amount - platform_fee`
+- **`razorpay_order_id`** (`CharField`, unique) — Razorpay Order ID
+- **`razorpay_payment_id`** (`CharField`, indexed) — Populated after capture
+- **`razorpay_transfer_id`** (`CharField`, indexed) — Populated on transfer
+- **`razorpay_refund_id`** (`CharField`, indexed) — Populated on refund
+- **`status`** (`CharField`) — `created` → `captured` → `released` / `refunded` / `failed`
+- **`raw_webhook_log`** (`JSONField`) — Append-only webhook audit trail
+
+### Checkout Flow (bookings/views.py, bookings/services/payments.py)
+
+A two-step flow between frontend and backend:
+
+**Step 1 — `POST /engagement/<pk>/pay/` (Create Order)**
+
+```
+Frontend                         Backend
+   │                                │
+   │── POST /pay/ ──────────────→   │
+   │                                │── Validate: unpaid, fee set, KYC approved
+   │                                │── Split fee via _split_amount()
+   │                                │── Create Razorpay Order + held transfer
+   │                                │── Persist Payment(status="created")
+   │←── {order_id, amount,         │
+   │     currency, key_id} ──────   │
+```
+
+1. `PaymentService.create_order()` validates the engagement is unpaid, fee is set, and performer is KYC-approved
+2. `_split_amount()` divides the total into `(platform_fee, performer_share)` using `RAZORPAY_PLATFORM_FEE_PERCENT`
+3. Creates a Razorpay Order with a held transfer to the performer's linked account
+4. Persists a `Payment` row with `status="created"`
+5. Returns `{order_id, amount, currency, key_id}` for the frontend to open the Razorpay modal
+
+**Step 2 — `POST /engagement/<pk>/verify/` (Verify and Capture)**
+
+```
+Frontend                         Backend
+   │                                │
+   │── checkout.js handler ─────→   │
+   │   {order_id, payment_id,       │
+   │    signature}                  │
+   │                                │── Verify HMAC-SHA256 signature
+   │                                │── select_for_update() row lock
+   │                                │── Mark Payment "captured"
+   │                                │── Mark Engagement "paid"
+   │←── reload page ────────────   │
+```
+
+1. Razorpay checkout.js calls the handler with `{razorpay_order_id, razorpay_payment_id, razorpay_signature}`
+2. Backend verifies **HMAC-SHA256** using `RAZORPAY_KEY_SECRET`
+3. `select_for_update()` row lock ensures idempotency
+4. `Payment.status = "captured"` and `Engagement.payment_status = "paid"`
+5. Performer's share stays on hold in Razorpay
+
+**Checkout JS** (in `engagement_detail.html`):
+
+```javascript
+fetch(`/engagement/${pk}/pay/`, { method: "POST" })
+  .then(r => r.json())
+  .then(order => {
+    var options = {
+      key: order.key_id,
+      amount: order.amount,
+      currency: order.currency,
+      order_id: order.order_id,
+      handler: function(response) {
+        fetch(`/engagement/${pk}/verify/`, {
+          method: "POST", body: JSON.stringify(response)
+        }).then(() => location.reload());
+      }
+    };
+    var rzp = new Razorpay(options);
+    rzp.open();
+  });
+```
+
+### Refunds (bookings/services/payments.py)
+
+`PaymentService.refund_to_client()` fires when a **paid** engagement is cancelled:
+
+- Calls Razorpay API with `reverse_all=1` → unwinds the held transfer → full refund to client
+- Sets `Payment.status = "refunded"` and `Engagement.payment_status = "refunded"`
+- **Idempotent** — no-op if already refunded
+- Fires **synchronously** from the `engagement_detail` web view (`bookings/views.py:230-231, 245-246`)
+
+> ⚠️ **API gap:** `bookings/api/views.py` calls the model's cancel methods but **not** `refund_to_client()`. API cancellations of paid engagements leave money stuck in escrow.
+
+### Disputes (bookings/views.py, bookings/forms.py)
+
+Clients can raise a dispute **within 24h** of the event end time:
+
+1. Client submits `DisputeForm` (10–1000 chars) via `POST /engagement/<pk>/dispute/`
+2. Guard: must be `paid`, no existing dispute, still within the window (`can_dispute`)
+3. Engagement gets `disputed_at` + `dispute_reason` set
+4. Celery release task **skips** disputed engagements — money stays frozen
+5. Admin resolves in Django admin: sets `dispute_resolved_at`, then refunds or releases manually
+
+### Scheduled Tasks (bookings/tasks.py)
+
+Two Celery tasks handle time-based payment automation:
+
+- **`expire_unpaid_engagements()`** — Hourly. Marks accepted-but-unpaid engagements past `payment_deadline()` as `auto_expired`.
+- **`release_completed_event_payouts()`** — Daily 02:00. Releases payouts for paid engagements where the event + 24h dispute window has passed. Skips disputed engagements.
+
+### Webhooks (bookings/views.py, bookings/services/payments.py)
+
+Razorpay sends webhook events to `POST /webhook/razorpay/` (CSRF-exempt, HMAC-verified):
+
+- **`payment.captured`** → `PaymentService.mark_captured_from_webhook()` — marks as captured (backup path when verify step is missed)
+- **`refund.processed`** → Updates `Payment.status` to `refunded`
+- **`transfer.processed`** → Updates `Payment.status` to `released`
+
+The webhook endpoint:
+
+1. Reads the raw body and `X-Razorpay-Signature` header
+2. Verifies HMAC-SHA256 using `RAZORPAY_WEBHOOK_SECRET`
+3. Routes to the appropriate handler
+4. All webhook payloads are logged to `Payment.raw_webhook_log` for audit
+
+### Service Layer (bookings/services/)
+
+**`bookings/services/payments.py`** — the `PaymentService` class:
+
+- **`_split_amount(total)`** — Divides into `(platform_fee, performer_share)` by `RAZORPAY_PLATFORM_FEE_PERCENT`
+- **`create_order(engagement)`** — Creates Razorpay Order + held transfer, saves Payment row
+- **`verify_and_capture(order_id, payment_id, sig)`** — HMAC check + capture with row lock
+- **`mark_captured_from_webhook(order_id, payment_id)`** — Same, no HMAC (already verified upstream)
+- **`release_to_performer(engagement)`** — Unholds the transfer
+- **`refund_to_client(engagement)`** — Full refund via `reverse_all=1`
+- **`verify_webhook_signature(raw_body, sig)`** — HMAC-SHA256 for webhooks
+- **`handle_webhook_event(event)`** — Routes to the right handler
+
+**`bookings/services/razorpay_client.py`** — lazy Razorpay SDK init. Raises `RuntimeError("Razorpay is not configured")` if keys are missing. Uses lazy import to dodge the `pkg_resources` issue with setuptools 70+.
+
+### Configuration
+
+All payment settings are read from environment variables in `myproject/settings.py`:
+
+- **`RAZORPAY_KEY_ID`** (empty) — Razorpay API key ID
+- **`RAZORPAY_KEY_SECRET`** (empty) — Razorpay API key secret
+- **`RAZORPAY_WEBHOOK_SECRET`** (empty) — Secret for HMAC webhook verification
+- **`RAZORPAY_PLATFORM_FEE_PERCENT`** (default `5`) — Percentage deducted as platform fee
+- **`RAZORPAY_PAYMENT_WINDOW_HOURS`** (default `24`) — Hours client has to pay after acceptance
+- **`RAZORPAY_DISPUTE_WINDOW_HOURS`** (default `24`) — Hours after event to raise a dispute
+
+### Known Gaps
+
+1. **No API refund on cancel** — `bookings/api/views.py` skips `refund_to_client()`. Money stays stuck in escrow on API cancellations.
+2. **No KYC webhook handler** — `razorpay_kyc_status` stays `"pending"` forever. KYC updates must be manual.
+3. **No partial refunds** — only full refunds with `reverse_all=1`. Can't refund part of a booking.
+4. **Synchronous refunds** — `refund_to_client()` calls Razorpay during the HTTP request. Slow for large refunds.
+
+---
+
+## 10. React Native / Expo Frontend
 
 The mobile app gives performers and clients a native experience on iOS and Android. It talks to Django exclusively through the REST API and handles its own authentication, navigation, and media uploads. This section covers the app structure, screens, hooks, and how to run it locally.
 
@@ -601,7 +866,7 @@ npx expo start --web            # Browser
 
 ---
 
-## 10. Docker and Containerization
+## 11. Docker and Containerization
 
 Docker is how we package and run the application consistently across local dev machines, CI, and production servers. This section explains Docker concepts, our Dockerfile, the boot sequence, and the various Compose files for different environments.
 
@@ -660,7 +925,7 @@ docker system prune -a                 # Remove ALL unused images (reclaim disk)
 
 ---
 
-## 11. AWS Infrastructure
+## 12. AWS Infrastructure
 
 AWS provides the servers, networking, storage, and scaling that run the application in production. This section explains each AWS service we use, how the instances are organized, and how environment config is centralized.
 
@@ -729,7 +994,7 @@ One canonical .env lives in S3. This prevents OD/Spot drift:
 
 ---
 
-## 12. Nginx and Load Balancing
+## 13. Nginx and Load Balancing
 
 Nginx is the front door to the application on the OD instance. It receives every request from Cloudflare, decides which backend server should handle it, and forwards the request. This section covers how Nginx is configured and how it automatically discovers new Spot instances.
 
@@ -759,7 +1024,7 @@ Nginx automatically picks up new Spot instances and drops terminated ones with n
 
 ---
 
-## 13. CI/CD Pipeline
+## 14. CI/CD Pipeline
 
 CI/CD automates everything between pushing code and it running in production. This section walks through every job in the pipeline, what triggers it, and what happens at each stage.
 
@@ -806,7 +1071,7 @@ DEPLOY-NGINX ------- Copy configs, validate, reload
 
 ---
 
-## 14. Git Workflow
+## 15. Git Workflow
 
 Git is how you track code changes, collaborate with others, and maintain a history of every decision. This section covers the basics and the branching strategy used in this project.
 
@@ -851,7 +1116,7 @@ git stash pop                       # Restore shelved changes
 
 ---
 
-## 15. Monitoring and Observability
+## 16. Monitoring and Observability
 
 Monitoring tells you what the system is doing right now. Observability helps you figure out why something went wrong. This section covers the four monitoring tools in use and what each one watches.
 
@@ -894,7 +1159,7 @@ Production Prometheus uses EC2 service discovery (ec2_sd_configs). It queries th
 
 ---
 
-## 16. Django Admin, Grafana and GlitchTip
+## 17. Django Admin, Grafana and GlitchTip
 
 These are the three admin interfaces you will use day-to-day. This section tells you how to access each one and what you can do with it.
 
@@ -935,7 +1200,7 @@ docker compose exec web python manage.py createsuperuser
 
 ---
 
-## 17. Environment Variables Reference
+## 18. Environment Variables Reference
 
 Environment variables configure the application without changing code. This section documents every variable the app reads, what it controls, and what values to use.
 
@@ -987,7 +1252,7 @@ Environment variables configure the application without changing code. This sect
 
 ---
 
-## 18. Common Commands Cheat Sheet
+## 19. Common Commands Cheat Sheet
 
 Quick reference for the commands you will use most often. Organized by context.
 
@@ -1069,7 +1334,7 @@ git checkout -b feature/new-thing   # New branch
 
 ---
 
-## 19. DOs and DON'Ts
+## 20. DOs and DON'Ts
 
 Hard-won lessons. Some of these come from actual production incidents.
 
@@ -1126,7 +1391,7 @@ Hard-won lessons. Some of these come from actual production incidents.
 
 ---
 
-## 20. Further Reading
+## 21. Further Reading
 
 Curated links to official documentation for every technology in the stack. Bookmark these.
 
