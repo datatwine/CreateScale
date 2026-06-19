@@ -149,6 +149,9 @@ class Engagement(models.Model):
         if not self.date or not self.time:
             raise ValidationError("Date and time are required.")
 
+        if self.date < timezone.now().date():
+            raise ValidationError("Cannot book for a past date.")
+
         # 13) No multiple requests same day to the same performer
         qs = Engagement.objects.filter(
             client=self.client,

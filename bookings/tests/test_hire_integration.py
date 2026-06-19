@@ -135,7 +135,7 @@ class TestHireAPIIntegration(TestCase):
 
         self.assertEqual(resp.status_code, 404)
 
-    def test_hire_past_date_is_accepted(self):
+    def test_hire_past_date_is_rejected(self):
         performer, _ = self._create_performer()
         _, client_token = self._create_client()
         self.client.credentials(HTTP_AUTHORIZATION=f"Token {client_token.key}")
@@ -147,7 +147,7 @@ class TestHireAPIIntegration(TestCase):
             "venue": "History",
         }, format="json")
 
-        self.assertEqual(resp.status_code, 201)
+        self.assertEqual(resp.status_code, 400)
 
     def test_duplicate_hire_same_client_same_performer_same_date_rejected(self):
         performer, _ = self._create_performer()
