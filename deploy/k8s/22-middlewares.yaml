@@ -1,0 +1,40 @@
+# Body size limit (was: client_max_body_size 25M in artkhoj.conf)
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: body-limit
+  namespace: artkhoj
+spec:
+  buffering:
+    maxRequestBodyBytes: 26214400
+---
+# Gzip compression (was: gzip on; gzip_types ...; gzip_comp_level 6)
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: gzip
+  namespace: artkhoj
+spec:
+  compress: {}
+---
+# Security headers (from deploy/nginx/security-headers.conf, Security branch)
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: sec-headers
+  namespace: artkhoj
+spec:
+  headers:
+    customResponseHeaders:
+      X-Content-Type-Options: "nosniff"
+      X-Frame-Options: "DENY"
+      Referrer-Policy: "strict-origin-when-cross-origin"
+      Permissions-Policy: "camera=(), microphone=(), geolocation=()"
+      Content-Security-Policy: >-
+        default-src 'self';
+        script-src 'self' 'unsafe-inline' https://checkout.razorpay.com;
+        style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+        font-src 'self' https://fonts.gstatic.com;
+        img-src 'self' data: https://*.r2.cloudflarestorage.com;
+        connect-src 'self' https://checkout.razorpay.com https://*.r2.cloudflarestorage.com;
+        frame-src https://checkout.razorpay.com;

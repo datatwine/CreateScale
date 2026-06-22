@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: celery-worker
+  namespace: artkhoj
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: celery-worker
+  template:
+    metadata:
+      labels:
+        app: celery-worker
+    spec:
+      securityContext:
+        runAsUser: 0
+        runAsGroup: 0
+      containers:
+        - name: worker
+          image: ghcr.io/datatwine/createscale:latest
+          command: ["python", "-m", "celery", "-A", "myproject", "worker", "-l", "info", "--concurrency=2"]
+          envFrom:
+            - secretRef:
+                name: artkhoj-env
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "512Mi"
+            limits:
+              cpu: "1"
+              memory: "1Gi"

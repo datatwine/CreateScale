@@ -1,0 +1,218 @@
+# =============================================================================
+# CI/CD Pipeline — k3s Deployment (parallel to deploy.yml)
+# =============================================================================
+# deploy.yml (AWS) is LEFT FULLY INTACT. This workflow only fires on
+# workflow_dispatch or pushes to the k3s-migration branch.
+# At cutover, flip the trigger to main and retire deploy.yml.
+#
+# NEW SECRETS REQUIRED (Phase 2):
+#   KUBECONFIG_B64   — base64-encoded kubeconfig for the k3s cluster
+#   DB_SSH_KEY       — SSH private key for the DB box
+#   DB_HOST          — DB box IP address
+# =============================================================================
+
+name: "CI/CD Pipeline (k3s)"
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [k3s-migration]
+
+jobs:
+
+  # ===========================================================================
+  # JOB 1: GUARDRAILS (identical to deploy.yml)
+  # ===========================================================================
+  guardrails:
+    name: "Guardrails (lint + security)"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install linters
+        run: pip install ruff bandit
+
+      - name: "Ruff — lint check"
+        run: ruff check .
+
+      - name: "Bandit — security scan"
+        run: bandit -r . -x ./tests -ll
+
+  # ===========================================================================
+  # JOB 2: BUILD (identical to deploy.yml)
+  # ===========================================================================
+  build:
+    name: "Build + Django health"
+    needs: guardrails
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: "Docker Compose — build all custom images"
+        run: docker compose build
+
+  # ===========================================================================
+  # JOB 3: TESTS (identical to deploy.yml)
+  # ===========================================================================
+  test:
+    name: "Layer 1 tests"
+    needs: build
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: testdb
+          POSTGRES_USER: testuser
+          POSTGRES_PASSWORD: testpass
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt pytest pytest-django
+
+      - name: "Migrations up to date?"
+        env:
+          DB_NAME: testdb
+          DB_USER: testuser
+          DB_PASSWORD: testpass
+          DB_HOST: localhost
+          DB_PORT: "5432"
+          DJANGO_SECRET_KEY: "ci-test-secret-not-for-production-x7k2m9p"
+          DJANGO_DEBUG: "0"
+          DJANGO_ALLOWED_HOSTS: "localhost"
+          USE_S3: "0"
+        run: python manage.py makemigrations --check --dry-run
+
+      - name: "Run Layer 1 invariant tests"
+        env:
+          DB_NAME: testdb
+          DB_USER: testuser
+          DB_PASSWORD: testpass
+          DB_HOST: localhost
+          DB_PORT: "5432"
+          DJANGO_SECRET_KEY: "ci-test-secret-not-for-production-x7k2m9p"
+          DJANGO_DEBUG: "0"
+          DJANGO_ALLOWED_HOSTS: "localhost"
+          USE_S3: "0"
+          REDIS_URL: redis://localhost:6379/0
+          DJANGO_SETTINGS_MODULE: myproject.settings
+        run: pytest tests/test_layer1.py -v
+
+  # ===========================================================================
+  # JOB 4: BUILD ARM64 IMAGE + PUSH TO GHCR (identical to deploy.yml)
+  # ===========================================================================
+  push-image:
+    name: "Build ARM64 + Push to GHCR"
+    needs: test
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04-arm
+    permissions:
+      packages: write
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Log in to GHCR
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      - name: Build and push ARM64 image
+        run: |
+          IMAGE=ghcr.io/${{ github.repository_owner }}/createscale
+          docker build -t $IMAGE:latest -t $IMAGE:${{ github.sha }} .
+          docker push $IMAGE:latest
+          docker push $IMAGE:${{ github.sha }}
+
+  # ===========================================================================
+  # JOB 5: DEPLOY TO K3S CLUSTER
+  # ===========================================================================
+  deploy-web:
+    name: "Deploy to k3s"
+    needs: push-image
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v4
+
+      - name: Configure kubeconfig
+        run: echo "${{ secrets.KUBECONFIG_B64 }}" | base64 -d > kubeconfig
+
+      - name: "Apply manifests + rolling deploy"
+        run: |
+          export KUBECONFIG=./kubeconfig
+
+          # Apply all manifests (idempotent)
+          kubectl apply -f deploy/k8s/
+
+          # Delete and re-create the migrate Job (Jobs are immutable once complete)
+          kubectl -n artkhoj delete job django-migrate --ignore-not-found
+          kubectl apply -f deploy/k8s/10-job-migrate.yaml
+
+          # Wait for migration to finish
+          kubectl -n artkhoj wait --for=condition=complete job/django-migrate --timeout=180s
+
+          # Roll the new image
+          kubectl -n artkhoj set image deployment/django \
+            django=ghcr.io/${{ github.repository_owner }}/createscale:${{ github.sha }}
+          kubectl -n artkhoj set image deployment/celery-worker \
+            worker=ghcr.io/${{ github.repository_owner }}/createscale:${{ github.sha }}
+          kubectl -n artkhoj set image deployment/celery-beat \
+            beat=ghcr.io/${{ github.repository_owner }}/createscale:${{ github.sha }}
+
+          # Wait for rollout
+          kubectl -n artkhoj rollout status deployment/django --timeout=180s
+          kubectl -n artkhoj rollout status deployment/celery-worker --timeout=60s
+          kubectl -n artkhoj rollout status deployment/celery-beat --timeout=60s
+
+  # ===========================================================================
+  # JOB 6: DEPLOY DB BOX (SSH instead of SSM)
+  # ===========================================================================
+  deploy-db:
+    name: "Deploy DB Box"
+    needs: test
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Deploy to DB Box via SSH"
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.DB_SSH_KEY }}" > ~/.ssh/db_key
+          chmod 600 ~/.ssh/db_key
+          ssh -o StrictHostKeyChecking=no -i ~/.ssh/db_key ubuntu@${{ secrets.DB_HOST }} << 'EOF'
+            set -eu
+            cd /home/ubuntu/AK && git pull origin main
+            cd /home/ubuntu/AK/deploy/db
+            docker compose -f docker-compose.data.yml build docker_stats_exporter
+            docker compose -f docker-compose.data.yml up -d --remove-orphans
+            echo "DB_DEPLOY_COMPLETE"
+          EOF
