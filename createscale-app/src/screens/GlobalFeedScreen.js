@@ -172,6 +172,7 @@ export default function GlobalFeedScreen({ navigation }) {
     const [selectedProfession, setSelectedProfession] = useState(null);
 
     const [profiles, setProfiles] = useState([]);
+    const [totalCount, setTotalCount] = useState(null);
     const [page, setPage] = useState(1);
     const [hasNext, setHasNext] = useState(false);
     const [loadingFeed, setLoadingFeed] = useState(true);
@@ -221,6 +222,7 @@ export default function GlobalFeedScreen({ navigation }) {
                 const data = await res.json();
 
                 setProfiles((prev) => (append ? [...prev, ...data.results] : data.results));
+                if (!append) setTotalCount(data.count ?? null);
                 setPage(data.page);
                 setHasNext(data.has_next);
             } catch (err) {
@@ -295,6 +297,14 @@ export default function GlobalFeedScreen({ navigation }) {
                     <Text style={styles.headerSubtitle}>
                         Discover talented performers from around the world
                     </Text>
+                    {totalCount !== null && (
+                        <View style={styles.liveCount}>
+                            <View style={styles.liveDot} />
+                            <Text style={styles.liveCountText}>
+                                {totalCount} artist{totalCount === 1 ? "" : "s"} on stage
+                            </Text>
+                        </View>
+                    )}
                 </View>
             </View>
 
@@ -377,6 +387,23 @@ const styles = StyleSheet.create({
         fontSize: 13,
         color: COLORS.textMuted,
         marginTop: 2,
+    },
+    liveCount: {
+        flexDirection: "row",
+        alignItems: "center",
+        marginTop: 6,
+    },
+    liveDot: {
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+        backgroundColor: COLORS.accent,
+        marginRight: 6,
+    },
+    liveCountText: {
+        fontSize: 13,
+        color: COLORS.accent,
+        fontWeight: "600",
     },
 
     // --- Filter pills ---
