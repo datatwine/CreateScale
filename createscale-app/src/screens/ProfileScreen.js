@@ -335,6 +335,7 @@ export default function ProfileScreen() {
 
   // Profile picture upload in progress flag
   const [updatingPicture, setUpdatingPicture] = useState(false);
+  const [updatingCover, setUpdatingCover] = useState(false);
 
   // --- Uploads (media gallery) ---------------------------------------------
 
@@ -570,6 +571,52 @@ export default function ProfileScreen() {
       );
     } finally {
       setUpdatingPicture(false);
+    }
+  };
+
+  const handlePickCoverPhoto = async () => {
+    if (!token) return;
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert("Permission needed", "We need access to your photos to set a cover photo.");
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [16, 9],
+      quality: 0.85,
+    });
+    if (result.canceled) return;
+    const asset = result.assets && result.assets[0];
+    if (!asset) return;
+
+    let coverUri = asset.uri;
+    try {
+      coverUri = await shrinkImage(asset.uri, 1920);
+    } catch (e) {
+      console.warn("cover shrink failed, uploading original", e);
+    }
+
+    const formData = new FormData();
+    formData.append("cover_photo", { uri: coverUri, name: "cover.jpg", type: "image/jpeg" });
+
+    setUpdatingCover(true);
+    try {
+      const response = await fetch(buildApiUrl("/users/me/"), {
+        method: "PATCH",
+        headers: { Authorization: `Token ${token}`, Accept: "application/json" },
+        body: formData,
+      });
+      if (!response.ok) throw new Error("Failed to update cover photo");
+      const updated = await response.json();
+      setProfile(updated);
+      Alert.alert("Updated", "Your cover photo has been changed.");
+    } catch (err) {
+      console.error("Error updating cover photo", err);
+      Alert.alert("Error", "We couldn't update your cover photo. Please try again.");
+    } finally {
+      setUpdatingCover(false);
     }
   };
 
@@ -893,6 +940,35 @@ return (
 
       {/* Main profile card */}
       <View style={styles.profileCard}>
+        {/* Cover photo banner */}
+        <TouchableOpacity
+          onPress={handlePickCoverPhoto}
+          activeOpacity={0.85}
+          style={styles.coverBanner}
+        >
+          {profile?.cover_photo_url ? (
+            <Image
+              source={{ uri: makeMediaUrl(profile.cover_photo_url) }}
+              style={styles.coverBannerImage}
+              resizeMode="cover"
+            />
+          ) : (
+            <View style={styles.coverBannerEmpty}>
+              <Ionicons name="image-outline" size={22} color={COLORS.textMuted} />
+              <Text style={styles.coverBannerHint}>
+                {updatingCover ? "Updating…" : "Add cover photo"}
+              </Text>
+            </View>
+          )}
+          {profile?.cover_photo_url ? (
+            <View style={styles.coverBannerOverlay}>
+              <Text style={styles.coverBannerHint}>
+                {updatingCover ? "Updating…" : "✎ Change cover photo"}
+              </Text>
+            </View>
+          ) : null}
+        </TouchableOpacity>
+
         {/* Profile picture circle */}
         <TouchableOpacity
           onPress={handlePickProfilePicture}
@@ -1181,6 +1257,40 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.35,
     shadowRadius: 20,
     elevation: 8,
+  },
+
+  coverBanner: {
+    width: "100%",
+    height: 120,
+    borderRadius: 16,
+    overflow: "hidden",
+    marginBottom: 16,
+    backgroundColor: "#1A1A1A",
+  },
+  coverBannerImage: {
+    width: "100%",
+    height: "100%",
+  },
+  coverBannerEmpty: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    borderWidth: 1,
+    borderColor: COLORS.divider,
+    borderRadius: 16,
+    borderStyle: "dashed",
+  },
+  coverBannerOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.35)",
+    alignItems: "center",
+    justifyContent: "flex-end",
+    paddingBottom: 8,
+  },
+  coverBannerHint: {
+    fontSize: 12,
+    color: COLORS.textMuted,
   },
 
   profilePictureContainer: {

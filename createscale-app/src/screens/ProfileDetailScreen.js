@@ -408,6 +408,7 @@ export default function ProfileDetailScreen({ route, navigation }) {
     }
 
     const avatarUrl = makeMediaUrl(profile.profile_picture_url);
+    const coverUrl = makeMediaUrl(profile.cover_photo_url || profile.profile_picture_url);
     const uploads = profile.uploads || [];
 
     return (
@@ -428,53 +429,65 @@ export default function ProfileDetailScreen({ route, navigation }) {
 
                 {/* Profile card */}
                 <View style={styles.profileCard}>
-                    {/* Avatar */}
-                    <View style={styles.avatarContainer}>
-                        {avatarUrl ? (
-                            <Image source={{ uri: avatarUrl }} style={styles.avatar} />
-                        ) : (
-                            <View style={[styles.avatar, styles.avatarPlaceholder]}>
-                                <Text style={styles.avatarInitial}>
-                                    {(profile.username || "?").charAt(0).toUpperCase()}
+                    {/* Cover photo banner — cover_photo if set, else profile_picture */}
+                    {coverUrl ? (
+                        <Image
+                            source={{ uri: coverUrl }}
+                            style={styles.coverBanner}
+                            resizeMode="cover"
+                        />
+                    ) : null}
+
+                    {/* Card body — padded content below the cover banner */}
+                    <View style={styles.profileCardBody}>
+                        {/* Avatar */}
+                        <View style={styles.avatarContainer}>
+                            {avatarUrl ? (
+                                <Image source={{ uri: avatarUrl }} style={styles.avatar} />
+                            ) : (
+                                <View style={[styles.avatar, styles.avatarPlaceholder]}>
+                                    <Text style={styles.avatarInitial}>
+                                        {(profile.username || "?").charAt(0).toUpperCase()}
+                                    </Text>
+                                </View>
+                            )}
+                        </View>
+
+                        {/* Name + profession */}
+                        <Text style={styles.profileName}>{profile.username}</Text>
+
+                        {profile.profession ? (
+                            <Text style={styles.profileProfession}>
+                                {profile.profession}
+                            </Text>
+                        ) : null}
+
+                        {/* Performer badge */}
+                        {profile.is_performer && (
+                            <View style={styles.performerBadge}>
+                                <Ionicons name="star" size={14} color={COLORS.badgeGreenText} />
+                                <Text style={styles.performerBadgeText}>
+                                    Available for hire
                                 </Text>
                             </View>
                         )}
+
+                        {/* Location */}
+                        {profile.location ? (
+                            <View style={styles.infoRow}>
+                                <Ionicons name="location" size={16} color={COLORS.textMuted} />
+                                <Text style={styles.infoText}>{profile.location}</Text>
+                            </View>
+                        ) : null}
+
+                        {/* Bio */}
+                        {profile.bio ? (
+                            <View style={styles.bioSection}>
+                                <Text style={styles.sectionLabel}>BIO</Text>
+                                <Text style={styles.bioText}>{profile.bio}</Text>
+                            </View>
+                        ) : null}
                     </View>
-
-                    {/* Name + profession */}
-                    <Text style={styles.profileName}>{profile.username}</Text>
-
-                    {profile.profession ? (
-                        <Text style={styles.profileProfession}>
-                            {profile.profession}
-                        </Text>
-                    ) : null}
-
-                    {/* Performer badge */}
-                    {profile.is_performer && (
-                        <View style={styles.performerBadge}>
-                            <Ionicons name="star" size={14} color={COLORS.badgeGreenText} />
-                            <Text style={styles.performerBadgeText}>
-                                Available for hire
-                            </Text>
-                        </View>
-                    )}
-
-                    {/* Location */}
-                    {profile.location ? (
-                        <View style={styles.infoRow}>
-                            <Ionicons name="location" size={16} color={COLORS.textMuted} />
-                            <Text style={styles.infoText}>{profile.location}</Text>
-                        </View>
-                    ) : null}
-
-                    {/* Bio */}
-                    {profile.bio ? (
-                        <View style={styles.bioSection}>
-                            <Text style={styles.sectionLabel}>BIO</Text>
-                            <Text style={styles.bioText}>{profile.bio}</Text>
-                        </View>
-                    ) : null}
                 </View>
 
                 {/* Hire section — conditional, mirrors profile_detail.html */}
@@ -553,9 +566,16 @@ const styles = StyleSheet.create({
     profileCard: {
         backgroundColor: COLORS.card,
         borderRadius: 20,
+        overflow: "hidden",
+        marginBottom: 16,
+    },
+    coverBanner: {
+        width: "100%",
+        height: 140,
+    },
+    profileCardBody: {
         padding: 20,
         alignItems: "center",
-        marginBottom: 16,
     },
     avatarContainer: {
         marginBottom: 12,
