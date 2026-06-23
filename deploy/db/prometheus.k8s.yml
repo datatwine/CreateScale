@@ -17,7 +17,7 @@ scrape_configs:
   - job_name: 'web-fleet'
     kubernetes_sd_configs:
       - role: pod
-        api_server: https://CHANGE_ME_K3S_NODE_IP:6443
+        api_server: https://10.0.0.3:6443
         bearer_token_file: /etc/prometheus/k3s-token
         tls_config:
           insecure_skip_verify: true
@@ -35,7 +35,7 @@ scrape_configs:
   - job_name: 'node-web'
     kubernetes_sd_configs:
       - role: pod
-        api_server: https://CHANGE_ME_K3S_NODE_IP:6443
+        api_server: https://10.0.0.3:6443
         bearer_token_file: /etc/prometheus/k3s-token
         tls_config:
           insecure_skip_verify: true
@@ -55,10 +55,6 @@ scrape_configs:
   - job_name: 'redis'
     static_configs:
       - targets: ['redis_exporter:9121']
-
-  - job_name: 'nginxlog'
-    static_configs:
-      - targets: ['172.31.12.193:4040']
 
   - job_name: 'docker-db'
     static_configs:

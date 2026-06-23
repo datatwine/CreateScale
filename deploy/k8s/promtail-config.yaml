@@ -11,7 +11,7 @@ data:
     positions:
       filename: /tmp/positions.yaml
     clients:
-      - url: http://CHANGE_ME_DB_PRIVATE_IP:3100/loki/api/v1/push
+      - url: http://10.0.0.2:3100/loki/api/v1/push
     scrape_configs:
       - job_name: kubernetes-pods
         kubernetes_sd_configs:

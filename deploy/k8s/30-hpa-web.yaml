@@ -9,7 +9,7 @@ spec:
     kind: Deployment
     name: django
   minReplicas: 2
-  maxReplicas: 8
+  maxReplicas: 15
   metrics:
     - type: Resource
       resource:

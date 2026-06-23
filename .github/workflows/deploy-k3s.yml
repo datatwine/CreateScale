@@ -126,13 +126,13 @@ jobs:
         run: pytest tests/test_layer1.py -v
 
   # ===========================================================================
-  # JOB 4: BUILD ARM64 IMAGE + PUSH TO GHCR (identical to deploy.yml)
+  # JOB 4: BUILD IMAGE + PUSH TO GHCR
   # ===========================================================================
   push-image:
-    name: "Build ARM64 + Push to GHCR"
+    name: "Build + Push to GHCR"
     needs: test
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-24.04-arm
+    runs-on: ubuntu-latest
     permissions:
       packages: write
       contents: read
@@ -143,7 +143,7 @@ jobs:
       - name: Log in to GHCR
         run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
-      - name: Build and push ARM64 image
+      - name: Build and push image
         run: |
           IMAGE=ghcr.io/${{ github.repository_owner }}/createscale
           docker build -t $IMAGE:latest -t $IMAGE:${{ github.sha }} .
