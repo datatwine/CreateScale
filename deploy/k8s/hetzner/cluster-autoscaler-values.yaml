@@ -1,0 +1,13 @@
+# Helm values for Cluster Autoscaler (Hetzner driver).
+# This is the ONLY file in the repo that names the cloud provider.
+# Swapping to DO/Vultr = change cloudProvider + this values file.
+cloudProvider: hetzner
+extraEnv:
+  HCLOUD_TOKEN: CHANGE_ME
+  HCLOUD_CLUSTER_CONFIG: CHANGE_ME_B64
+autoscalingGroups:
+  - name: web-pool
+    minSize: 2
+    maxSize: 8
+    instanceType: cax21
+    region: fsn1

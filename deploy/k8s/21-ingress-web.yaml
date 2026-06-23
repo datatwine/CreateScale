@@ -1,0 +1,22 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: artkhoj
+  namespace: artkhoj
+  annotations:
+    traefik.ingress.kubernetes.io/router.middlewares: >-
+      artkhoj-sec-headers@kubernetescrd,
+      artkhoj-body-limit@kubernetescrd,
+      artkhoj-gzip@kubernetescrd
+spec:
+  rules:
+    - host: stagefreedom.org
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: django
+                port:
+                  number: 8000

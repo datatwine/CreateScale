@@ -1,0 +1,15 @@
+.git
+.github
+.claude
+.vscode
+__pycache__
+*.pyc
+node_modules
+media
+vol
+deploy
+docs
+*.md
+*.log
+.env*
+compose/docker-compose*

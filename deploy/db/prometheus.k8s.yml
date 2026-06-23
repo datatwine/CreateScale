@@ -1,0 +1,61 @@
+# =============================================================================
+# Prometheus config — k8s Service Discovery for k3s web fleet
+# =============================================================================
+# Parallel variant of prometheus.yml. The original (EC2 SD) stays untouched.
+# Deploy this on the DB box when cutting over to k3s.
+# =============================================================================
+
+global:
+  scrape_interval: 45s
+  evaluation_interval: 45s
+
+rule_files:
+  - /etc/prometheus/alert_rules.yml
+
+scrape_configs:
+  # ---- Django app pods (was: ec2_sd_configs web-fleet :8000) ----
+  - job_name: 'web-fleet'
+    kubernetes_sd_configs:
+      - role: pod
+        api_server: https://10.0.0.3:6443
+        bearer_token_file: /etc/prometheus/k3s-token
+        tls_config:
+          insecure_skip_verify: true
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_pod_label_app]
+        regex: 'django'
+        action: keep
+      - source_labels: [__meta_kubernetes_pod_ip]
+        target_label: __address__
+        replacement: '${1}:8000'
+      - source_labels: [__meta_kubernetes_pod_name]
+        target_label: pod
+
+  # ---- Host metrics (was: ec2_sd_configs node-web :9100) ----
+  - job_name: 'node-web'
+    kubernetes_sd_configs:
+      - role: pod
+        api_server: https://10.0.0.3:6443
+        bearer_token_file: /etc/prometheus/k3s-token
+        tls_config:
+          insecure_skip_verify: true
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_pod_label_app]
+        regex: 'node-exporter'
+        action: keep
+      - source_labels: [__meta_kubernetes_pod_ip]
+        target_label: __address__
+        replacement: '${1}:9100'
+
+  # ---- UNCHANGED static jobs (targets live on the DB box, not in k3s) ----
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['postgres_exporter:9187']
+
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis_exporter:9121']
+
+  - job_name: 'docker-db'
+    static_configs:
+      - targets: ['docker_stats_exporter:9417']
