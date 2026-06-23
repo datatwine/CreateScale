@@ -35,6 +35,8 @@ import {
     TextInput,
     TouchableOpacity,
     View,
+    Platform,
+    StatusBar,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -466,7 +468,7 @@ const styles = StyleSheet.create({
         flexDirection: "row",
         alignItems: "center",
         paddingHorizontal: 16,
-        paddingTop: 8,
+        paddingTop: Platform.OS === "android" ? (StatusBar.currentHeight || 24) + 20 : 20,
         paddingBottom: 12,
     },
     headerTitle: {
