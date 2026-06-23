@@ -244,10 +244,10 @@ jobs:
           mkdir -p ~/.ssh
           echo "${{ secrets.DB_SSH_KEY }}" > ~/.ssh/db_key
           chmod 600 ~/.ssh/db_key
-          ssh -o StrictHostKeyChecking=no -i ~/.ssh/db_key ubuntu@${{ secrets.DB_HOST }} << 'EOF'
+          ssh -o StrictHostKeyChecking=no -i ~/.ssh/db_key root@${{ secrets.DB_HOST }} << 'EOF'
             set -eu
-            cd /home/ubuntu/AK && git pull origin main
-            cd /home/ubuntu/AK/deploy/db
+            cd /root/AK && git pull origin main
+            cd /root/AK/deploy/db
             docker compose -f docker-compose.data.yml build docker_stats_exporter
             docker compose -f docker-compose.data.yml up -d --remove-orphans
             echo "DB_DEPLOY_COMPLETE"
