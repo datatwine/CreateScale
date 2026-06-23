@@ -18,7 +18,7 @@ k3s orchestrates Docker containers — your Dockerfile and image stay the same.
 | File | What it does |
 |---|---|
 | `00-namespace.yaml` | Creates an isolated "room" called `artkhoj` for all our stuff |
-| `01-secret.example.yaml` | Template for env vars (DB, Redis, OAuth, etc). Real secret never committed |
+| `examples/01-secret.example.yaml` | Template for env vars (DB, Redis, OAuth, etc). Real secret never committed |
 | `10-job-migrate.yaml` | Runs `manage.py migrate` once per deploy, then exits |
 | `11-deployment-web.yaml` | Runs Django/Gunicorn (2-8 copies depending on traffic) |
 | `12-deployment-worker.yaml` | Runs Celery worker (processes background tasks from Redis) |
@@ -49,7 +49,7 @@ The chain: Internet -> Cloudflare (SSL) -> Ingress (Traefik) -> Service -> Pod
 | `41-daemonset-node-exporter.yaml` | Exposes host CPU/memory for Prometheus to scrape |
 | `50-rbac-prometheus.yaml` | Read-only credentials so DB-box Prometheus can see into k3s |
 | `../db/prometheus.k8s.yml` | Prometheus config: discovers pods instead of EC2 instances |
-| `90-dev-postgres.yaml` | Throwaway DB for local testing. NEVER used in production |
+| `dev/90-dev-postgres.yaml` | Throwaway DB for local testing. NEVER used in production |
 
 Two monitoring pipelines:
 - Logs (text):    App prints -> Promtail ships -> Loki stores -> Grafana shows
@@ -105,10 +105,16 @@ kubectl apply -f 00-namespace.yaml
 kubectl -n artkhoj create secret generic artkhoj-env --from-env-file=.env.hetzner
 ```
 
-### Step 3: Apply everything else
-```
-kubectl apply -f deploy/k8s/
-# This is idempotent — safe to run multiple times. Changed files update, unchanged skip.
+### Step 3: Apply the production manifests
+```bash
+# Apply each production file explicitly (CI does this automatically).
+# Do NOT use "kubectl apply -f deploy/k8s/" — that would apply dev/examples files too.
+for f in 00-namespace.yaml 11-deployment-web.yaml 12-deployment-worker.yaml \
+  13-deployment-beat.yaml 20-service-web.yaml 21-ingress-web.yaml \
+  22-middlewares.yaml 30-hpa-web.yaml 40-daemonset-promtail.yaml \
+  41-daemonset-node-exporter.yaml 50-rbac-prometheus.yaml promtail-config.yaml; do
+  kubectl apply -f deploy/k8s/$f
+done
 ```
 
 ### Step 4: Verify

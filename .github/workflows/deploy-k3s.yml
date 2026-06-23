@@ -167,32 +167,68 @@ jobs:
       - name: Configure kubeconfig
         run: echo "${{ secrets.KUBECONFIG_B64 }}" | base64 -d > kubeconfig
 
-      - name: "Apply manifests + rolling deploy"
+      - name: "Step 1 — Apply manifests"
         run: |
           export KUBECONFIG=./kubeconfig
+          MANIFESTS=(
+            00-namespace.yaml
+            11-deployment-web.yaml
+            12-deployment-worker.yaml
+            13-deployment-beat.yaml
+            20-service-web.yaml
+            21-ingress-web.yaml
+            22-middlewares.yaml
+            30-hpa-web.yaml
+            40-daemonset-promtail.yaml
+            41-daemonset-node-exporter.yaml
+            50-rbac-prometheus.yaml
+            promtail-config.yaml
+          )
+          for f in "${MANIFESTS[@]}"; do
+            echo "--- Applying $f ---"
+            kubectl apply -f deploy/k8s/"$f"
+          done
 
-          # Apply all manifests (idempotent)
-          kubectl apply -f deploy/k8s/
+      - name: "Step 2 — Run database migration"
+        run: |
+          export KUBECONFIG=./kubeconfig
+          IMAGE=ghcr.io/${{ github.repository_owner }}/createscale:${{ github.sha }}
 
-          # Delete and re-create the migrate Job (Jobs are immutable once complete)
           kubectl -n artkhoj delete job django-migrate --ignore-not-found
-          kubectl apply -f deploy/k8s/10-job-migrate.yaml
 
-          # Wait for migration to finish
+          sed "s|ghcr.io/datatwine/createscale:latest|${IMAGE}|" \
+            deploy/k8s/10-job-migrate.yaml | kubectl apply -f -
+
           kubectl -n artkhoj wait --for=condition=complete job/django-migrate --timeout=180s
 
-          # Roll the new image
-          kubectl -n artkhoj set image deployment/django \
-            django=ghcr.io/${{ github.repository_owner }}/createscale:${{ github.sha }}
-          kubectl -n artkhoj set image deployment/celery-worker \
-            worker=ghcr.io/${{ github.repository_owner }}/createscale:${{ github.sha }}
-          kubectl -n artkhoj set image deployment/celery-beat \
-            beat=ghcr.io/${{ github.repository_owner }}/createscale:${{ github.sha }}
+      - name: "Step 3 — Roll new image to deployments"
+        run: |
+          export KUBECONFIG=./kubeconfig
+          IMAGE=ghcr.io/${{ github.repository_owner }}/createscale:${{ github.sha }}
 
-          # Wait for rollout
+          kubectl -n artkhoj set image deployment/django django=${IMAGE}
+          kubectl -n artkhoj set image deployment/celery-worker worker=${IMAGE}
+          kubectl -n artkhoj set image deployment/celery-beat beat=${IMAGE}
+
           kubectl -n artkhoj rollout status deployment/django --timeout=180s
           kubectl -n artkhoj rollout status deployment/celery-worker --timeout=60s
           kubectl -n artkhoj rollout status deployment/celery-beat --timeout=60s
+
+      - name: "Step 4 — Smoke test"
+        run: |
+          export KUBECONFIG=./kubeconfig
+          STATUS=$(kubectl -n artkhoj exec deployment/django -- \
+            python -c "
+          import urllib.request
+          r = urllib.request.urlopen('http://127.0.0.1:8000/metrics')
+          print(r.status)
+          ")
+          echo "Health check returned: ${STATUS}"
+          if [ "${STATUS}" != "200" ]; then
+            echo "Smoke test FAILED"
+            exit 1
+          fi
+          echo "Smoke test passed"
 
   # ===========================================================================
   # JOB 6: DEPLOY DB BOX (SSH instead of SSM)
