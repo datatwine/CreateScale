@@ -26,7 +26,6 @@ import {
     ActivityIndicator,
     Alert,
     Image,
-    Platform,
     SafeAreaView,
     ScrollView,
     StyleSheet,
@@ -34,11 +33,41 @@ import {
     TextInput,
     TouchableOpacity,
     View,
+    StatusBar,
+    Platform,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
 import { AuthContext } from "../context/AuthContext";
 import { API_BASE_URL } from "../config/api";
+import DateTimePicker from "@react-native-community/datetimepicker";
+
+const EMOJI_MAP = {
+    "DJ": "🎧",
+    "Musician": "🎸",
+    "Photographer": "📸",
+    "Videographer": "🎥",
+    "Dancer": "💃",
+    "Singer": "🎤",
+    "Producer": "🎹",
+    "Band": "🥁",
+    "Model": "✨",
+    "Makeup Artist": "💄",
+    "Host/MC": "🎙️",
+    "Comedian": "🤣",
+    "Magician": "🎩",
+    "Actor": "🎭",
+};
+
+function getProfessionEmoji(profession) {
+    if (!profession) return "🎭"; // fallback
+    for (const [key, emoji] of Object.entries(EMOJI_MAP)) {
+        if (profession.toLowerCase().includes(key.toLowerCase())) {
+            return emoji;
+        }
+    }
+    return "🎭"; // fallback
+}
 
 // ---------------------------------------------------------------------------
 // Shared helpers (same as GlobalFeedScreen / ProfileScreen)
@@ -149,6 +178,40 @@ function HireSection({ targetProfile, myProfile, token, onHireSuccess }) {
     const [time, setTime] = useState("");       // HH:MM
     const [venue, setVenue] = useState("");
     const [occasion, setOccasion] = useState("");
+
+    // The earliest possible date to hire someone is tomorrow
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const [dateObj, setDateObj] = useState(tomorrow);
+    const [timeObj, setTimeObj] = useState(new Date());
+    const [showDatePicker, setShowDatePicker] = useState(false);
+    const [showTimePicker, setShowTimePicker] = useState(false);
+
+    const onChangeDate = (event, selectedDate) => {
+        if (Platform.OS === 'android' || event.type === "set" || event.type === "dismissed") {
+            setShowDatePicker(false);
+        }
+        if (selectedDate) {
+            setDateObj(selectedDate);
+            const yyyy = selectedDate.getFullYear();
+            const mm = String(selectedDate.getMonth() + 1).padStart(2, '0');
+            const dd = String(selectedDate.getDate()).padStart(2, '0');
+            setDate(`${yyyy}-${mm}-${dd}`);
+        }
+    };
+
+    const onChangeTime = (event, selectedTime) => {
+        if (Platform.OS === 'android' || event.type === "set" || event.type === "dismissed") {
+            setShowTimePicker(false);
+        }
+        if (selectedTime) {
+            setTimeObj(selectedTime);
+            const hh = String(selectedTime.getHours()).padStart(2, '0');
+            const min = String(selectedTime.getMinutes()).padStart(2, '0');
+            setTime(`${hh}:${min}`);
+        }
+    };
 
     // --- Gate checks (same logic as profile_detail.html lines 32-45) ---
     // NOTE: these are AFTER hooks so we comply with Rules of Hooks.
@@ -266,24 +329,42 @@ function HireSection({ targetProfile, myProfile, token, onHireSuccess }) {
 
             {/* Date — YYYY-MM-DD */}
             <Text style={styles.inputLabel}>Date</Text>
-            <TextInput
-                style={styles.formInput}
-                placeholder="YYYY-MM-DD"
-                placeholderTextColor={COLORS.textMuted}
-                value={date}
-                onChangeText={setDate}
-                keyboardType={Platform.OS === "ios" ? "default" : "default"}
-            />
+            <TouchableOpacity
+                style={[styles.formInput, { justifyContent: "center" }]}
+                onPress={() => setShowDatePicker(true)}
+            >
+                <Text style={{ color: date ? COLORS.textPrimary : COLORS.textMuted }}>
+                    {date || "YYYY-MM-DD"}
+                </Text>
+            </TouchableOpacity>
+            {showDatePicker && (
+                <DateTimePicker
+                    value={dateObj}
+                    mode="date"
+                    display="default"
+                    minimumDate={tomorrow}
+                    onChange={onChangeDate}
+                />
+            )}
 
             {/* Time — HH:MM */}
             <Text style={styles.inputLabel}>Time</Text>
-            <TextInput
-                style={styles.formInput}
-                placeholder="HH:MM (24h)"
-                placeholderTextColor={COLORS.textMuted}
-                value={time}
-                onChangeText={setTime}
-            />
+            <TouchableOpacity
+                style={[styles.formInput, { justifyContent: "center" }]}
+                onPress={() => setShowTimePicker(true)}
+            >
+                <Text style={{ color: time ? COLORS.textPrimary : COLORS.textMuted }}>
+                    {time || "HH:MM (24h)"}
+                </Text>
+            </TouchableOpacity>
+            {showTimePicker && (
+                <DateTimePicker
+                    value={timeObj}
+                    mode="time"
+                    display="default"
+                    onChange={onChangeTime}
+                />
+            )}
 
             {/* Venue */}
             <Text style={styles.inputLabel}>Venue</Text>
@@ -472,6 +553,58 @@ export default function ProfileDetailScreen({ route, navigation }) {
                             </View>
                         )}
 
+                        {/* Stats strip — gigs performed, last performed, profession */}
+                        {profile.is_performer && (
+                            <View style={styles.statsStrip}>
+                                {/* Gigs performed */}
+                                <View style={styles.statItem}>
+                                    <Text style={styles.statNum}>
+                                        {profile.gigs_count || 0}
+                                    </Text>
+                                    <Text style={styles.statLabel}>Gigs performed</Text>
+                                </View>
+
+                                {/* Divider */}
+                                <View style={styles.statItemBorder} />
+
+                                {/* Last performed */}
+                                <View style={styles.statItem}>
+                                    {profile.last_engagement ? (
+                                        <>
+                                            <Text
+                                                style={[styles.statNum, { fontSize: 14 }]}
+                                                numberOfLines={2}
+                                            >
+                                                {profile.last_engagement.venue}
+                                            </Text>
+                                            <Text style={styles.statDate}>
+                                                {new Date(profile.last_engagement.date).toLocaleDateString()}
+                                            </Text>
+                                        </>
+                                    ) : (
+                                        <Text style={[styles.statNum, { color: COLORS.textMuted }]}>
+                                            —
+                                        </Text>
+                                    )}
+                                    <Text style={styles.statLabel}>Last performed</Text>
+                                </View>
+
+                                {/* Divider */}
+                                <View style={styles.statItemBorder} />
+
+                                {/* Profession */}
+                                <View style={styles.statItem}>
+                                    <Text style={[styles.statNum, { fontSize: 24 }]}>{getProfessionEmoji(profile.profession)}</Text>
+                                    <Text
+                                        style={styles.statLabel}
+                                        numberOfLines={1}
+                                    >
+                                        {profile.profession || "—"}
+                                    </Text>
+                                </View>
+                            </View>
+                        )}
+
                         {/* Location */}
                         {profile.location ? (
                             <View style={styles.infoRow}>
@@ -548,7 +681,7 @@ const styles = StyleSheet.create({
     header: {
         flexDirection: "row",
         alignItems: "center",
-        paddingTop: 8,
+        paddingTop: Platform.OS === "android" ? (StatusBar.currentHeight || 24) + 20 : 20,
         paddingBottom: 12,
     },
     backButton: {
@@ -622,6 +755,49 @@ const styles = StyleSheet.create({
         fontWeight: "600",
         color: COLORS.badgeGreenText,
     },
+
+    // --- Stats strip ---
+    statsStrip: {
+        flexDirection: "row",
+        justifyContent: "space-around",
+        alignItems: "center",
+        alignSelf: "stretch",
+        backgroundColor: "#0B0F1A", // Recessed look inside the card
+        borderRadius: 12,
+        paddingVertical: 14,
+        paddingHorizontal: 12,
+        marginTop: 12,
+        marginBottom: 4,
+    },
+
+    statItemBorder: {
+        width: 1,
+        height: "60%",
+        backgroundColor: COLORS.divider,
+        marginHorizontal: 8,
+    },
+    statItem: {
+        alignItems: "center",
+        flex: 1,
+    },
+    statNum: {
+        fontSize: 20,
+        fontWeight: "700",
+        color: COLORS.textPrimary,
+        letterSpacing: 0.5,
+    },
+    statLabel: {
+        fontSize: 11,
+        fontWeight: "600",
+        color: COLORS.textMuted,
+        marginTop: 4,
+    },
+    statDate: {
+        fontSize: 11,
+        color: COLORS.textMuted,
+        marginTop: 2,
+    },
+
     infoRow: {
         flexDirection: "row",
         alignItems: "center",

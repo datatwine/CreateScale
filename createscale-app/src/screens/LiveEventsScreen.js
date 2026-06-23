@@ -26,6 +26,8 @@ import {
     Text,
     TouchableOpacity,
     View,
+    Platform,
+    StatusBar,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
@@ -510,7 +512,7 @@ const styles = StyleSheet.create({
         flexDirection: "row",
         alignItems: "center",
         paddingHorizontal: 16,
-        paddingTop: 8,
+        paddingTop: Platform.OS === "android" ? (StatusBar.currentHeight || 24) + 20 : 20,
         paddingBottom: 8,
     },
     backButton: {

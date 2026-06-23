@@ -1,6 +1,9 @@
+from datetime import date
+
 from rest_framework import serializers
 from sorl.thumbnail import get_thumbnail
 from users.models import Profile, Upload
+from bookings.models import Engagement
 
 
 def _abs_url(request, file_field) -> str:
@@ -136,13 +139,15 @@ class MeProfileSerializer(serializers.ModelSerializer):
 class PublicProfileDetailSerializer(serializers.ModelSerializer):
     """
     OTHER USER profile detail (users.views.profile_detail equivalent):
-    includes their uploads newest-first.
+    includes their uploads newest-first, gigs count, and last engagement info.
     """
     user_id = serializers.IntegerField(source="user.id", read_only=True)
     username = serializers.CharField(source="user.username", read_only=True)
     profile_picture_url = serializers.SerializerMethodField()
     cover_photo_url = serializers.SerializerMethodField()
     uploads = serializers.SerializerMethodField()
+    gigs_count = serializers.SerializerMethodField()
+    last_engagement = serializers.SerializerMethodField()
 
     class Meta:
         model = Profile
@@ -156,6 +161,8 @@ class PublicProfileDetailSerializer(serializers.ModelSerializer):
             "cover_photo_url",
             "is_performer",
             "uploads",
+            "gigs_count",
+            "last_engagement",
         ]
 
     def get_profile_picture_url(self, obj):
@@ -168,6 +175,40 @@ class PublicProfileDetailSerializer(serializers.ModelSerializer):
         request = self.context.get("request")
         qs = Upload.objects.filter(profile=obj).order_by("-upload_date")[:50]
         return UploadSerializer(qs, many=True, context={"request": request}).data
+
+    def _get_gig_data(self, obj):
+        if not hasattr(obj, "_gig_data"):
+            today = date.today()
+            gig_qs = Engagement.objects.filter(
+                performer=obj.user,
+                status=Engagement.STATUS_ACCEPTED,
+                date__lt=today,
+            )
+            count = gig_qs.count()
+            last_eng = gig_qs.order_by("-date").first()
+            obj._gig_data = {
+                "count": count,
+                "last_engagement": {
+                    "venue": last_eng.venue,
+                    "date": last_eng.date.isoformat(),
+                } if last_eng else None
+            }
+        return obj._gig_data
+
+    def get_gigs_count(self, obj):
+        """
+        Count of accepted past engagements (events performed).
+        Mirrors users.views.profile_detail logic.
+        Uses (performer, status, date) index on Engagement.
+        """
+        return self._get_gig_data(obj)["count"]
+
+    def get_last_engagement(self, obj):
+        """
+        Most recent past accepted engagement (venue + date).
+        Used for the stats strip 'Last performed' display.
+        """
+        return self._get_gig_data(obj)["last_engagement"]
 
 
 # ---------------------------------------------------------------------------

@@ -7,7 +7,7 @@ import { Platform } from "react-native";
 // To find your IP: On Mac, run: `ifconfig | grep "inet " | grep -v 127`
 // Current (as of today): 192.168.0.220
 // If IP changes, update this!
-const DEV_NATIVE_API_URL = "http://192.168.0.220/api";
+const DEV_NATIVE_API_URL = "http://192.168.29.139/api";
 
 // For Expo Web dev in a browser on the same machine, "localhost" is okay.
 const DEV_WEB_API_URL = "http://localhost/api";

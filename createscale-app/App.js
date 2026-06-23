@@ -55,7 +55,7 @@ function RootNavigator() {
     <NavigationContainer>
       {token ? (
         // User is logged in -> show “app” stack
-        <Stack.Navigator>
+        <Stack.Navigator screenOptions={{ headerShown: false }}>
           {/* After login, go straight to the profile view */}
           <Stack.Screen name="Profile" component={ProfileScreen} />
           {/* GlobalFeed — navigated to from the "Global feed" pill in ProfileScreen */}

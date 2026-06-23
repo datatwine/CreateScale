@@ -17,6 +17,8 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  Platform,
+  StatusBar,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import * as ImagePicker from "expo-image-picker";
@@ -1239,7 +1241,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: 16,
-    marginTop: 4,
+    marginTop: Platform.OS === "android" ? (StatusBar.currentHeight || 24) + 10 : 4,
   },
   screenTitle: {
     fontSize: 28,
