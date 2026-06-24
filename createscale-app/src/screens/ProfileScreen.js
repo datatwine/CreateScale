@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   Alert,
   Image,
+  Modal,
   SafeAreaView,
   ScrollView,
   StyleSheet,
@@ -28,6 +29,7 @@ import { Ionicons } from "@expo/vector-icons"; // only once
 import { AuthContext } from "../context/AuthContext";
 import { API_BASE_URL } from "../config/api";
 import { uploadMedia } from "../api/upload";
+import { maskAccountNumber, kycLabel, kycColor } from "../utils/settingsDrawer";
 
 // ---------------------------------------------------------------------------
 // Client-side media compression helpers
@@ -346,6 +348,9 @@ export default function ProfileScreen() {
   // Profile picture upload in progress flag
   const [updatingPicture, setUpdatingPicture] = useState(false);
   const [updatingCover, setUpdatingCover] = useState(false);
+
+  // Settings drawer visibility
+  const [drawerVisible, setDrawerVisible] = useState(false);
 
   // --- Uploads (media gallery) ---------------------------------------------
 
@@ -945,7 +950,9 @@ return (
       {/* Screen title */}
       <View style={styles.headerRow}>
         <Text style={styles.screenTitle}>Profile</Text>
-        {/* Room for small app-level badge / score later if you like */}
+        <TouchableOpacity onPress={() => setDrawerVisible(true)} style={styles.gearButton}>
+          <Ionicons name="settings-outline" size={24} color={COLORS.textSecondary} />
+        </TouchableOpacity>
       </View>
 
       {/* Main profile card */}
@@ -1215,9 +1222,122 @@ return (
         </TouchableOpacity>
       </View>
     </ScrollView>
+
+    {/* ── Settings drawer ── */}
+    <Modal
+      visible={drawerVisible}
+      transparent
+      animationType="slide"
+      onRequestClose={() => setDrawerVisible(false)}
+    >
+      <TouchableOpacity
+        style={styles.drawerOverlay}
+        activeOpacity={1}
+        onPress={() => setDrawerVisible(false)}
+      />
+      <View style={styles.drawerPanel}>
+        {/* Header */}
+        <View style={styles.drawerHeader}>
+          <Text style={styles.drawerTitle}>Settings</Text>
+          <TouchableOpacity onPress={() => setDrawerVisible(false)}>
+            <Ionicons name="close" size={22} color={COLORS.textSecondary} />
+          </TouchableOpacity>
+        </View>
+
+        {/* Payment Setup — performers only */}
+        {profile?.is_performer && (
+          <View style={styles.drawerSection}>
+            <Text style={styles.drawerSectionTitle}>Payment Setup</Text>
+
+            {/* KYC status badge */}
+            <View style={[
+              styles.kycBadge,
+              { backgroundColor: KYC_BADGE_BG[kycColor(profile?.razorpay_kyc_status)] },
+            ]}>
+              <Text style={[
+                styles.kycBadgeText,
+                { color: KYC_BADGE_TEXT[kycColor(profile?.razorpay_kyc_status)] },
+              ]}>
+                {kycLabel(profile?.razorpay_kyc_status)}
+              </Text>
+            </View>
+
+            {/* Fee */}
+            {profile?.performer_fee ? (
+              <Text style={styles.drawerDetail}>
+                Standard fee: <Text style={styles.drawerDetailBold}>₹{profile.performer_fee}</Text>
+              </Text>
+            ) : null}
+
+            {/* Masked bank */}
+            {profile?.bank_account_last4 ? (
+              <Text style={styles.drawerDetail}>
+                Bank: {profile.bank_ifsc}{"  "}
+                <Text style={styles.drawerDetailBold}>
+                  ****{profile.bank_account_last4}
+                </Text>
+              </Text>
+            ) : null}
+
+            <TouchableOpacity
+              style={styles.drawerOutlineBtn}
+              onPress={() => {
+                setDrawerVisible(false);
+                navigation.navigate("PaymentDetails");
+              }}
+            >
+              <Text style={styles.drawerOutlineBtnText}>
+                {profile?.razorpay_account_id ? "Edit payment details" : "Set up payment details"}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Payment history — everyone */}
+        <View style={styles.drawerSection}>
+          <Text style={styles.drawerSectionTitle}>Your Payments</Text>
+
+          {profile?.is_performer && (
+            <TouchableOpacity
+              style={styles.drawerLink}
+              onPress={() => {
+                setDrawerVisible(false);
+                navigation.navigate("PerformerPayouts");
+              }}
+            >
+              <Text style={styles.drawerLinkText}>📥  View payouts received</Text>
+            </TouchableOpacity>
+          )}
+
+          <TouchableOpacity
+            style={styles.drawerLink}
+            onPress={() => {
+              setDrawerVisible(false);
+              navigation.navigate("ClientPayments");
+            }}
+          >
+            <Text style={styles.drawerLinkText}>📤  View payments made</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
   </SafeAreaView>
 );
 }
+
+// KYC badge colour maps (token → hex), matching the web CSS classes
+const KYC_BADGE_BG = {
+  green: "#EDFBEE",
+  amber: "#FFF1E0",
+  red:   "#FFE6E0",
+  grey:  "#F2EDE5",
+};
+const KYC_BADGE_TEXT = {
+  green: "#1a7f2e",
+  amber: "#b56b00",
+  red:   "#8f3400",
+  grey:  "#5A4F47",
+};
 
 // ---------------------------------------------------------------------------
 // Styles – tuned for a clean, app-native feel that still echoes your site
@@ -1579,6 +1699,96 @@ const styles = StyleSheet.create({
   logoutButtonText: {
     color: COLORS.textSecondary,
     fontSize: 14,
+  },
+
+  // --- Gear button ---
+  gearButton: {
+    padding: 4,
+  },
+
+  // --- Settings drawer ---
+  drawerOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.5)",
+  },
+  drawerPanel: {
+    position: "absolute",
+    right: 0,
+    top: 0,
+    bottom: 0,
+    width: "85%",
+    backgroundColor: "#FFF8EE",
+    padding: 24,
+    shadowColor: "#000",
+    shadowOffset: { width: -4, height: 0 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 10,
+  },
+  drawerHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 24,
+  },
+  drawerTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#1F1A17",
+  },
+  drawerSection: {
+    marginBottom: 24,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#E9E2D8",
+  },
+  drawerSectionTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#1F1A17",
+    marginBottom: 12,
+  },
+  kycBadge: {
+    alignSelf: "flex-start",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+    marginBottom: 8,
+  },
+  kycBadgeText: {
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  drawerDetail: {
+    fontSize: 13,
+    color: "#5A4F47",
+    marginVertical: 4,
+  },
+  drawerDetailBold: {
+    fontWeight: "700",
+    color: "#1F1A17",
+  },
+  drawerOutlineBtn: {
+    marginTop: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderWidth: 1.5,
+    borderColor: "#C5530B",
+    borderRadius: 8,
+    alignSelf: "flex-start",
+  },
+  drawerOutlineBtnText: {
+    color: "#C5530B",
+    fontWeight: "600",
+    fontSize: 13,
+  },
+  drawerLink: {
+    paddingVertical: 10,
+  },
+  drawerLinkText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#1F1A17",
   },
 
   loadingFullScreen: {
