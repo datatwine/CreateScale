@@ -11,7 +11,7 @@ from rest_framework.views import APIView
 from users.models import Profile
 from bookings.models import Engagement
 from bookings.services.payments import PaymentService
-from .serializers import EngagementSerializer, EngagementCreateSerializer, EngagementActionSerializer
+from .serializers import EngagementSerializer, EngagementCreateSerializer, EngagementActionSerializer, PaymentHistorySerializer
 
 
 class CreateHireRequestAPIView(APIView):
@@ -71,6 +71,45 @@ class CreateHireRequestAPIView(APIView):
 
         engagement.save()
         return Response(EngagementSerializer(engagement).data, status=status.HTTP_201_CREATED)
+
+
+_PAID_STATUSES = [
+    Engagement.PAYMENT_PAID,
+    Engagement.PAYMENT_RELEASED,
+    Engagement.PAYMENT_REFUNDED,
+]
+
+
+class PerformerPayoutsAPIView(APIView):
+    """
+    GET /api/bookings/payouts/performer/
+    Returns the authenticated performer's paid/released/refunded engagements,
+    mirroring the web performer_payouts view in bookings/views.py.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        qs = (Engagement.objects
+              .filter(performer=request.user, payment_status__in=_PAID_STATUSES)
+              .select_related("client", "performer")
+              .order_by("-date", "-time"))
+        return Response(PaymentHistorySerializer(qs, many=True).data)
+
+
+class ClientPaymentsAPIView(APIView):
+    """
+    GET /api/bookings/payments/client/
+    Returns the authenticated client's paid/released/refunded engagements,
+    mirroring the web client_payments view in bookings/views.py.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        qs = (Engagement.objects
+              .filter(client=request.user, payment_status__in=_PAID_STATUSES)
+              .select_related("client", "performer")
+              .order_by("-paid_at"))
+        return Response(PaymentHistorySerializer(qs, many=True).data)
 
 
 class EngagementViewSet(viewsets.ViewSet):

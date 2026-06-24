@@ -40,3 +40,32 @@ class EngagementCreateSerializer(serializers.Serializer):
 class EngagementActionSerializer(serializers.Serializer):
     action = serializers.ChoiceField(choices=["accept", "decline", "cancel_client", "cancel_performer"])
     emergency_reason = serializers.CharField(required=False, allow_blank=True, default="")
+
+
+class PaymentHistorySerializer(serializers.ModelSerializer):
+    """Shared serializer for performer payouts and client payment history."""
+    client = serializers.SerializerMethodField()
+    performer = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Engagement
+        fields = [
+            "id",
+            "client",
+            "performer",
+            "date",
+            "time",
+            "venue",
+            "occasion",
+            "fee",
+            "payment_status",
+            "paid_at",
+            "released_at",
+            "refunded_at",
+        ]
+
+    def get_client(self, obj):
+        return {"id": obj.client_id, "username": obj.client.username}
+
+    def get_performer(self, obj):
+        return {"id": obj.performer_id, "username": obj.performer.username}
