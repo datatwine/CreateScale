@@ -99,6 +99,7 @@ class MeProfileSerializer(serializers.ModelSerializer):
     username = serializers.CharField(source="user.username", read_only=True)
     profile_picture_url = serializers.SerializerMethodField()
     cover_photo_url = serializers.SerializerMethodField()
+    bank_account_last4 = serializers.SerializerMethodField()
 
     class Meta:
         model = Profile
@@ -117,13 +118,23 @@ class MeProfileSerializer(serializers.ModelSerializer):
             "client_approved",
             "performer_blacklisted",
             "client_blacklisted",
+            # Settings drawer — read-only payment/KYC fields
+            "razorpay_kyc_status",
+            "performer_fee",
+            "bank_account_last4",
+            "bank_ifsc",
+            "razorpay_account_id",
         ]
         extra_kwargs = {
-            "profile_picture": {"write_only": True, "required": False},
-            "cover_photo": {"write_only": True, "required": False},
-            "client_approved": {"read_only": True},
+            "profile_picture":      {"write_only": True, "required": False},
+            "cover_photo":          {"write_only": True, "required": False},
+            "client_approved":      {"read_only": True},
             "performer_blacklisted": {"read_only": True},
-            "client_blacklisted": {"read_only": True},
+            "client_blacklisted":   {"read_only": True},
+            "razorpay_kyc_status":  {"read_only": True},
+            "performer_fee":        {"read_only": True},
+            "bank_ifsc":            {"read_only": True},
+            "razorpay_account_id":  {"read_only": True},
         }
 
     def get_profile_picture_url(self, obj):
@@ -131,6 +142,11 @@ class MeProfileSerializer(serializers.ModelSerializer):
 
     def get_cover_photo_url(self, obj):
         return _abs_url(self.context.get("request"), obj.cover_photo)
+
+    def get_bank_account_last4(self, obj):
+        if not obj.bank_account_number:
+            return ""
+        return obj.bank_account_number[-4:]
 
 
 class PublicProfileDetailSerializer(serializers.ModelSerializer):
