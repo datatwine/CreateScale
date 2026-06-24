@@ -19,6 +19,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import * as ImagePicker from "expo-image-picker";
 import * as ImageManipulator from "expo-image-manipulator";
@@ -341,6 +342,7 @@ export default function ProfileScreen() {
 
   // Settings drawer visibility
   const [drawerVisible, setDrawerVisible] = useState(false);
+  const insets = useSafeAreaInsets();
 
   // --- Uploads (media gallery) ---------------------------------------------
 
@@ -1225,7 +1227,10 @@ return (
         activeOpacity={1}
         onPress={() => setDrawerVisible(false)}
       />
-      <View style={styles.drawerPanel}>
+      <View style={[styles.drawerPanel, { 
+          paddingTop: insets.top + 16,
+          paddingBottom: insets.bottom + 16 
+        }]}>
         {/* Header */}
         <View style={styles.drawerHeader}>
           <Text style={styles.drawerTitle}>Settings</Text>
