@@ -45,6 +45,11 @@ spec:
         - name: promtail
           image: grafana/promtail:3.3.2
           args: ["-config.file=/etc/promtail/config.yml"]
+          env:
+            - name: HOSTNAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
           volumeMounts:
             - name: config
               mountPath: /etc/promtail
