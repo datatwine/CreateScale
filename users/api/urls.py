@@ -1,7 +1,7 @@
 from django.urls import path
 from rest_framework.routers import DefaultRouter
 
-from bookings.api.views import CreateHireRequestAPIView, EngagementViewSet
+from bookings.api.views import CreateHireRequestAPIView, EngagementViewSet, PerformerPayoutsAPIView, ClientPaymentsAPIView
 from users.oauth_views import SocialLoginAPIView
 from .views import (
     TokenLoginAPIView,
@@ -54,6 +54,10 @@ urlpatterns = [
     # -------------------------
     # We keep hire creation as a simple single endpoint (not a router hack):
     path("bookings/hire/<int:performer_id>/", CreateHireRequestAPIView.as_view(), name="api-bookings-hire"),
+
+    # Payment history — mirrors bookings/views.py performer_payouts + client_payments
+    path("bookings/payouts/performer/", PerformerPayoutsAPIView.as_view(), name="api-bookings-performer-payouts"),
+    path("bookings/payments/client/", ClientPaymentsAPIView.as_view(), name="api-bookings-client-payments"),
 ]
 
 urlpatterns += router.urls
