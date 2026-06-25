@@ -35,6 +35,6 @@ spec:
         script-src 'self' 'unsafe-inline' https://checkout.razorpay.com;
         style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
         font-src 'self' https://fonts.gstatic.com;
-        img-src 'self' data: https://*.r2.cloudflarestorage.com;
-        connect-src 'self' https://checkout.razorpay.com https://*.r2.cloudflarestorage.com;
+        img-src 'self' data: https://media.stagefreedom.org https://*.r2.cloudflarestorage.com;
+        connect-src 'self' https://checkout.razorpay.com https://media.stagefreedom.org https://*.r2.cloudflarestorage.com;
         frame-src https://checkout.razorpay.com;
