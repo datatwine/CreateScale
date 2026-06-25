@@ -330,6 +330,7 @@ if USE_S3:
     if _custom_domain:
         AWS_S3_CUSTOM_DOMAIN = _custom_domain
 
+    AWS_S3_OBJECT_PARAMETERS = {"CacheControl": "public, max-age=31536000, immutable"}
     AWS_S3_FILE_OVERWRITE = False
     AWS_DEFAULT_ACL = None
     AWS_QUERYSTRING_AUTH = False
