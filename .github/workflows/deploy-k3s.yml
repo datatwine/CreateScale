@@ -16,7 +16,7 @@ name: "CI/CD Pipeline (k3s)"
 on:
   workflow_dispatch:
   push:
-    branches: [k3s-migration]
+    branches: [main]
 
 jobs:
 
