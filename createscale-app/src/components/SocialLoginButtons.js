@@ -126,32 +126,32 @@ export default function SocialLoginButtons() {
 
     return (
         <View style={styles.container}>
-            <Text style={styles.dividerText}>or continue with (temporarily disabled)</Text>
+            <Text style={styles.dividerText}>or continue with</Text>
             <View style={styles.row}>
                 <TouchableOpacity
-                    style={[styles.button, { backgroundColor: "#4285F4", opacity: 0.5 }]}
-                    disabled
+                    style={[styles.button, { backgroundColor: "#4285F4", opacity: !googleRequest || loading === "google" ? 0.5 : 1 }]}
+                    onPress={() => googlePromptAsync()}
+                    disabled={!googleRequest || loading === "google"}
                 >
                     <Text style={styles.buttonText}>Google</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                    style={[styles.button, { backgroundColor: "#1DA1F2", opacity: 0.5 }]}
-                    disabled
+                    style={[styles.button, { backgroundColor: "#1DA1F2", opacity: !twitterRequest || loading === "twitter" ? 0.5 : 1 }]}
+                    onPress={() => twitterPromptAsync()}
+                    disabled={!twitterRequest || loading === "twitter"}
                 >
                     <Text style={styles.buttonText}>Twitter</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                    style={[styles.button, { backgroundColor: "#0077B5", opacity: 0.5 }]}
-                    disabled
+                    style={[styles.button, { backgroundColor: "#0077B5", opacity: !linkedinRequest || loading === "linkedin" ? 0.5 : 1 }]}
+                    onPress={() => linkedinPromptAsync()}
+                    disabled={!linkedinRequest || loading === "linkedin"}
                 >
                     <Text style={styles.buttonText}>LinkedIn</Text>
                 </TouchableOpacity>
             </View>
-            <Text style={styles.disabledNote}>
-                ⓘ OAuth redirect URIs need to be registered with providers. Use email/password for now.
-            </Text>
         </View>
     );
 }
@@ -181,12 +181,5 @@ const styles = StyleSheet.create({
         color: "#fff",
         fontWeight: "600",
         fontSize: 13,
-    },
-    disabledNote: {
-        color: "#888",
-        fontSize: 12,
-        textAlign: "center",
-        marginTop: 8,
-        fontStyle: "italic",
     },
 });

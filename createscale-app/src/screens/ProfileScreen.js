@@ -51,12 +51,22 @@ async function shrinkImage(uri, maxWidth) {
   return out.uri;
 }
 
-// Video compression disabled for Expo Go compatibility
-// In production, replace with native module via eas build
+// Lazy-load so Expo Go (no native modules) skips compression gracefully;
+// EAS production builds get full hardware-accelerated compression.
+let VideoCompressor = null;
+try {
+  VideoCompressor = require("react-native-compressor").Video;
+} catch {
+  // Expo Go — native module unavailable, compression will be skipped
+}
+
 async function compressVideo(uri) {
-  // For now, return the original URI without compression
-  // This allows the feature to work with Expo Go on iOS/Android
-  return uri;
+  if (!VideoCompressor) return uri;
+  return await VideoCompressor.compress(
+    uri,
+    { compressionMethod: "manual", maxSize: 1920, bitrate: 4_000_000 },
+    () => {},
+  );
 }
 
 /**
