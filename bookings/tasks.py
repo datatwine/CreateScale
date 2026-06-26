@@ -1,15 +1,17 @@
 """
 Celery tasks for time-based payment automation.
 
-Two scheduled tasks:
+Three scheduled tasks:
   - expire_unpaid_engagements: hourly. Marks accepted engagements as
     auto_expired when the client missed the payment window. Uses
     Engagement.payment_deadline() which handles short-notice bookings.
+  - expire_stale_pending_engagements: hourly. Marks pending engagements
+    older than 24h as auto_expired so stale requests don't pile up.
   - release_completed_event_payouts: daily at 02:00. Unholds the Razorpay
     transfer for events that ended N hours ago (24h dispute window passed).
     Disputed engagements are explicitly skipped.
 
-Both tasks are safe to run multiple times — every state transition is
+All tasks are safe to run multiple times — every state transition is
 idempotent at the model/PaymentService layer.
 """
 import logging
@@ -58,6 +60,29 @@ def expire_unpaid_engagements() -> int:
         expired_count,
     )
     return expired_count
+
+
+@shared_task
+def expire_stale_pending_engagements() -> int:
+    """
+    Mark pending engagements older than 24h as auto_expired.
+
+    Prevents stale requests from cluttering the performer's UI when nobody
+    responded in time. Idempotent — safe to run multiple times.
+    """
+    cutoff = timezone.now() - timedelta(hours=24)
+    stale = Engagement.objects.filter(
+        status=Engagement.STATUS_PENDING,
+        created_at__lt=cutoff,
+    )
+
+    count = stale.update(status=Engagement.STATUS_AUTO_EXPIRED)
+
+    logger.info(
+        "expire_stale_pending_engagements: marked %d engagements as expired",
+        count,
+    )
+    return count
 
 
 @shared_task
