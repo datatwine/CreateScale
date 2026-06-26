@@ -408,7 +408,7 @@ export default function ProfileDetailScreen({ route, navigation }) {
     }
 
     const avatarUrl = makeMediaUrl(profile.profile_picture_url);
-    const coverUrl = makeMediaUrl(profile.cover_photo_url || profile.profile_picture_url);
+    const coverUrl = profile.cover_photo_url ? makeMediaUrl(profile.cover_photo_url) : null;
     const uploads = profile.uploads || [];
 
     return (
