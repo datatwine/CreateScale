@@ -9,8 +9,7 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true,
-      "bundleIdentifier": "com.anishravikiran0610.createscale-app"
+      "supportsTablet": true
     },
     "android": {
       "adaptiveIcon": {
