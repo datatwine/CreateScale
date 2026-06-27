@@ -474,6 +474,10 @@ THUMBNAIL_FORMAT = "JPEG"
 THUMBNAIL_QUALITY = 80
 
 REST_FRAMEWORK = {
+    "DEFAULT_RENDERER_CLASSES": [
+        "myproject.renderers.ORJSONRenderer",
+        "rest_framework.renderers.BrowsableAPIRenderer",
+    ],
     # Token auth for Expo + Session auth for browsable API (nice for dev)
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "rest_framework.authentication.TokenAuthentication",
