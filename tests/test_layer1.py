@@ -29,6 +29,9 @@ EXCLUDED ENDPOINTS:
       → Messaging being removed soon. Don't invest in testing it.
 """
 
+import json
+from datetime import date, time, datetime
+
 from django.test import TestCase
 from rest_framework.test import APIClient
 from django.contrib.auth.models import User
@@ -523,3 +526,95 @@ class SignupGuardrailTests(TestCase):
         data = resp.json()
         self.assertIn("token", data, "Signup succeeded but no token returned")
         self.assertIn("user_id", data, "Signup succeeded but no user_id returned")
+
+
+# =============================================================================
+# TEST 6: ORJSON RENDERER INVARIANTS
+# =============================================================================
+# Principle: Switching from stdlib json to orjson must not change the
+# JSON shape that the Expo app receives.
+#
+# Three risk vectors:
+#   1. datetime.time — orjson can't serialize it natively; our renderer
+#      routes it through DRF's encoder via OPT_PASSTHROUGH_DATETIME.
+#   2. Lazy translation strings (Promise) — DRF validation errors use
+#      gettext_lazy; orjson doesn't know about Django's Promise type.
+#   3. Non-ASCII — orjson emits raw UTF-8 (no \uXXXX escaping).
+# =============================================================================
+
+class ORJSONRendererTests(TestCase):
+    """orjson renderer must produce valid JSON for all DRF data types."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(
+            "orjsonuser", email="orjson@test.com", password="OrjsonPass123!"
+        )
+        self.client = APIClient()
+        self.client.force_authenticate(self.user)
+
+    def test_renderer_is_orjson(self):
+        """Verify the ORJSONRenderer is actually active."""
+        from myproject.renderers import ORJSONRenderer
+        from rest_framework.settings import api_settings
+        renderer_classes = api_settings.DEFAULT_RENDERER_CLASSES
+        self.assertTrue(
+            any(issubclass(r, ORJSONRenderer) for r in renderer_classes
+                if isinstance(r, type)),
+            "ORJSONRenderer is not in DEFAULT_RENDERER_CLASSES"
+        )
+
+    def test_datetime_time_serialization_through_renderer(self):
+        """
+        The renderer must handle raw date, time, and datetime objects
+        (the LiveEventsAPIView scenario).
+        """
+        from myproject.renderers import ORJSONRenderer
+        renderer = ORJSONRenderer()
+        payload = {
+            "date": date(2025, 6, 27),
+            "time": time(14, 30, 0),
+            "datetime": datetime(2025, 6, 27, 14, 30, 0),
+        }
+        raw = renderer.render(payload)
+        parsed = json.loads(raw)
+        self.assertEqual(parsed["date"], "2025-06-27")
+        self.assertEqual(parsed["time"], "14:30:00")
+        self.assertEqual(parsed["datetime"], "2025-06-27T14:30:00")
+
+    def test_validation_error_serializes_lazy_strings(self):
+        """
+        POST invalid signup → 400 with error messages.
+        DRF validation errors contain gettext_lazy proxies internally.
+        The renderer must serialize them as plain strings, not crash.
+        """
+        anon = APIClient()
+        resp = anon.post("/api/auth/signup/", {
+            "username": "",
+            "email": "",
+            "password1": "",
+            "password2": "",
+        })
+        self.assertIn(resp.status_code, (400, 401))
+        data = json.loads(resp.content)
+        self.assertIsInstance(data, dict)
+
+    def test_non_ascii_profile_data_roundtrips(self):
+        """
+        Non-ASCII characters must survive the orjson renderer.
+        orjson emits raw UTF-8 (no \\uXXXX escaping), which is valid
+        JSON per RFC 8259.
+        """
+        profile = Profile.objects.get(user=self.user)
+        profile.bio = "कलाकार"
+        profile.save()
+
+        resp = self.client.get("/api/users/me/")
+        self.assertEqual(resp.status_code, 200)
+        data = json.loads(resp.content)
+        self.assertIn("कलाकार", data.get("bio", ""))
+
+    def test_none_data_returns_empty_bytes(self):
+        """render(None) must return b'' — parity with DRF's JSONRenderer."""
+        from myproject.renderers import ORJSONRenderer
+        result = ORJSONRenderer().render(None)
+        self.assertEqual(result, b"")
