@@ -2,10 +2,12 @@
 
 import { Platform } from "react-native";
 
-// ⚠️ CHANGE THIS to your Windows machine's LAN IP.
-// Example: run `ipconfig` and look for something like 192.168.1.42
-// Then use: `http://192.168.1.42/api`
-const DEV_NATIVE_API_URL = "http://192.168.1.6/api";
+// 🔧 LOCAL DEVELOPMENT SETUP
+// Your machine's local IP (update this to match your current IP):
+// To find your IP: On Mac, run: `ifconfig | grep "inet " | grep -v 127`
+// Current (as of today): 192.168.0.220
+// If IP changes, update this!
+const DEV_NATIVE_API_URL = "http://192.168.0.220/api";
 
 // For Expo Web dev in a browser on the same machine, "localhost" is okay.
 const DEV_WEB_API_URL = "http://localhost/api";
@@ -20,6 +22,4 @@ const DEV_API_URL =
 
 // __DEV__ is true in Expo dev builds, false in production builds.
 export const API_BASE_URL = __DEV__ ? DEV_API_URL : PROD_API_URL;
-
-
 
