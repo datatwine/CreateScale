@@ -1,11 +1,9 @@
 # =============================================================================
-# Prometheus config — EC2 Service Discovery for horizontally scaled web fleet
+# Prometheus config — DB box local exporters only
 # =============================================================================
-# Deployed to the DB box. Automatically discovers all EC2 instances tagged
-# Role=web and scrapes their /metrics endpoint.
-#
-# REQUIRES: The DB box's EC2 instance must have the AK-EC2-Discovery IAM role
-#           attached (ec2:DescribeInstances permission).
+# Web fleet metrics (web-fleet, node-web) arrive via remote_write from the
+# Prometheus agent running inside k3s. This config only scrapes services
+# that run locally on the DB box as Docker containers.
 # =============================================================================
 
 global:
@@ -16,63 +14,14 @@ rule_files:
   - /etc/prometheus/alert_rules.yml
 
 scrape_configs:
-  # ---- Web fleet (auto-discovered via EC2 tags) ----
-  - job_name: 'web-fleet'
-    ec2_sd_configs:
-      - region: ap-south-1
-        port: 8000
-        filters:
-          - name: 'tag:Role'
-            values: ['web']
-          - name: 'instance-state-name'
-            values: ['running']
-    relabel_configs:
-      - source_labels: [__meta_ec2_private_ip]
-        target_label: __address__
-        replacement: '${1}:8000'
-      - source_labels: [__meta_ec2_instance_id]
-        target_label: instance_id
-      - source_labels: [__meta_ec2_tag_Name]
-        target_label: instance_name
-
-  # ---- Node exporter on web instances (host CPU / memory) ----
-  # Same EC2 discovery as web-fleet but port 9100 instead of 8000.
-  # Separate job name keeps Django app metrics (web-fleet) cleanly
-  # separated from host metrics (node-web) in Grafana queries.
-  - job_name: 'node-web'
-    ec2_sd_configs:
-      - region: ap-south-1
-        port: 9100
-        filters:
-          - name: 'tag:Role'
-            values: ['web']
-          - name: 'instance-state-name'
-            values: ['running']
-    relabel_configs:
-      - source_labels: [__meta_ec2_private_ip]
-        target_label: __address__
-        replacement: '${1}:9100'
-      - source_labels: [__meta_ec2_instance_id]
-        target_label: instance_id
-      - source_labels: [__meta_ec2_tag_Name]
-        target_label: instance_name
-
-  # ---- Local Postgres exporter (runs on DB box) ----
   - job_name: 'postgres'
     static_configs:
       - targets: ['postgres_exporter:9187']
 
-  # ---- Redis exporter (runs on DB box) ----
   - job_name: 'redis'
     static_configs:
       - targets: ['redis_exporter:9121']
 
-  # ---- Nginx log exporter (runs on web-od) ----
-  - job_name: 'nginxlog'
-    static_configs:
-      - targets: ['172.31.12.193:4040']
-
-  # ---- Docker stats (DB box containers only) ----
   - job_name: 'docker-db'
     static_configs:
       - targets: ['docker_stats_exporter:9417']
