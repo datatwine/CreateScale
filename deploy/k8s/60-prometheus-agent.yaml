@@ -1,0 +1,96 @@
+# =============================================================================
+# Prometheus Agent — scrapes k3s pods, remote_writes to DB box Prometheus
+# =============================================================================
+# Replaces the dead EC2 service discovery. Runs in agent mode (no local TSDB).
+# Uses the existing prometheus-discovery ServiceAccount (50-rbac-prometheus.yaml).
+# =============================================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-agent-config
+  namespace: artkhoj
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 45s
+      evaluation_interval: 45s
+
+    remote_write:
+      - url: http://10.0.0.2:9090/api/v1/write
+
+    scrape_configs:
+      # ---- Django app pods ----
+      - job_name: 'web-fleet'
+        kubernetes_sd_configs:
+          - role: pod
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_namespace]
+            regex: 'artkhoj'
+            action: keep
+          - source_labels: [__meta_kubernetes_pod_label_app]
+            regex: 'django'
+            action: keep
+          - source_labels: [__meta_kubernetes_pod_ip]
+            target_label: __address__
+            replacement: '${1}:8000'
+          - source_labels: [__meta_kubernetes_pod_name]
+            target_label: pod
+          - source_labels: [__meta_kubernetes_pod_node_name]
+            target_label: instance_name
+
+      # ---- Node exporter (host metrics per node) ----
+      - job_name: 'node-web'
+        kubernetes_sd_configs:
+          - role: pod
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_namespace]
+            regex: 'artkhoj'
+            action: keep
+          - source_labels: [__meta_kubernetes_pod_label_app]
+            regex: 'node-exporter'
+            action: keep
+          - source_labels: [__meta_kubernetes_pod_ip]
+            target_label: __address__
+            replacement: '${1}:9100'
+          - source_labels: [__meta_kubernetes_pod_node_name]
+            target_label: instance_name
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prometheus-agent
+  namespace: artkhoj
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: prometheus-agent
+  template:
+    metadata:
+      labels:
+        app: prometheus-agent
+    spec:
+      serviceAccountName: prometheus-discovery
+      containers:
+        - name: prometheus
+          image: prom/prometheus:v2.53.0
+          args:
+            - '--enable-feature=agent'
+            - '--config.file=/etc/prometheus/prometheus.yml'
+          ports:
+            - containerPort: 9090
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          volumeMounts:
+            - name: config
+              mountPath: /etc/prometheus
+              readOnly: true
+      volumes:
+        - name: config
+          configMap:
+            name: prometheus-agent-config
