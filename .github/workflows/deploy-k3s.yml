@@ -182,6 +182,7 @@ jobs:
             40-daemonset-promtail.yaml
             41-daemonset-node-exporter.yaml
             50-rbac-prometheus.yaml
+            60-prometheus-agent.yaml
             promtail-config.yaml
           )
           for f in "${MANIFESTS[@]}"; do
@@ -246,7 +247,7 @@ jobs:
           chmod 600 ~/.ssh/db_key
           ssh -o StrictHostKeyChecking=no -i ~/.ssh/db_key root@${{ secrets.DB_HOST }} << 'EOF'
             set -eu
-            cd /root/AK && git pull origin main
+            cd /root/AK && git fetch origin main && git reset --hard origin/main
             cd /root/AK/deploy/db
             docker compose -f docker-compose.data.yml build docker_stats_exporter
             docker compose -f docker-compose.data.yml up -d --remove-orphans
