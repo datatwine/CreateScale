@@ -171,10 +171,24 @@ jobs:
         env:
           HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
         run: |
-          curl -sL https://github.com/hetznercloud/cli/releases/latest/download/hcloud-linux-amd64.tar.gz | tar xz
           RUNNER_IP=$(curl -s ifconfig.me)/32
           echo "RUNNER_IP=$RUNNER_IP" >> $GITHUB_ENV
-          ./hcloud firewall add-rule artkhoj-fw --direction in --protocol tcp --port 6443 --source-ips $RUNNER_IP --description "ci-deploy"
+
+          FW_ID=$(curl -s -H "Authorization: Bearer $HCLOUD_TOKEN" \
+            "https://api.hetzner.cloud/v1/firewalls?name=artkhoj-fw" | jq -r '.firewalls[0].id')
+          echo "FW_ID=$FW_ID" >> $GITHUB_ENV
+
+          RULES=$(curl -s -H "Authorization: Bearer $HCLOUD_TOKEN" \
+            "https://api.hetzner.cloud/v1/firewalls/$FW_ID" \
+            | jq --arg ip "$RUNNER_IP" \
+            '[.firewall.rules[] | {direction, protocol, port, source_ips, destination_ips, description}]
+             + [{"direction":"in","protocol":"tcp","port":"6443","source_ips":[$ip],"destination_ips":[],"description":"ci-deploy-web"}]')
+
+          curl -s -X POST \
+            -H "Authorization: Bearer $HCLOUD_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "{\"rules\": $RULES}" \
+            "https://api.hetzner.cloud/v1/firewalls/$FW_ID/actions/set_rules"
 
       - name: "Step 1 — Apply manifests"
         run: |
@@ -251,7 +265,15 @@ jobs:
         env:
           HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
         run: |
-          ./hcloud firewall remove-rule artkhoj-fw in --protocol tcp --port 6443 --source-ips ${{ env.RUNNER_IP }} --description "ci-deploy"
+          RULES=$(curl -s -H "Authorization: Bearer $HCLOUD_TOKEN" \
+            "https://api.hetzner.cloud/v1/firewalls/${{ env.FW_ID }}" \
+            | jq '[.firewall.rules[] | select(.description != "ci-deploy-web") | {direction, protocol, port, source_ips, destination_ips, description}]')
+
+          curl -s -X POST \
+            -H "Authorization: Bearer $HCLOUD_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "{\"rules\": $RULES}" \
+            "https://api.hetzner.cloud/v1/firewalls/${{ env.FW_ID }}/actions/set_rules"
 
   # ===========================================================================
   # JOB 6: DEPLOY DB BOX (SSH instead of SSM)
@@ -266,10 +288,24 @@ jobs:
         env:
           HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
         run: |
-          curl -sL https://github.com/hetznercloud/cli/releases/latest/download/hcloud-linux-amd64.tar.gz | tar xz
           RUNNER_IP=$(curl -s ifconfig.me)/32
           echo "RUNNER_IP=$RUNNER_IP" >> $GITHUB_ENV
-          ./hcloud firewall add-rule artkhoj-fw --direction in --protocol tcp --port 22 --source-ips $RUNNER_IP --description "ci-deploy"
+
+          FW_ID=$(curl -s -H "Authorization: Bearer $HCLOUD_TOKEN" \
+            "https://api.hetzner.cloud/v1/firewalls?name=artkhoj-fw" | jq -r '.firewalls[0].id')
+          echo "FW_ID=$FW_ID" >> $GITHUB_ENV
+
+          RULES=$(curl -s -H "Authorization: Bearer $HCLOUD_TOKEN" \
+            "https://api.hetzner.cloud/v1/firewalls/$FW_ID" \
+            | jq --arg ip "$RUNNER_IP" \
+            '[.firewall.rules[] | {direction, protocol, port, source_ips, destination_ips, description}]
+             + [{"direction":"in","protocol":"tcp","port":"22","source_ips":[$ip],"destination_ips":[],"description":"ci-deploy-db"}]')
+
+          curl -s -X POST \
+            -H "Authorization: Bearer $HCLOUD_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "{\"rules\": $RULES}" \
+            "https://api.hetzner.cloud/v1/firewalls/$FW_ID/actions/set_rules"
 
       - name: "Deploy to DB Box via SSH"
         run: |
@@ -290,4 +326,12 @@ jobs:
         env:
           HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
         run: |
-          ./hcloud firewall remove-rule artkhoj-fw in --protocol tcp --port 22 --source-ips ${{ env.RUNNER_IP }} --description "ci-deploy"
+          RULES=$(curl -s -H "Authorization: Bearer $HCLOUD_TOKEN" \
+            "https://api.hetzner.cloud/v1/firewalls/${{ env.FW_ID }}" \
+            | jq '[.firewall.rules[] | select(.description != "ci-deploy-db") | {direction, protocol, port, source_ips, destination_ips, description}]')
+
+          curl -s -X POST \
+            -H "Authorization: Bearer $HCLOUD_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "{\"rules\": $RULES}" \
+            "https://api.hetzner.cloud/v1/firewalls/${{ env.FW_ID }}/actions/set_rules"
