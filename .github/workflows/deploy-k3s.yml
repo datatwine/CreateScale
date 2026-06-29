@@ -167,6 +167,15 @@ jobs:
       - name: Configure kubeconfig
         run: echo "${{ secrets.KUBECONFIG_B64 }}" | base64 -d > kubeconfig
 
+      - name: "Open firewall for deploy"
+        env:
+          HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
+        run: |
+          curl -sL https://github.com/hetznercloud/cli/releases/latest/download/hcloud-linux-amd64.tar.gz | tar xz
+          RUNNER_IP=$(curl -s ifconfig.me)/32
+          echo "RUNNER_IP=$RUNNER_IP" >> $GITHUB_ENV
+          ./hcloud firewall add-rule artkhoj-fw --direction in --protocol tcp --port 6443 --source-ips $RUNNER_IP --description "ci-deploy"
+
       - name: "Step 1 — Apply manifests"
         run: |
           export KUBECONFIG=./kubeconfig
@@ -237,6 +246,13 @@ jobs:
           fi
           echo "Smoke test passed"
 
+      - name: "Close firewall"
+        if: always()
+        env:
+          HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
+        run: |
+          ./hcloud firewall remove-rule artkhoj-fw --direction in --protocol tcp --port 6443 --source-ips ${{ env.RUNNER_IP }} --description "ci-deploy"
+
   # ===========================================================================
   # JOB 6: DEPLOY DB BOX (SSH instead of SSM)
   # ===========================================================================
@@ -246,6 +262,15 @@ jobs:
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
+      - name: "Open firewall for deploy"
+        env:
+          HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
+        run: |
+          curl -sL https://github.com/hetznercloud/cli/releases/latest/download/hcloud-linux-amd64.tar.gz | tar xz
+          RUNNER_IP=$(curl -s ifconfig.me)/32
+          echo "RUNNER_IP=$RUNNER_IP" >> $GITHUB_ENV
+          ./hcloud firewall add-rule artkhoj-fw --direction in --protocol tcp --port 22 --source-ips $RUNNER_IP --description "ci-deploy"
+
       - name: "Deploy to DB Box via SSH"
         run: |
           mkdir -p ~/.ssh
@@ -259,3 +284,10 @@ jobs:
             docker compose -f docker-compose.data.yml up -d --remove-orphans
             echo "DB_DEPLOY_COMPLETE"
           EOF
+
+      - name: "Close firewall"
+        if: always()
+        env:
+          HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
+        run: |
+          ./hcloud firewall remove-rule artkhoj-fw --direction in --protocol tcp --port 22 --source-ips ${{ env.RUNNER_IP }} --description "ci-deploy"
