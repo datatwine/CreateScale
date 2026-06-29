@@ -251,7 +251,7 @@ jobs:
         env:
           HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
         run: |
-          ./hcloud firewall remove-rule artkhoj-fw --direction in --protocol tcp --port 6443 --source-ips ${{ env.RUNNER_IP }} --description "ci-deploy"
+          ./hcloud firewall remove-rule artkhoj-fw in --protocol tcp --port 6443 --source-ips ${{ env.RUNNER_IP }} --description "ci-deploy"
 
   # ===========================================================================
   # JOB 6: DEPLOY DB BOX (SSH instead of SSM)
@@ -290,4 +290,4 @@ jobs:
         env:
           HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
         run: |
-          ./hcloud firewall remove-rule artkhoj-fw --direction in --protocol tcp --port 22 --source-ips ${{ env.RUNNER_IP }} --description "ci-deploy"
+          ./hcloud firewall remove-rule artkhoj-fw in --protocol tcp --port 22 --source-ips ${{ env.RUNNER_IP }} --description "ci-deploy"
