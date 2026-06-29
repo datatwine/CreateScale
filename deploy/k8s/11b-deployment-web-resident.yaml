@@ -1,14 +1,14 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: django
+  name: django-resident
   namespace: artkhoj
 spec:
   replicas: 1
   selector:
     matchLabels:
       app: django
-      role: fleet
+      role: resident
   strategy:
     type: RollingUpdate
     rollingUpdate:
@@ -18,7 +18,7 @@ spec:
     metadata:
       labels:
         app: django
-        role: fleet
+        role: resident
     spec:
       securityContext:
         runAsUser: 0
@@ -29,7 +29,7 @@ spec:
             nodeSelectorTerms:
               - matchExpressions:
                   - key: node-role.kubernetes.io/control-plane
-                    operator: DoesNotExist
+                    operator: Exists
       containers:
         - name: django
           image: ghcr.io/datatwine/createscale:latest

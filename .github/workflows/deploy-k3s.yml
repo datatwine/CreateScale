@@ -173,6 +173,7 @@ jobs:
           MANIFESTS=(
             00-namespace.yaml
             11-deployment-web.yaml
+            11b-deployment-web-resident.yaml
             12-deployment-worker.yaml
             13-deployment-beat.yaml
             20-service-web.yaml
@@ -185,6 +186,9 @@ jobs:
             60-prometheus-agent.yaml
             promtail-config.yaml
           )
+          # One-time: delete old django deployment (selector changed to include role: fleet)
+          kubectl -n artkhoj delete deployment django --ignore-not-found
+
           for f in "${MANIFESTS[@]}"; do
             echo "--- Applying $f ---"
             kubectl apply -f deploy/k8s/"$f"
@@ -208,10 +212,12 @@ jobs:
           IMAGE=ghcr.io/${{ github.repository_owner }}/createscale:${{ github.sha }}
 
           kubectl -n artkhoj set image deployment/django django=${IMAGE}
+          kubectl -n artkhoj set image deployment/django-resident django=${IMAGE}
           kubectl -n artkhoj set image deployment/celery-worker worker=${IMAGE}
           kubectl -n artkhoj set image deployment/celery-beat beat=${IMAGE}
 
           kubectl -n artkhoj rollout status deployment/django --timeout=180s
+          kubectl -n artkhoj rollout status deployment/django-resident --timeout=180s
           kubectl -n artkhoj rollout status deployment/celery-worker --timeout=60s
           kubectl -n artkhoj rollout status deployment/celery-beat --timeout=60s
 
