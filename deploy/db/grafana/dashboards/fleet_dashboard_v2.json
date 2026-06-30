@@ -224,7 +224,7 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 4, "w": 4, "x": 20, "y": 1 },
+      "gridPos": { "h": 4, "w": 2, "x": 20, "y": 1 },
       "id": 5,
       "options": {
         "colorMode": "background",
@@ -239,11 +239,52 @@
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "editorMode": "code",
           "expr": "count(up{job=\"web-fleet\"} == 1)",
-          "legendFormat": "Instances",
+          "legendFormat": "Pods",
           "refId": "A"
         }
       ],
-      "title": "Active Instances",
+      "title": "Active Pods",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "Number of k3s nodes currently up (from node_exporter).",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "yellow", "value": 1 },
+              { "color": "green", "value": 2 }
+            ]
+          },
+          "unit": "none",
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 2, "x": 22, "y": 1 },
+      "id": 20,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "editorMode": "code",
+          "expr": "count(up{job=\"node-web\"} == 1)",
+          "legendFormat": "Nodes",
+          "refId": "A"
+        }
+      ],
+      "title": "Active Nodes",
       "type": "stat"
     },
 
@@ -273,7 +314,7 @@
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "editorMode": "code",
-          "expr": "avg by () (100 - (rate(node_cpu_seconds_total{job=\"node-web\", mode=\"idle\"}[$__rate_interval]) * 100))",
+          "expr": "avg(100 - (avg by (instance) (rate(node_cpu_seconds_total{job=\"node-web\", mode=\"idle\"}[$__rate_interval])) * 100))",
           "legendFormat": "Fleet Avg CPU",
           "refId": "A"
         }
@@ -300,7 +341,7 @@
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "editorMode": "code",
-          "expr": "max by () (100 - (rate(node_cpu_seconds_total{job=\"node-web\", mode=\"idle\"}[$__rate_interval]) * 100))",
+          "expr": "max(100 - (avg by (instance) (rate(node_cpu_seconds_total{job=\"node-web\", mode=\"idle\"}[$__rate_interval])) * 100))",
           "legendFormat": "Fleet Max CPU",
           "refId": "A"
         }
