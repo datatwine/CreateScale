@@ -1,13 +1,12 @@
 # Helm values for Cluster Autoscaler (Hetzner driver).
-# WARNING: Contains real API token — do NOT commit this file with real values.
-# SCP to k3s node and use with: helm install -f this-file.yaml
+# CI/CD runs helm upgrade automatically when this file changes.
+# Secrets (HCLOUD_TOKEN, HCLOUD_CLUSTER_CONFIG) live in GitHub Secrets.
+# Manual usage: see "Going forward" in the PR description.
 cloudProvider: hetzner
 extraEnv:
-  HCLOUD_TOKEN: "9smw1djj8G5cEECo5deBWmDqSxyk40VyeE5b25nEN3Mo5ulqtNkohebUO7vrAgi7"
   HCLOUD_NETWORK: "artkhoj-net"
   HCLOUD_FIREWALL: "artkhoj-fw"
   HCLOUD_SSH_KEY: "artkhoj-key"
-  HCLOUD_CLUSTER_CONFIG: "eyJpbWFnZXNGb3JBcmNoIjp7ImFtZDY0IjoiNDAxOTAyNzA1In0sIm5vZGVDb25maWdzIjp7IndlYi1wb29sIjp7ImNsb3VkSW5pdCI6Ikl5RXZZbWx1TDJKaGMyZ0tVMFZTVmtWU1gwbEVQU1FvWTNWeWJDQXRjeUJvZEhSd09pOHZNVFk1TGpJMU5DNHhOamt1TWpVMEwyaGxkSHB1WlhJdmRqRXZiV1YwWVdSaGRHRXZhVzV6ZEdGdVkyVXRhV1FwQ21OMWNtd2dMWE1nTFZnZ1VGVlVJQ0pvZEhSd2N6b3ZMMkZ3YVM1b1pYUjZibVZ5TG1Oc2IzVmtMM1l4TDNObGNuWmxjbk12SkZORlVsWkZVbDlKUkNJZ1hBb2dJQzFJSUNKQmRYUm9iM0pwZW1GMGFXOXVPaUJDWldGeVpYSWdPWE50ZHpGa2FtbzRSelZqUlVWRGJ6VmtaVUpYYlVSeFUzaDVhelF3Vm5sbFJUVmlNalZ1UlU0elRXODFkV3h4ZEU1cmIyaGxZbFZQTjNaeVFXZHBOeUlnWEFvZ0lDMUlJQ0pEYjI1MFpXNTBMVlI1Y0dVNklHRndjR3hwWTJGMGFXOXVMMnB6YjI0aUlGd0tJQ0F0WkNBbmV5SnNZV0psYkhNaU9uc2ljbTlzWlNJNkltc3pjeUlzSW1oamJHOTFaQzl1YjJSbExXZHliM1Z3SWpvaWQyVmlMWEJ2YjJ3aWZYMG4ifX19"
 extraArgs:
   scale-down-unneeded-time: 20m
   scale-down-delay-after-add: 15m

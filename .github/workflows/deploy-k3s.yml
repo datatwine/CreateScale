@@ -335,3 +335,103 @@ jobs:
             -H "Content-Type: application/json" \
             -d "{\"rules\": $RULES}" \
             "https://api.hetzner.cloud/v1/firewalls/${{ env.FW_ID }}/actions/set_rules"
+
+  # ===========================================================================
+  # JOB 7: DEPLOY AUTOSCALER CONFIG (Helm upgrade via kubeconfig)
+  # ===========================================================================
+  deploy-autoscaler:
+    name: "Deploy Autoscaler Config"
+    needs: test
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: "Check if autoscaler values changed"
+        id: check
+        run: |
+          CHANGED=$(git diff HEAD~1 --name-only -- deploy/k8s/hetzner/cluster-autoscaler-values.yaml || echo "first-run")
+          if [ -n "$CHANGED" ]; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+          else
+            echo "changed=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Set up kubectl
+        if: steps.check.outputs.changed == 'true'
+        uses: azure/setup-kubectl@v4
+
+      - name: Install Helm
+        if: steps.check.outputs.changed == 'true'
+        uses: azure/setup-helm@v4
+
+      - name: Configure kubeconfig
+        if: steps.check.outputs.changed == 'true'
+        run: echo "${{ secrets.KUBECONFIG_B64 }}" | base64 -d > kubeconfig
+
+      - name: "Open firewall for deploy"
+        if: steps.check.outputs.changed == 'true'
+        env:
+          HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
+        run: |
+          RUNNER_IP=$(curl -s ifconfig.me)/32
+          echo "RUNNER_IP=$RUNNER_IP" >> $GITHUB_ENV
+
+          FW_ID=$(curl -s -H "Authorization: Bearer $HCLOUD_TOKEN" \
+            "https://api.hetzner.cloud/v1/firewalls?name=artkhoj-fw" | jq -r '.firewalls[0].id')
+          echo "FW_ID=$FW_ID" >> $GITHUB_ENV
+
+          RULES=$(curl -s -H "Authorization: Bearer $HCLOUD_TOKEN" \
+            "https://api.hetzner.cloud/v1/firewalls/$FW_ID" \
+            | jq --arg ip "$RUNNER_IP" \
+            '[.firewall.rules[] | {direction, protocol, port, source_ips, destination_ips, description}]
+             + [{"direction":"in","protocol":"tcp","port":"6443","source_ips":[$ip],"destination_ips":[],"description":"ci-deploy-autoscaler"}]')
+
+          curl -s -X POST \
+            -H "Authorization: Bearer $HCLOUD_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "{\"rules\": $RULES}" \
+            "https://api.hetzner.cloud/v1/firewalls/$FW_ID/actions/set_rules"
+
+      - name: "Add Helm repo"
+        if: steps.check.outputs.changed == 'true'
+        run: |
+          helm repo add autoscaler https://kubernetes.github.io/autoscaler
+          helm repo update
+
+      - name: "Build secrets file + Helm upgrade"
+        if: steps.check.outputs.changed == 'true'
+        env:
+          HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
+          HCLOUD_CLUSTER_CONFIG: ${{ secrets.HCLOUD_CLUSTER_CONFIG }}
+        run: |
+          export KUBECONFIG=./kubeconfig
+
+          cat > /tmp/autoscaler-secrets.yaml << EOF
+          extraEnv:
+            HCLOUD_TOKEN: "${HCLOUD_TOKEN}"
+            HCLOUD_CLUSTER_CONFIG: "${HCLOUD_CLUSTER_CONFIG}"
+          EOF
+
+          helm upgrade cluster-autoscaler autoscaler/cluster-autoscaler \
+            -n kube-system \
+            -f deploy/k8s/hetzner/cluster-autoscaler-values.yaml \
+            -f /tmp/autoscaler-secrets.yaml
+
+          echo "AUTOSCALER_DEPLOY_COMPLETE"
+
+      - name: "Close firewall"
+        if: always() && steps.check.outputs.changed == 'true'
+        env:
+          HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
+        run: |
+          RULES=$(curl -s -H "Authorization: Bearer $HCLOUD_TOKEN" \
+            "https://api.hetzner.cloud/v1/firewalls/${{ env.FW_ID }}" \
+            | jq '[.firewall.rules[] | select(.description != "ci-deploy-autoscaler") | {direction, protocol, port, source_ips, destination_ips, description}]')
+
+          curl -s -X POST \
+            -H "Authorization: Bearer $HCLOUD_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "{\"rules\": $RULES}" \
+            "https://api.hetzner.cloud/v1/firewalls/${{ env.FW_ID }}/actions/set_rules"
