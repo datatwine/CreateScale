@@ -190,6 +190,16 @@ jobs:
             -d "{\"rules\": $RULES}" \
             "https://api.hetzner.cloud/v1/firewalls/$FW_ID/actions/set_rules"
 
+      - name: "Ensure sweeper secret exists"
+        env:
+          HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
+        run: |
+          export KUBECONFIG=./kubeconfig
+          kubectl create secret generic hcloud-sweeper-token \
+            -n kube-system \
+            --from-literal=token="${HCLOUD_TOKEN}" \
+            --dry-run=client -o yaml | kubectl apply -f -
+
       - name: "Step 1 — Apply manifests"
         run: |
           export KUBECONFIG=./kubeconfig
@@ -208,6 +218,7 @@ jobs:
             50-rbac-prometheus.yaml
             60-prometheus-agent.yaml
             promtail-config.yaml
+            70-cronjob-ghost-sweeper.yaml
           )
           # One-time: delete old django deployment (selector changed to include role: fleet)
           kubectl -n artkhoj delete deployment django --ignore-not-found

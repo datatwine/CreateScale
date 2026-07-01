@@ -1,0 +1,103 @@
+# Ghost Node Sweeper — deletes Hetzner servers that never registered in k3s.
+# Runs every 30 min. Compares Hetzner API (billing) against kubectl (operational).
+# Servers older than 20 min that aren't k3s nodes = ghosts = delete.
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ghost-sweeper
+  namespace: kube-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: ghost-sweeper
+rules:
+  - apiGroups: [""]
+    resources: ["nodes"]
+    verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: ghost-sweeper
+roleRef:
+  kind: ClusterRole
+  name: ghost-sweeper
+subjects:
+  - kind: ServiceAccount
+    name: ghost-sweeper
+    namespace: kube-system
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: ghost-node-sweeper
+  namespace: kube-system
+spec:
+  schedule: "*/30 * * * *"
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      template:
+        spec:
+          serviceAccountName: ghost-sweeper
+          containers:
+            - name: sweeper
+              image: bitnami/kubectl:latest
+              env:
+                - name: HCLOUD_TOKEN
+                  valueFrom:
+                    secretKeyRef:
+                      name: hcloud-sweeper-token
+                      key: token
+              command: ["/bin/sh", "-c"]
+              args:
+                - |
+                  set -e
+                  echo "=== Ghost Node Sweep $(date -u) ==="
+
+                  REGISTERED=$(kubectl get nodes -o jsonpath='{.items[*].metadata.name}')
+                  echo "Registered nodes: $REGISTERED"
+
+                  SERVERS=$(curl -s -H "Authorization: Bearer $HCLOUD_TOKEN" \
+                    "https://api.hetzner.cloud/v1/servers?label_selector=instance_group=web-pool" \
+                    | jq -r '.servers[] | "\(.id) \(.name) \(.created)"')
+
+                  if [ -z "$SERVERS" ]; then
+                    echo "No web-pool servers found in Hetzner. Done."
+                    exit 0
+                  fi
+
+                  GHOSTS_FOUND=0
+                  echo "$SERVERS" | while read ID NAME CREATED; do
+                    if echo "$REGISTERED" | grep -q "$NAME"; then
+                      echo "OK: $NAME ($ID) is registered"
+                    else
+                      CREATED_EPOCH=$(date -d "$CREATED" +%s 2>/dev/null || echo 0)
+                      NOW_EPOCH=$(date +%s)
+                      AGE_MIN=$(( (NOW_EPOCH - CREATED_EPOCH) / 60 ))
+
+                      if [ "$AGE_MIN" -gt 20 ]; then
+                        echo "GHOST: $NAME ($ID) age=${AGE_MIN}m — deleting"
+                        HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" -X DELETE \
+                          -H "Authorization: Bearer $HCLOUD_TOKEN" \
+                          "https://api.hetzner.cloud/v1/servers/$ID")
+                        echo "  Delete response: HTTP $HTTP_CODE"
+                        GHOSTS_FOUND=$((GHOSTS_FOUND + 1))
+                      else
+                        echo "YOUNG: $NAME ($ID) age=${AGE_MIN}m — still booting, skip"
+                      fi
+                    fi
+                  done
+                  echo "=== Sweep complete ==="
+              resources:
+                requests:
+                  cpu: "10m"
+                  memory: "32Mi"
+                limits:
+                  cpu: "100m"
+                  memory: "64Mi"
+          restartPolicy: Never
