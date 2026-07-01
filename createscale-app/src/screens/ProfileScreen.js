@@ -1,47 +1,28 @@
-// src/screens/ProfileScreen.js
-
-import React, {
-  useCallback,
-  useContext,
-  useEffect,
-  useState,
-} from "react";
+import React, { useCallback, useContext, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   Image,
+  Modal,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
+  useWindowDimensions,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useNavigation } from "@react-navigation/native";
-import * as ImagePicker from "expo-image-picker";
+import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import * as ImageManipulator from "expo-image-manipulator";
-import * as Location from "expo-location";
-import { Ionicons } from "@expo/vector-icons"; // only once
-
-
+import * as ImagePicker from "expo-image-picker";
+import { Ionicons } from "@expo/vector-icons";
+import { COLORS } from "../config/theme";
 import { AuthContext } from "../context/AuthContext";
 import { API_BASE_URL } from "../config/api";
 import { uploadMedia } from "../api/upload";
+import PressableStamp from "../components/PressableStamp";
 
-// ---------------------------------------------------------------------------
-// Client-side media compression helpers
-//
-// shrinkImage: hardware-backed resize/re-encode via expo-image-manipulator.
-//   Per-kind max dimension. Output JPEG quality 0.82. Idempotent if the image
-//   is already smaller than maxWidth.
-//
-// Note: Video compression removed for Expo Go compatibility.
-//   For production, use eas build with a custom development client.
-//
-// Both are wrapped in try/catch by callers: on any failure they fall back
-// to the original URI so the upload still works.
-// ---------------------------------------------------------------------------
 async function shrinkImage(uri, maxWidth) {
   const out = await ImageManipulator.manipulateAsync(
     uri,
@@ -51,14 +32,10 @@ async function shrinkImage(uri, maxWidth) {
   return out.uri;
 }
 
-// Lazy-load so Expo Go (no native modules) skips compression gracefully;
-// EAS production builds get full hardware-accelerated compression.
 let VideoCompressor = null;
 try {
   VideoCompressor = require("react-native-compressor").Video;
-} catch {
-  // Expo Go — native module unavailable, compression will be skipped
-}
+} catch {}
 
 async function compressVideo(uri) {
   if (!VideoCompressor) return uri;
@@ -69,624 +46,255 @@ async function compressVideo(uri) {
   );
 }
 
-/**
- * Central color palette, kept close to your Django CSS:
- * - black / cream split background
- * - orange accents
- * - dark card for content
- */
-const COLORS = {
-  background: "#000000",
-  backgroundRight: "#FFF1DC", // pale cream
-  accent: "#E68A00", // orange
-  card: "#111111",
-  cardOverlay: "rgba(0,0,0,0.7)",
-  textPrimary: "#FFFFFF",
-  textSecondary: "#CFCFCF",
-  textMuted: "#999999",
-  badgeYellow: "#FFBF47",
-  badgeYellowText: "#432500",
-  badgeGreen: "#34C759",
-  badgeGreenText: "#002A10",
-  badgeRed: "#FF3B30",
-  chipBackground: "#1E1E1E",
-  divider: "#2B2B2B",
-  buttonDark: "#181818",
-};
-
-
-// Renders either an image thumbnail or a simple "video" chip
-// for a single upload row. Uses the DRF fields image_url / video_url
-// that you tested with curl.
-function renderUploadMedia(upload, styles) {
-  const imageUrl = upload.image_url || upload.image;
-  const videoUrl = upload.video_url || upload.video;
-
-  // If there is an image URL, show a square image
-  if (imageUrl) {
-    return (
-      <Image
-        source={{ uri: imageUrl }}
-        style={styles.uploadImage}
-        resizeMode="cover"
-      />
-    );
-  }
-
-  // If there is a video URL, show a dark chip with a camera icon
-  if (videoUrl) {
-    return (
-      <View style={styles.uploadVideoPlaceholder}>
-        <Ionicons name="videocam" size={20} color="#fff" />
-        <Text style={styles.uploadVideoText}>Video upload</Text>
-      </View>
-    );
-  }
-
-  // No media – nothing to preview
-  return null;
-}
-
-
-
-/**
- * Convenience helper: build an absolute URL for API endpoints.
- * Keeps the string handling in one place in case you ever swap domains.
- */
 function buildApiUrl(path) {
-  // Ensure single slash between base and path
   const trimmedBase = API_BASE_URL.replace(/\/+$/, "");
   const trimmedPath = path.replace(/^\/+/, "");
   return `${trimmedBase}/${trimmedPath}`;
 }
 
-/**
- * Small pill-style badge component, reused for all status chips.
- */
-function StatusBadge({ label, tone = "default" }) {
-  let backgroundColor = COLORS.chipBackground;
-  let textColor = COLORS.textSecondary;
-
-  if (tone === "positive") {
-    backgroundColor = COLORS.badgeGreen;
-    textColor = COLORS.badgeGreenText;
-  } else if (tone === "warning") {
-    backgroundColor = COLORS.badgeYellow;
-    textColor = COLORS.badgeYellowText;
-  } else if (tone === "danger") {
-    backgroundColor = COLORS.badgeRed;
-    textColor = COLORS.textPrimary;
-  }
-
-  return (
-    <View style={[styles.statusBadge, { backgroundColor }]}>
-      <Text style={[styles.statusBadgeText, { color: textColor }]}>
-        {label}
-      </Text>
-    </View>
-  );
-}
-
-/**
- * Reusable toggle pill that looks like a button:
- * - highlighted when "on"
- * - outlined when "off"
- */
-function TogglePill({ active, label, onPress }) {
-  return (
-    <TouchableOpacity
-      onPress={onPress}
-      style={[
-        styles.togglePill,
-        active && styles.togglePillActive,
-      ]}
-    >
-      <Text
-        style={[
-          styles.togglePillText,
-          active && styles.togglePillTextActive,
-        ]}
-      >
-        {label}
-      </Text>
-    </TouchableOpacity>
-  );
-}
-
-
-/**
- * Turn whatever the backend gives us for image / video into a usable, absolute
- * URL for React Native's <Image>. This keeps behaviour stable even if
- * DRF returns relative paths ("/media/...").
- */
 const makeMediaUrl = (pathOrUrl) => {
   if (!pathOrUrl) return null;
-
-  // If backend already sent an absolute URL, just use it.
-  if (
-    pathOrUrl.startsWith("http://") ||
-    pathOrUrl.startsWith("https://")
-  ) {
+  if (pathOrUrl.startsWith("http://") || pathOrUrl.startsWith("https://")) {
     return pathOrUrl;
   }
-
-  // Otherwise treat it as relative to the Django root (strip trailing "/api").
   const backendRoot = API_BASE_URL.replace(/\/api\/?$/, "");
-
-  if (pathOrUrl.startsWith("/")) {
-    // "/media/..." -> "http://192.168.1.2/media/..."
-    return backendRoot + pathOrUrl;
-  }
-
-  // "media/..." -> "http://192.168.1.2/media/..."
+  if (pathOrUrl.startsWith("/")) return backendRoot + pathOrUrl;
   return `${backendRoot}/${pathOrUrl}`;
 };
 
-
-
-/**
- * One upload tile (image / video). For now we just show:
- * - type (Image / Video)
- * - caption
- * - upload date
- * If you later expose thumbnails from the backend, we can drop them in here.
- */
-// Tiny presentational helper so the main component stays readable.
-// Now shows a thumbnail for image uploads instead of just text.
-function UploadCard({ upload, onDelete, onEdit }) {
-  const [editing, setEditing] = useState(false);
-  const [editText, setEditText] = useState(upload.caption || "");
-
-  const caption = upload.caption || "";
-
-  // Prefer the explicit *_url fields; fall back to raw file fields.
-  const rawImage = upload.image_url || upload.image;
-  const rawVideo = upload.video_url || upload.video;
-
-  const imageUri = makeMediaUrl(rawImage);
-  const videoUri = makeMediaUrl(rawVideo);
-
-  const hasImage = !!imageUri;
-  const hasVideo = !hasImage && !!videoUri; // don't double-render
-
+function StatusBadge({ label, tone = "default" }) {
+  let backgroundColor = COLORS.cream;
+  let textColor = COLORS.textSecondary;
+  if (tone === "positive") {
+    backgroundColor = "#EDFBEE";
+    textColor = "#1a7f2e";
+  } else if (tone === "warning") {
+    backgroundColor = "#F5F0FF";
+    textColor = "#5B21B6";
+  } else if (tone === "danger") {
+    backgroundColor = "#FFE6E0";
+    textColor = "#8f3400";
+  }
   return (
-    <View style={styles.uploadCard}>
-      {/* Media preview */}
-      {hasImage ? (
-        <Image
-          source={{ uri: imageUri }}
-          style={styles.uploadImage}
-          resizeMode="cover"
-        />
-      ) : hasVideo ? (
-        <View style={styles.uploadFallback}>
-          <Text style={styles.uploadFallbackText}>Video upload</Text>
-        </View>
-      ) : (
-        <View style={styles.uploadFallback}>
-          <Text style={styles.uploadFallbackText}>No preview</Text>
-        </View>
-      )}
-
-      {/* Three-dot menu — only when edit/delete callbacks are provided */}
-      {onDelete && (
-        <TouchableOpacity
-          style={styles.uploadMenuBtn}
-          onPress={() => {
-            Alert.alert("Upload options", null, [
-              { text: "Edit caption", onPress: () => { setEditText(upload.caption || ""); setEditing(true); } },
-              { text: "Delete", style: "destructive", onPress: () => onDelete(upload.id) },
-              { text: "Cancel", style: "cancel" },
-            ]);
-          }}
-        >
-          <Ionicons name="ellipsis-vertical" size={18} color="#fff" />
-        </TouchableOpacity>
-      )}
-
-      {/* Caption — inline edit or plain text */}
-      {editing ? (
-        <View style={styles.uploadEditRow}>
-          <TextInput
-            style={styles.uploadEditInput}
-            value={editText}
-            onChangeText={setEditText}
-            multiline
-            autoFocus
-          />
-          <View style={styles.uploadEditBtns}>
-            <TouchableOpacity
-              style={styles.uploadEditSaveBtn}
-              onPress={() => { onEdit(upload.id, editText); setEditing(false); }}
-            >
-              <Text style={{ color: "#fff", fontWeight: "600" }}>Save</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => { setEditText(upload.caption || ""); setEditing(false); }}>
-              <Text style={{ color: COLORS.textMuted }}>Cancel</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      ) : caption ? (
-        <Text style={styles.uploadCaption} numberOfLines={1}>
-          {caption}
-        </Text>
-      ) : null}
-
-      {/* Date, newest first – this matches the website */}
-      {upload.upload_date ? (
-        <Text style={styles.uploadMeta}>
-          {new Date(upload.upload_date).toLocaleString()}
-        </Text>
-      ) : null}
+    <View style={[styles.statusBadge, { backgroundColor }]}>
+      <Text style={[styles.statusBadgeText, { color: textColor }]}>{label}</Text>
     </View>
   );
 }
 
+function UploadGridItem({ upload, onPress }) {
+  const imageUri = makeMediaUrl(upload.image_url || upload.image);
+  const videoUri = !imageUri ? makeMediaUrl(upload.video_url || upload.video) : null;
+  const hasImage = !!imageUri;
+  const hasVideo = !hasImage && !!videoUri;
 
+  return (
+    <View style={styles.gridItem}>
+      <TouchableOpacity style={styles.gridItemInner} onPress={onPress} activeOpacity={0.8}>
+        {hasImage ? (
+          <Image source={{ uri: imageUri }} style={styles.gridImage} resizeMode="cover" />
+        ) : hasVideo ? (
+          <View style={styles.gridVideoFallback}>
+            <Ionicons name="videocam" size={20} color={COLORS.textMuted} />
+          </View>
+        ) : (
+          <View style={styles.gridVideoFallback}>
+            <Ionicons name="image-outline" size={20} color={COLORS.textMuted} />
+          </View>
+        )}
+        {upload.caption ? (
+          <Text style={styles.gridCaption} numberOfLines={1}>{upload.caption}</Text>
+        ) : null}
+      </TouchableOpacity>
+    </View>
+  );
+}
 
+function PreviewModal({ visible, upload, onClose, onEdit, onDelete }) {
+  const { width: screenWidth, height: screenHeight } = useWindowDimensions();
+  const [editCaption, setEditCaption] = useState("");
+  const [showOptions, setShowOptions] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const mediaHeight = screenHeight * 0.7;
 
+  useEffect(() => {
+    if (upload) {
+      setEditCaption(upload.caption || "");
+      setEditing(false);
+      setShowOptions(false);
+    }
+  }, [upload]);
+
+  if (!upload) return null;
+
+  const imageUri = makeMediaUrl(upload.image_url || upload.image);
+  const videoUri = !imageUri ? makeMediaUrl(upload.video_url || upload.video) : null;
+  const hasImage = !!imageUri;
+  const hasVideo = !hasImage && !!videoUri;
+
+  const handleSaveCaption = () => {
+    setEditing(false);
+    onClose();
+    onEdit(upload.id, editCaption);
+  };
+
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <TouchableOpacity style={styles.previewOverlay} activeOpacity={1} onPress={onClose}>
+        <TouchableOpacity activeOpacity={1} onPress={() => {}} style={styles.previewContent}>
+          {hasImage ? (
+            <Image
+              source={{ uri: imageUri }}
+              style={[styles.previewMedia, { width: screenWidth, height: mediaHeight }]}
+              resizeMode="contain"
+            />
+          ) : hasVideo ? (
+            <View style={[styles.previewVideoFallback, { width: screenWidth - 32 }]}>
+              <Ionicons name="videocam" size={48} color={COLORS.textMuted} />
+              <Text style={styles.previewVideoText}>Video</Text>
+            </View>
+          ) : null}
+
+          {editing ? (
+            <View style={styles.previewEditWrap}>
+              <TextInput
+                style={styles.previewEditInput}
+                value={editCaption}
+                onChangeText={setEditCaption}
+                multiline
+                autoFocus
+                placeholder="Write a caption..."
+                placeholderTextColor="#666"
+              />
+              <View style={styles.previewEditBtns}>
+                <TouchableOpacity onPress={handleSaveCaption}>
+                  <Text style={{ color: COLORS.accent, fontWeight: "600", fontSize: 14 }}>Save</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => { setEditing(false); setEditCaption(upload.caption || ""); }}>
+                  <Text style={{ color: COLORS.textMuted, fontSize: 14 }}>Cancel</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          ) : editCaption ? (
+            <Text style={styles.previewCaption}>{editCaption}</Text>
+          ) : null}
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.previewClose} onPress={onClose}>
+          <Ionicons name="close" size={24} color={COLORS.ink} />
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.previewMenu} onPress={() => setShowOptions(v => !v)}>
+          <Ionicons name="ellipsis-vertical" size={20} color={COLORS.ink} />
+        </TouchableOpacity>
+
+        {showOptions && (
+          <View style={styles.previewOptionsCard}>
+            <TouchableOpacity
+              style={styles.previewOption}
+              onPress={() => { setShowOptions(false); setEditing(true); }}
+            >
+              <Text style={styles.previewOptionText}>Edit caption</Text>
+            </TouchableOpacity>
+            <View style={styles.previewOptionDivider} />
+            <TouchableOpacity
+              style={styles.previewOption}
+              onPress={() => { setShowOptions(false); onClose(); onDelete(upload.id); }}
+            >
+              <Text style={[styles.previewOptionText, { color: "#FF3B30" }]}>Delete</Text>
+            </TouchableOpacity>
+            <View style={styles.previewOptionDivider} />
+            <TouchableOpacity
+              style={styles.previewOption}
+              onPress={() => setShowOptions(false)}
+            >
+              <Text style={[styles.previewOptionText, { color: COLORS.textMuted }]}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </TouchableOpacity>
+    </Modal>
+  );
+}
 
 export default function ProfileScreen() {
   const navigation = useNavigation();
-  const { token, logout } = useContext(AuthContext);
-
-  // --- Profile data + editing state ----------------------------------------
+  const { token } = useContext(AuthContext);
 
   const [profile, setProfile] = useState(null);
   const [loadingProfile, setLoadingProfile] = useState(true);
-  const [savingProfile, setSavingProfile] = useState(false);
-
-  // Fields the user can edit
-  const [bio, setBio] = useState("");
-  const [profession, setProfession] = useState("");
-  const [location, setLocation] = useState("");
-  const [isPerformer, setIsPerformer] = useState(false);
-  const [isPotentialClient, setIsPotentialClient] = useState(false);
-
-  // Profile picture upload in progress flag
-  const [updatingPicture, setUpdatingPicture] = useState(false);
-
-  // --- Uploads (media gallery) ---------------------------------------------
-
   const [uploads, setUploads] = useState([]);
   const [loadingUploads, setLoadingUploads] = useState(true);
   const [uploadingMedia, setUploadingMedia] = useState(false);
-  const [newUploadCaption, setNewUploadCaption] = useState("");
+  const [previewUpload, setPreviewUpload] = useState(null);
+  const initialLoadDone = useRef(false);
 
-  // -------------------------------------------------------------------------
-  // Data loading helpers
-  // -------------------------------------------------------------------------
-
-  // Unified avatar URL:
-  // Some serializers expose `profile_picture_url`,
-  // others expose the raw ImageField as `profile_picture`.
-  // Using both makes the mobile UI resilient to backend tweaks.
-  // Wrap through makeMediaUrl so relative paths ("/media/...") resolve.
   const avatarUrl = makeMediaUrl(
     profile?.profile_picture_url || profile?.profile_picture || null
   );
 
-  const loadProfile = useCallback(async () => {
+  const loadProfile = useCallback(async (silent = false) => {
     if (!token) return;
-
-    setLoadingProfile(true);
+    if (!silent) setLoadingProfile(true);
     try {
       const response = await fetch(buildApiUrl("/users/me/"), {
         method: "GET",
-        headers: {
-          Authorization: `Token ${token}`,
-          Accept: "application/json",
-        },
+        headers: { Authorization: `Token ${token}`, Accept: "application/json" },
       });
-
-      if (!response.ok) {
-        // For debugging JSON parse problems:
-        const text = await response.text();
-        console.warn("Profile load failed:", response.status, text);
-        throw new Error("Failed to load profile");
-      }
-
+      if (!response.ok) throw new Error("Failed to load profile");
       const data = await response.json();
       setProfile(data);
-
-      // Initialise form state from API data
-      setBio(data.bio || "");
-      setProfession(data.profession || "");
-      setLocation(data.location || "");
-      setIsPerformer(Boolean(data.is_performer));
-      setIsPotentialClient(Boolean(data.is_potential_client));
     } catch (err) {
       console.error("Error loading profile", err);
-      Alert.alert(
-        "Error",
-        "We couldn’t load your profile. Please try again."
-      );
+      if (!silent) Alert.alert("Error", "Could not load your profile.");
     } finally {
       setLoadingProfile(false);
     }
   }, [token]);
 
-  const loadUploads = useCallback(async () => {
+  const loadUploads = useCallback(async (silent = false) => {
     if (!token) return;
-
-    setLoadingUploads(true);
+    if (!silent) setLoadingUploads(true);
     try {
-      const response = await fetch(
-        buildApiUrl("/users/me/uploads/"),
-        {
-          method: "GET",
-          headers: {
-            Authorization: `Token ${token}`,
-            Accept: "application/json",
-          },
-        }
-      );
-
-      if (!response.ok) {
-        const text = await response.text();
-        console.warn("Uploads load failed:", response.status, text);
-        throw new Error("Failed to load uploads");
-      }
-
+      const response = await fetch(buildApiUrl("/users/me/uploads/"), {
+        method: "GET",
+        headers: { Authorization: `Token ${token}`, Accept: "application/json" },
+      });
+      if (!response.ok) throw new Error("Failed to load uploads");
       const data = await response.json();
-
-      console.log(
-        "UPLOADS FROM API",
-        JSON.stringify(data, null, 2)
-      );
-
       setUploads(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error("Error loading uploads", err);
-      Alert.alert(
-        "Error",
-        "We couldn’t load your uploads. You can still upload new media."
-      );
     } finally {
       setLoadingUploads(false);
     }
   }, [token]);
 
-  // Load profile and uploads when the screen mounts / token changes
-  useEffect(() => {
-    if (!token) return;
-    loadProfile();
-    loadUploads();
-  }, [token, loadProfile, loadUploads]);
-
-  // -------------------------------------------------------------------------
-  // Mutations: save profile, profile picture, uploads
-  // -------------------------------------------------------------------------
-
-  const handleSaveProfile = async () => {
-    if (!token || !profile) return;
-
-    setSavingProfile(true);
-    try {
-      const payload = {
-        bio,
-        profession,
-        location,
-        is_performer: isPerformer,
-        is_potential_client: isPotentialClient,
-      };
-
-      const response = await fetch(buildApiUrl("/users/me/"), {
-        method: "PATCH",
-        headers: {
-          Authorization: `Token ${token}`,
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        const text = await response.text();
-        console.warn(
-          "Profile update failed:",
-          response.status,
-          text
-        );
-        throw new Error("Failed to update profile");
+  useFocusEffect(
+    useCallback(() => {
+      if (!token) return;
+      if (!initialLoadDone.current) {
+        initialLoadDone.current = true;
+        loadProfile();
+        loadUploads();
+      } else {
+        loadProfile(true);
+        loadUploads(true);
       }
-
-      const updated = await response.json();
-      setProfile(updated); // keep UI in sync
-      Alert.alert("Saved", "Your profile has been updated.");
-    } catch (err) {
-      console.error("Error updating profile", err);
-      Alert.alert(
-        "Error",
-        "We couldn’t save your changes. Please try again."
-      );
-    } finally {
-      setSavingProfile(false);
-    }
-  };
-
-  const handlePickProfilePicture = async () => {
-    if (!token) return;
-
-    // Ask for gallery permissions
-    const { status } =
-      await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== "granted") {
-      Alert.alert(
-        "Permission needed",
-        "We need access to your photos to set a profile picture."
-      );
-      return;
-    }
-
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [1, 1], // force square crop
-      quality: 0.8,
-    });
-
-    if (result.canceled) return;
-
-    const asset = result.assets && result.assets[0];
-    if (!asset) return;
-
-    // Client-side compress to 512px avatar (hardware-accelerated). On any
-    // failure, fall back to the original asset URI so upload still works.
-    let avatarUri = asset.uri;
-    try {
-      avatarUri = await shrinkImage(asset.uri, 512);
-    } catch (e) {
-      console.warn("avatar shrink failed, uploading original", e);
-    }
-
-    const formData = new FormData();
-    formData.append("profile_picture", {
-      uri: avatarUri,
-      name: "profile.jpg",
-      type: "image/jpeg",
-    });
-
-    setUpdatingPicture(true);
-    try {
-      const response = await fetch(buildApiUrl("/users/me/"), {
-        method: "PATCH",
-        headers: {
-          Authorization: `Token ${token}`,
-          // NOTE: do NOT set Content-Type here; fetch will set multipart boundary
-          Accept: "application/json",
-        },
-        body: formData,
-      });
-
-      if (!response.ok) {
-        const text = await response.text();
-        console.warn(
-          "Profile picture update failed:",
-          response.status,
-          text
-        );
-        throw new Error("Failed to update profile picture");
-      }
-
-      const updated = await response.json();
-      setProfile(updated);
-      Alert.alert("Updated", "Your profile picture has been changed.");
-    } catch (err) {
-      console.error("Error updating profile picture", err);
-      Alert.alert(
-        "Error",
-        "We couldn’t update your profile picture. Please try again."
-      );
-    } finally {
-      setUpdatingPicture(false);
-    }
-  };
-
-  /**
-   * Enforce:
-   * - videos <= 60 seconds
-   * - videos <= ~720p (max dimension <= 1280)
-   * We still recommend server-side validation, but this protects the app a bit.
-   */
-  const handleAddMedia = async () => {
-    if (!token) return;
-
-    const { status } =
-      await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== "granted") {
-      Alert.alert(
-        "Permission needed",
-        "We need access to your photos and videos to add media."
-      );
-      return;
-    }
-
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.All,
-      quality: 0.8,
-      // iOS bonus: have the OS picker hardware-export video at 720p during the
-      // pick itself, BEFORE react-native-compressor touches it. Free perf win.
-      // Ignored on Android (which goes straight to react-native-compressor).
-      videoExportPreset: ImagePicker.VideoExportPreset?.H264_1280x720,
-    });
-
-    if (result.canceled) return;
-
-    const asset = result.assets && result.assets[0];
-    if (!asset) return;
-
-    const isVideo =
-      asset.type === "video" ||
-      (asset.uri && asset.uri.toLowerCase().endsWith(".mp4"));
-
-    if (isVideo) {
-      // Duration cap still enforced client-side (compressor doesn't trim).
-      const durationSeconds = asset.duration || 0;
-      if (durationSeconds > 60) {
-        Alert.alert(
-          "Video too long",
-          "Please choose a video that is at most 1 minute long."
-        );
-        return;
-      }
-      // (Resolution cap removed — react-native-compressor downsizes any input
-      // to 1080p / 4 Mbps in hardware, so the user can pick any quality.)
-    }
-
-    // Client-side compress before upload:
-    //   - images: resize to 1080 px JPEG 0.82
-    //   - videos: hardware re-encode to 1080p H.264 ~4 Mbps via react-native-compressor
-    // Failures fall back to the original URI so upload still works.
-    setUploadingMedia(true);  // show spinner during compress + upload
-    let finalUri = asset.uri;
-    try {
-      finalUri = isVideo
-        ? await compressVideo(asset.uri)
-        : await shrinkImage(asset.uri, 1080);
-    } catch (e) {
-      console.warn("media compress failed, uploading original", e);
-    }
-
-    // 3-step presigned upload: presign → R2 direct → confirm.
-    // Falls back to legacy multipart if presign returns 501 (local dev).
-    try {
-      await uploadMedia({
-        token,
-        fileUri: finalUri,
-        fileName: isVideo ? "upload.mp4" : "upload.jpg",
-        contentType: isVideo ? "video/mp4" : "image/jpeg",
-        caption: newUploadCaption.trim(),
-      });
-
-      setNewUploadCaption("");
-      await loadUploads(); // refresh list
-      Alert.alert("Uploaded", "Your media has been added.");
-    } catch (err) {
-      console.error("Error uploading media", err);
-      Alert.alert(
-        "Error",
-        "We couldn’t upload your media. Please try again."
-      );
-    } finally {
-      setUploadingMedia(false);
-    }
-  };
-
-  /* ========== Upload Edit / Delete handlers ========== */
+    }, [token, loadProfile, loadUploads])
+  );
 
   async function handleDeleteUpload(uploadId) {
     Alert.alert("Delete upload?", "This cannot be undone.", [
       { text: "Cancel", style: "cancel" },
       {
-        text: "Delete",
-        style: "destructive",
+        text: "Delete", style: "destructive",
         onPress: async () => {
           try {
-            const res = await fetch(
-              `${API_BASE_URL}/users/me/uploads/${uploadId}/`,
-              { method: "DELETE", headers: { Authorization: `Token ${token}` } }
-            );
+            const res = await fetch(`${API_BASE_URL}/users/me/uploads/${uploadId}/`, {
+              method: "DELETE",
+              headers: { Authorization: `Token ${token}` },
+            });
             if (res.ok) {
               setUploads((prev) => prev.filter((u) => u.id !== uploadId));
             } else {
@@ -702,23 +310,18 @@ export default function ProfileScreen() {
 
   async function handleEditCaption(uploadId, newCaption) {
     try {
-      const res = await fetch(
-        `${API_BASE_URL}/users/me/uploads/${uploadId}/`,
-        {
-          method: "PATCH",
-          headers: {
-            Authorization: `Token ${token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ caption: newCaption }),
-        }
-      );
+      const res = await fetch(`${API_BASE_URL}/users/me/uploads/${uploadId}/`, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Token ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ caption: newCaption }),
+      });
       if (res.ok) {
         const updated = await res.json();
         setUploads((prev) =>
-          prev.map((u) =>
-            u.id === uploadId ? { ...u, caption: updated.caption } : u
-          )
+          prev.map((u) => (u.id === uploadId ? { ...u, caption: updated.caption } : u))
         );
       } else {
         Alert.alert("Error", "Could not update caption.");
@@ -728,579 +331,291 @@ export default function ProfileScreen() {
     }
   }
 
-  /**
-   * Best-effort location autofill using device GPS.
-   * This does NOT use IP/cookies; it uses the phone’s location, which is
-   * usually more accurate and is the standard Expo way.
-   * You can later replace this with a backend-powered IP lookup if you prefer.
-   */
-  const handleDetectLocation = async () => {
+  const handleAddMedia = async () => {
+    if (!token) return;
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert("Permission needed", "We need access to your photos.");
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.All,
+      quality: 0.8,
+      videoExportPreset: ImagePicker.VideoExportPreset?.H264_1280x720,
+    });
+    if (result.canceled) return;
+    const asset = result.assets?.[0];
+    if (!asset) return;
+
+    const isVideo = asset.type === "video" || asset.uri?.toLowerCase().endsWith(".mp4");
+    if (isVideo) {
+      const durationSeconds = asset.duration || 0;
+      if (durationSeconds > 60) {
+        Alert.alert("Video too long", "Please choose a video at most 1 minute.");
+        return;
+      }
+    }
+
+    setUploadingMedia(true);
+    let finalUri = asset.uri;
     try {
-      const { status } =
-        await Location.requestForegroundPermissionsAsync();
-      if (status !== "granted") {
-        Alert.alert(
-          "Permission needed",
-          "We need access to your location to auto-fill the city."
-        );
-        return;
-      }
+      finalUri = isVideo ? await compressVideo(asset.uri) : await shrinkImage(asset.uri, 1080);
+    } catch (e) {
+      console.warn("media compress failed", e);
+    }
 
-      const position = await Location.getCurrentPositionAsync({});
-      const places = await Location.reverseGeocodeAsync(
-        position.coords
-      );
-      const place = places[0];
-
-      const city =
-        place.city ||
-        place.subregion ||
-        place.region ||
-        "";
-      const country = place.country || "";
-
-      const formatted = [city, country]
-        .filter(Boolean)
-        .join(", ");
-
-      if (!formatted) {
-        Alert.alert(
-          "Couldn’t detect",
-          "We couldn’t determine your city. Please type it manually."
-        );
-        return;
-      }
-
-      setLocation(formatted);
+    try {
+      await uploadMedia({
+        token,
+        fileUri: finalUri,
+        fileName: isVideo ? "upload.mp4" : "upload.jpg",
+        contentType: isVideo ? "video/mp4" : "image/jpeg",
+        caption: "",
+      });
+      setNewUploadCaption("");
+      await loadUploads();
+      Alert.alert("Uploaded", "Your media has been added.");
     } catch (err) {
-      console.error("Location detection error", err);
-      Alert.alert(
-        "Error",
-        "We couldn’t detect your location. Please type it manually."
-      );
+      console.error("Error uploading media", err);
+      Alert.alert("Error", "Could not upload media.");
+    } finally {
+      setUploadingMedia(false);
     }
   };
 
+  const isPerformer = profile?.is_performer || false;
+  const isPotentialClient = profile?.is_potential_client || false;
 
-  /**
-   * Navigate to a route if registered, otherwise show "Coming soon".
-   * Uses direct navigate() because getState().routeNames is unreliable
-   * with createNativeStackNavigator.
-   */
-  // -------------------------------------------------------------------------
-  // Derived display helpers
-  // -------------------------------------------------------------------------
-
-const profileInitial =
-  (profile?.username || "?").charAt(0).toUpperCase();
-
-const hasUploads = uploads && uploads.length > 0;
-
-const approvalBadges = [];
-if (isPotentialClient) {
-  approvalBadges.push(
-    <StatusBadge
-      key="potentialClient"
-      tone="warning"
-      label="Potential client"
-    />
-  );
-}
-if (profile?.client_approved) {
-  approvalBadges.push(
-    <StatusBadge
-      key="clientApproved"
-      tone="positive"
-      label="Client approved"
-    />
-  );
-}
-if (profile?.performer_blacklisted) {
-  approvalBadges.push(
-    <StatusBadge
-      key="performerBlacklisted"
-      tone="danger"
-      label="Performer blacklisted"
-    />
-  );
-}
-if (profile?.client_blacklisted) {
-  approvalBadges.push(
-    <StatusBadge
-      key="clientBlacklisted"
-      tone="danger"
-      label="Client blacklisted"
-    />
-  );
-}
-
-// -------------------------------------------------------------------------
-// Render
-// -------------------------------------------------------------------------
-
-if (!token) {
-  // Should not normally happen – guarded by Auth flow – but nice to be safe.
-  return (
-    <View style={styles.loadingFullScreen}>
-      <ActivityIndicator size="large" color={COLORS.accent} />
-      <Text style={styles.loadingText}>
-        Please log in again.
-      </Text>
-    </View>
-  );
-}
-
-if (loadingProfile) {
-  return (
-    <View style={styles.loadingFullScreen}>
-      <ActivityIndicator size="large" color={COLORS.accent} />
-      <Text style={styles.loadingText}>
-        Loading your profile…
-      </Text>
-    </View>
-  );
-}
-
-if (!profile) {
-  return (
-    <View style={styles.loadingFullScreen}>
-      <Text style={styles.loadingText}>
-        No profile data available.
-      </Text>
-    </View>
-  );
-}
-
-return (
-  <SafeAreaView style={styles.safeArea} edges={["top"]}>
-    {/* Split background (black / cream) */}
-    <View style={styles.splitBackground}>
-      <View style={styles.leftBackground} />
-      <View style={styles.rightBackground} />
-    </View>
-
-    <ScrollView
-      contentContainerStyle={styles.scrollContent}
-      showsVerticalScrollIndicator={false}
-    >
-      {/* Screen title */}
-      <View style={styles.headerRow}>
-        <Text style={styles.screenTitle}>Profile</Text>
-        {/* Room for small app-level badge / score later if you like */}
+  if (!token || loadingProfile) {
+    return (
+      <View style={styles.loadingFullScreen}>
+        <ActivityIndicator size="large" color={COLORS.accent} />
+        {loadingProfile && <Text style={styles.loadingText}>Loading your profile…</Text>}
       </View>
+    );
+  }
 
-      {/* Main profile card */}
-      <View style={styles.profileCard}>
-        {/* Profile picture circle */}
-        <TouchableOpacity
-          onPress={handlePickProfilePicture}
-          style={styles.profilePictureContainer}
-          activeOpacity={0.8}
-        >
-          <View style={styles.profilePictureCircle}>
-            {/* Show whatever the backend sends: either a computed
-                 profile_picture_url or the raw profile_picture field.
-                 Style names must match the StyleSheet definitions. */}
-            {avatarUrl ? (
-              <Image source={{ uri: avatarUrl }} style={styles.profilePictureImage} />
-            ) : (
-              <View style={styles.profilePictureCircle}>
-                <Text style={styles.profilePictureInitial}>
-                  {(profile?.username || "U").charAt(0).toUpperCase()}
-                </Text>
-              </View>
-            )}
-          </View>
+  if (!profile) {
+    return (
+      <View style={styles.loadingFullScreen}>
+        <Text style={styles.loadingText}>No profile data available.</Text>
+      </View>
+    );
+  }
 
-          <Text style={styles.profilePictureHint}>
-            {updatingPicture
-              ? "Updating picture…"
-              : "Tap to change picture"}
-          </Text>
-        </TouchableOpacity>
-
-        {/* Name + profession */}
-        <View style={styles.nameBlock}>
-          <Text
-            style={styles.profileName}
-            numberOfLines={1}
-          >
-            {profile.username}
-          </Text>
-          <Text
-            style={styles.profileProfession}
-            numberOfLines={1}
-          >
-            {profession || "Profession not set yet"}
-          </Text>
-        </View>
-
-        {/* Role toggles row */}
-        <View style={styles.roleToggleRow}>
-          <TogglePill
-            active={isPotentialClient}
-            label="Potential client"
-            onPress={() =>
-              setIsPotentialClient((prev) => !prev)
-            }
-          />
-          <TogglePill
-            active={isPerformer}
-            label="Performer"
-            onPress={() =>
-              setIsPerformer((prev) => !prev)
-            }
-          />
-        </View>
-
-        {/* Status badges (approval / blacklists) */}
-        {approvalBadges.length > 0 && (
-          <View style={styles.badgeRow}>{approvalBadges}</View>
-        )}
-
-        {/* Editable BIO */}
-        <View style={styles.sectionBlock}>
-          <Text style={styles.sectionTitle}>BIO</Text>
-          <TextInput
-            style={styles.multiLineInput}
-            placeholder="You haven't added a bio yet."
-            placeholderTextColor={COLORS.textMuted}
-            multiline
-            value={bio}
-            onChangeText={setBio}
-          />
-        </View>
-
-        {/* Editable LOCATION with "Use my location" helper */}
-        <View style={styles.sectionBlock}>
-          <View style={styles.sectionHeaderRow}>
-            <Text style={styles.sectionTitle}>LOCATION</Text>
-            <TouchableOpacity
-              onPress={handleDetectLocation}
-            >
-              <Text style={styles.linkButtonText}>
-                Use my location
-              </Text>
-            </TouchableOpacity>
-          </View>
-          <TextInput
-            style={styles.singleLineInput}
-            placeholder="City, Country"
-            placeholderTextColor={COLORS.textMuted}
-            value={location}
-            onChangeText={setLocation}
-          />
-        </View>
-
-        {/* Editable PROFESSION */}
-        <View style={styles.sectionBlock}>
-          <Text style={styles.sectionTitle}>PROFESSION</Text>
-          <TextInput
-            style={styles.singleLineInput}
-            placeholder="What do you do?"
-            placeholderTextColor={COLORS.textMuted}
-            value={profession}
-            onChangeText={setProfession}
-          />
-        </View>
-
-        {/* Uploads header + caption + add button */}
-        <View style={styles.uploadsHeader}>
-          <View>
-            <Text style={styles.uploadsTitle}>
-              Your uploads
-            </Text>
-            <Text style={styles.uploadsSubtitle}>
-              (max ~1 min video, 720p – enforced later)
-            </Text>
-          </View>
-          <TouchableOpacity
-            onPress={handleAddMedia}
-            style={styles.addMediaButton}
-            disabled={uploadingMedia}
-          >
-            <Text style={styles.addMediaText}>
-              {uploadingMedia ? "Uploading…" : "+ Add media"}
-            </Text>
+  return (
+    <SafeAreaView style={styles.safeArea} edges={["top"]}>
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <View style={styles.topRow}>
+          <Text style={styles.screenTitle}>Profile</Text>
+          <TouchableOpacity onPress={() => navigation.navigate("EditProfile")}>
+            <Ionicons name="settings-outline" size={24} color={COLORS.textPrimary} />
           </TouchableOpacity>
         </View>
 
-        <TextInput
-          style={styles.singleLineInput}
-          placeholder="Caption for next upload (optional)"
-          placeholderTextColor={COLORS.textMuted}
-          value={newUploadCaption}
-          onChangeText={setNewUploadCaption}
-        />
+        <View style={styles.profileHeader}>
+          <View style={styles.avatarCircle}>
+            {avatarUrl ? (
+              <Image source={{ uri: avatarUrl }} style={styles.avatarImage} />
+            ) : (
+              <Text style={styles.avatarInitial}>
+                {(profile.username || "U").charAt(0).toUpperCase()}
+              </Text>
+            )}
+          </View>
+          <View style={styles.profileInfo}>
+            <Text style={styles.profileName} numberOfLines={1}>{profile.username}</Text>
+            {profile.profession ? (
+              <Text style={styles.profileProfession} numberOfLines={1}>{profile.profession}</Text>
+            ) : null}
+            {profile.location ? (
+              <Text style={styles.profileLocation} numberOfLines={1}>{profile.location}</Text>
+            ) : null}
+          </View>
+        </View>
 
-        {/* Uploads list */}
-        <View style={styles.uploadsListBlock}>
+        {profile.bio ? (
+          <Text style={styles.bioText}>{profile.bio}</Text>
+        ) : null}
+
+        <View style={styles.badgeRow}>
+          {isPotentialClient && <StatusBadge tone="warning" label="Potential client" />}
+          {isPerformer && <StatusBadge tone="positive" label="Performer" />}
+          {profile.client_approved && <StatusBadge tone="positive" label="Client approved" />}
+          {profile.performer_blacklisted && <StatusBadge tone="danger" label="Performer blacklisted" />}
+          {profile.client_blacklisted && <StatusBadge tone="danger" label="Client blacklisted" />}
+        </View>
+
+        <View style={styles.divider} />
+
+        <View style={styles.uploadsSection}>
+          <View style={styles.uploadsHeader}>
+            <Text style={styles.uploadsTitle}>Uploads</Text>
+            <PressableStamp
+              onPress={handleAddMedia}
+              disabled={uploadingMedia}
+              stampOffset={3}
+              borderRadius={999}
+              borderColor={COLORS.ink}
+              borderWidth={2}
+              style={styles.addMediaBtn}
+            >
+              <Ionicons name="add" size={18} color={COLORS.textPrimary} />
+              <Text style={styles.addMediaText}>{uploadingMedia ? "Uploading…" : "Add"}</Text>
+            </PressableStamp>
+          </View>
+
           {loadingUploads ? (
             <View style={styles.uploadsLoadingRow}>
-              <ActivityIndicator
-                size="small"
-                color={COLORS.accent}
-              />
-              <Text style={styles.uploadsLoadingText}>
-                Loading your uploads…
-              </Text>
+              <ActivityIndicator size="small" color={COLORS.accent} />
+              <Text style={styles.uploadsLoadingText}>Loading uploads…</Text>
             </View>
-          ) : hasUploads ? (
-            /* Vertical stack of full-width cards, newest first
-               (backend already sorts by -upload_date) */
-            <View>
+          ) : uploads.length > 0 ? (
+            <View style={styles.gridContainer}>
               {uploads.map((u) => (
-                <UploadCard key={u.id} upload={u} onDelete={handleDeleteUpload} onEdit={handleEditCaption} />
+                <UploadGridItem
+                  key={u.id}
+                  upload={u}
+                  onPress={() => setPreviewUpload(u)}
+                />
               ))}
             </View>
           ) : (
             <View style={styles.noUploadsBlock}>
-              <Text style={styles.noUploadsText}>
-                You haven’t uploaded anything yet.
-              </Text>
-              <Text style={styles.noUploadsHint}>
-                Use the website for now, or Add media above for
-                in-app uploads.
-              </Text>
+              <Ionicons name="image-outline" size={40} color={COLORS.textMuted} />
+              <Text style={styles.noUploadsText}>No uploads yet</Text>
             </View>
           )}
         </View>
+      </ScrollView>
 
-        {/* Save + Logout buttons */}
-        <View style={styles.actionsRow}>
-          <TouchableOpacity
-            style={[
-              styles.primaryButton,
-              savingProfile && { opacity: 0.6 },
-            ]}
-            onPress={handleSaveProfile}
-            disabled={savingProfile}
-          >
-            <Text style={styles.primaryButtonText}>
-              {savingProfile ? "Saving…" : "Save profile"}
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        <TouchableOpacity
-          style={styles.logoutButton}
-          onPress={logout}
-        >
-          <Text style={styles.logoutButtonText}>Log out</Text>
-        </TouchableOpacity>
-      </View>
-    </ScrollView>
-  </SafeAreaView>
-);
+      <PreviewModal
+        visible={!!previewUpload}
+        upload={previewUpload}
+        onClose={() => setPreviewUpload(null)}
+        onEdit={handleEditCaption}
+        onDelete={handleDeleteUpload}
+      />
+    </SafeAreaView>
+  );
 }
-
-// ---------------------------------------------------------------------------
-// Styles – tuned for a clean, app-native feel that still echoes your site
-// ---------------------------------------------------------------------------
 
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: COLORS.background,
-  },
-  splitBackground: {
-    ...StyleSheet.absoluteFillObject,
-    flexDirection: "row",
-  },
-  leftBackground: {
-    flex: 1,
-    backgroundColor: COLORS.background,
-  },
-  rightBackground: {
-    flex: 1,
-    backgroundColor: COLORS.backgroundRight,
+    backgroundColor: "#000",
   },
   scrollContent: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     paddingBottom: 32,
+    backgroundColor: COLORS.background,
+    flexGrow: 1,
   },
-  headerRow: {
+  topRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 16,
     marginTop: 4,
+    marginBottom: 20,
   },
   screenTitle: {
     fontSize: 28,
     fontWeight: "700",
     color: COLORS.textPrimary,
   },
-
-  profileCard: {
-    backgroundColor: COLORS.card,
-    borderRadius: 28,
-    padding: 20,
-    marginTop: 8,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.35,
-    shadowRadius: 20,
-    elevation: 8,
-  },
-
-  profilePictureContainer: {
+  profileHeader: {
+    flexDirection: "row",
     alignItems: "center",
     marginBottom: 16,
   },
-  profilePictureCircle: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    borderWidth: 3,
+  avatarCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    borderWidth: 2,
     borderColor: COLORS.accent,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#222222",
+    backgroundColor: COLORS.cream,
     overflow: "hidden",
   },
-  profilePictureImage: {
+  avatarImage: {
     width: "100%",
     height: "100%",
     resizeMode: "cover",
   },
-  profilePictureInitial: {
-    fontSize: 36,
+  avatarInitial: {
+    fontSize: 24,
     fontWeight: "700",
     color: COLORS.accent,
   },
-  profilePictureHint: {
-    marginTop: 6,
-    fontSize: 12,
-    color: COLORS.textMuted,
-  },
-
-  nameBlock: {
-    alignItems: "center",
-    marginBottom: 12,
+  profileInfo: {
+    flex: 1,
+    marginLeft: 14,
   },
   profileName: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: "700",
     color: COLORS.textPrimary,
   },
   profileProfession: {
-    marginTop: 4,
-    fontSize: 16,
+    fontSize: 14,
     color: COLORS.textSecondary,
+    marginTop: 2,
   },
-
-  roleToggleRow: {
-    flexDirection: "row",
-    justifyContent: "center",
-    gap: 12,
-    marginTop: 8,
-    flexWrap: "wrap",
-  },
-  togglePill: {
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: COLORS.accent,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    backgroundColor: COLORS.card,
-  },
-  togglePillActive: {
-    backgroundColor: COLORS.accent,
-  },
-  togglePillText: {
+  profileLocation: {
     fontSize: 13,
-    color: COLORS.accent,
-    fontWeight: "500",
+    color: COLORS.textMuted,
+    marginTop: 1,
   },
-  togglePillTextActive: {
-    color: COLORS.textPrimary,
+  bioText: {
+    fontSize: 14,
+    color: COLORS.textSecondary,
+    lineHeight: 20,
+    marginBottom: 12,
   },
-
   badgeRow: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 8,
-    marginTop: 10,
+    marginBottom: 16,
   },
   statusBadge: {
     borderRadius: 999,
     paddingHorizontal: 10,
     paddingVertical: 4,
+    borderWidth: 1.5,
+    borderColor: COLORS.ink,
   },
   statusBadgeText: {
     fontSize: 12,
     fontWeight: "600",
   },
-
-  sectionBlock: {
-    marginTop: 18,
+  divider: {
+    height: 1,
+    backgroundColor: COLORS.divider,
+    marginBottom: 20,
   },
-  sectionTitle: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: COLORS.textSecondary,
-    letterSpacing: 1.1,
+  uploadsSection: {
+    marginBottom: 24,
   },
-  sectionHeaderRow: {
+  uploadsHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-  },
-
-  multiLineInput: {
-    marginTop: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 12,
-    backgroundColor: "#181818",
-    borderWidth: 1,
-    borderColor: COLORS.divider,
-    minHeight: 70,
-    maxHeight: 140,
-    color: COLORS.textPrimary,
-    textAlignVertical: "top",
-    fontSize: 14,
-  },
-  singleLineInput: {
-    marginTop: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 12,
-    backgroundColor: "#181818",
-    borderWidth: 1,
-    borderColor: COLORS.divider,
-    color: COLORS.textPrimary,
-    fontSize: 14,
-  },
-
-  linkButtonText: {
-    color: COLORS.accent,
-    fontSize: 13,
-    fontWeight: "500",
-  },
-
-  uploadsHeader: {
-    marginTop: 24,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
+    marginBottom: 10,
   },
   uploadsTitle: {
     fontSize: 18,
     fontWeight: "700",
     color: COLORS.textPrimary,
   },
-  uploadsSubtitle: {
-    fontSize: 12,
-    marginTop: 4,
-    color: COLORS.textMuted,
-  },
-  addMediaButton: {
-    alignSelf: "flex-start",
-    paddingHorizontal: 10,
+  addMediaBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 999,
     backgroundColor: COLORS.accent,
   },
   addMediaText: {
@@ -1308,102 +623,64 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     fontSize: 13,
   },
-
-  uploadsListBlock: {
-    marginTop: 10,
+  gridContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+  },
+  gridItem: {
+    width: "33.333%",
+    aspectRatio: 1,
+    padding: 2,
+  },
+  gridItemInner: {
+    flex: 1,
+    borderRadius: 6,
+    backgroundColor: COLORS.card,
+    overflow: "hidden",
+    position: "relative",
+    borderWidth: 1.5,
+    borderColor: COLORS.ink,
+  },
+  gridImage: {
+    width: "100%",
+    height: "100%",
+  },
+  gridVideoFallback: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: COLORS.cream,
+  },
+  gridCaption: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    color: "#fff",
+    fontSize: 10,
+    paddingHorizontal: 6,
+    paddingVertical: 3,
   },
   uploadsLoadingRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
+    marginTop: 12,
   },
   uploadsLoadingText: {
     color: COLORS.textSecondary,
     fontSize: 13,
   },
   noUploadsBlock: {
-    marginTop: 6,
+    alignItems: "center",
+    marginTop: 24,
+    gap: 8,
   },
   noUploadsText: {
-    color: COLORS.textSecondary,
+    color: COLORS.textMuted,
     fontSize: 14,
   },
-  noUploadsHint: {
-    color: COLORS.textMuted,
-    fontSize: 12,
-    marginTop: 2,
-  },
-
-  /* Full-width card instead of 140px thumbnail, matching the website */
-  uploadCard: {
-    width: "100%",
-    padding: 10,
-    marginBottom: 16,
-    borderRadius: 14,
-    backgroundColor: "#181818",
-    borderWidth: 1,
-    borderColor: COLORS.divider,
-  },
-  /* Portrait-friendly preview that mirrors the website's large photos */
-  uploadImage: {
-    width: "100%",
-    aspectRatio: 3 / 4,       // portrait like the website
-    borderRadius: 12,
-    marginBottom: 8,
-  },
-  uploadTypePill: {
-    alignSelf: "flex-start",
-    borderRadius: 999,
-    backgroundColor: COLORS.chipBackground,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    marginBottom: 4,
-  },
-  uploadTypeText: {
-    color: COLORS.textSecondary,
-    fontSize: 10,
-    fontWeight: "600",
-    textTransform: "uppercase",
-  },
-  uploadCaption: {
-    color: COLORS.textPrimary,
-    fontSize: 13,
-    marginTop: 2,
-  },
-  uploadDateText: {
-    marginTop: 6,
-    color: COLORS.textMuted,
-    fontSize: 11,
-  },
-
-  actionsRow: {
-    marginTop: 24,
-  },
-  primaryButton: {
-    borderRadius: 999,
-    backgroundColor: COLORS.accent,
-    paddingVertical: 12,
-    alignItems: "center",
-  },
-  primaryButtonText: {
-    color: COLORS.textPrimary,
-    fontSize: 15,
-    fontWeight: "600",
-  },
-
-  logoutButton: {
-    marginTop: 14,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: COLORS.divider,
-    paddingVertical: 11,
-    alignItems: "center",
-  },
-  logoutButtonText: {
-    color: COLORS.textSecondary,
-    fontSize: 14,
-  },
-
   loadingFullScreen: {
     flex: 1,
     backgroundColor: COLORS.background,
@@ -1414,77 +691,126 @@ const styles = StyleSheet.create({
     marginTop: 8,
     color: COLORS.textSecondary,
   },
-
-  uploadThumbnail: {
-    width: 220,
-    height: 140,
-    borderRadius: 18,
-    marginBottom: 8,
-  },
-
-  uploadFallback: {
-    width: 220,
-    height: 140,
-    borderRadius: 18,
-    marginBottom: 8,
-    backgroundColor: "#2a2a2a",
-    alignItems: "center",
+  previewOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(255,248,238,0.85)",
     justifyContent: "center",
+    alignItems: "center",
   },
-
-  uploadFallbackText: {
-    color: COLORS.textMuted,
-    fontSize: 13,
-  },
-
-  uploadDateText: {
-    color: COLORS.textMuted,
-    fontSize: 11,
-  },
-  uploadMeta: {
-    marginTop: 6,
-    color: COLORS.textMuted,
-    fontSize: 11,
-  },
-
-  /* Upload edit / delete */
-  uploadMenuBtn: {
+  previewClose: {
     position: "absolute",
-    top: 18,
-    right: 18,
-    zIndex: 5,
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: "rgba(0,0,0,0.5)",
+    top: 54,
+    left: 16,
+    zIndex: 10,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: COLORS.card,
+    borderWidth: 2,
+    borderColor: COLORS.ink,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: COLORS.ink,
+    shadowOffset: { width: 2, height: 2 },
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    elevation: 4,
+  },
+  previewMenu: {
+    position: "absolute",
+    top: 54,
+    right: 16,
+    zIndex: 10,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: COLORS.card,
+    borderWidth: 2,
+    borderColor: COLORS.ink,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: COLORS.ink,
+    shadowOffset: { width: 2, height: 2 },
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    elevation: 4,
+  },
+  previewContent: {
     alignItems: "center",
     justifyContent: "center",
   },
-  uploadEditRow: {
-    marginTop: 8,
-  },
-  uploadEditInput: {
-    backgroundColor: "#222",
-    color: COLORS.textPrimary,
+  previewMedia: {},
+  previewVideoFallback: {
+    width: "100%",
+    aspectRatio: 16 / 9,
+    backgroundColor: COLORS.cream,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
     borderRadius: 8,
-    borderWidth: 1,
-    borderColor: COLORS.accent,
-    padding: 10,
-    fontSize: 13,
+  },
+  previewVideoText: {
+    color: COLORS.textMuted,
+    fontSize: 14,
+  },
+  previewCaption: {
+    color: COLORS.textPrimary,
+    fontSize: 14,
+    marginTop: 12,
+    textAlign: "center",
+    paddingHorizontal: 24,
+    lineHeight: 20,
+  },
+  previewEditWrap: {
+    paddingHorizontal: 24,
+    marginTop: 12,
+  },
+  previewEditInput: {
+    backgroundColor: COLORS.cream,
+    color: COLORS.textPrimary,
+    borderRadius: 10,
+    padding: 12,
+    fontSize: 14,
     minHeight: 60,
     textAlignVertical: "top",
+    borderWidth: 1.5,
+    borderColor: COLORS.peach,
   },
-  uploadEditBtns: {
+  previewEditBtns: {
     flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
+    justifyContent: "flex-end",
+    gap: 16,
     marginTop: 8,
   },
-  uploadEditSaveBtn: {
-    backgroundColor: COLORS.accent,
-    borderRadius: 6,
-    paddingHorizontal: 16,
-    paddingVertical: 6,
+  previewOptionsCard: {
+    position: "absolute",
+    top: 92,
+    right: 16,
+    backgroundColor: COLORS.card,
+    borderRadius: 12,
+    paddingVertical: 4,
+    minWidth: 160,
+    borderWidth: 2,
+    borderColor: COLORS.ink,
+    shadowColor: COLORS.ink,
+    shadowOffset: { width: 4, height: 4 },
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    elevation: 8,
   },
-
+  previewOption: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+  },
+  previewOptionText: {
+    color: COLORS.textPrimary,
+    fontSize: 15,
+    fontWeight: "500",
+    textAlign: "center",
+  },
+  previewOptionDivider: {
+    height: 1,
+    backgroundColor: COLORS.divider,
+    marginHorizontal: 8,
+  },
 });

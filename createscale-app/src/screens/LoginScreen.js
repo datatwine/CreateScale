@@ -11,6 +11,8 @@ import {
 } from "react-native";
 import { AuthContext } from "../context/AuthContext";
 import SocialLoginButtons from "../components/SocialLoginButtons";
+import { COLORS } from "../config/theme";
+import PressableStamp from "../components/PressableStamp";
 
 export default function LoginScreen({ navigation }) {
   const { login } = useContext(AuthContext);
@@ -91,15 +93,19 @@ export default function LoginScreen({ navigation }) {
 
           {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-          <TouchableOpacity
-            style={[styles.primaryButton, loading && styles.disabledButton]}
+          <PressableStamp
             onPress={handleLoginPress}
             disabled={loading}
+            stampOffset={3}
+            borderRadius={999}
+            borderColor={COLORS.ink}
+            borderWidth={2}
+            style={[styles.primaryButton, loading && styles.disabledButton]}
           >
             <Text style={styles.primaryButtonText}>
               {loading ? "Logging in..." : "Log in"}
             </Text>
-          </TouchableOpacity>
+          </PressableStamp>
 
           <TouchableOpacity onPress={goToSignup} style={styles.secondaryButton}>
             <Text style={styles.secondaryButtonText}>
@@ -114,8 +120,8 @@ export default function LoginScreen({ navigation }) {
   );
 }
 
-const ORANGE = "#d17700";
-const PALE_WHITE = "#fef5e7";
+const ORANGE = COLORS.accent;
+const PALE_WHITE = COLORS.background;
 
 const styles = StyleSheet.create({
   fullScreen: {
@@ -154,48 +160,49 @@ const styles = StyleSheet.create({
   },
   brandSubtitle: {
     fontSize: 14,
-    color: "#f9f9f9",
+    color: COLORS.textPrimary,
     textAlign: "center",
     marginBottom: 24,
   },
   card: {
-    backgroundColor: "rgba(0, 0, 0, 0.7)",
+    backgroundColor: COLORS.card,
     borderRadius: 16,
     padding: 20,
-    shadowColor: "#000",
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
+    borderWidth: 2,
+    borderColor: COLORS.ink,
+    shadowColor: COLORS.ink,
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    shadowOffset: { width: 4, height: 4 },
     elevation: 6,
   },
   cardTitle: {
     fontSize: 20,
     fontWeight: "600",
-    color: PALE_WHITE,
+    color: COLORS.textPrimary,
     marginBottom: 4,
   },
   cardSubtitle: {
     fontSize: 13,
-    color: "#cccccc",
+    color: COLORS.textSecondary,
     marginBottom: 16,
   },
   input: {
-    backgroundColor: "#111111",
+    backgroundColor: COLORS.cream,
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    color: "#ffffff",
+    color: COLORS.textPrimary,
     marginBottom: 12,
-    borderWidth: 1,
-    borderColor: "#333333",
+    borderWidth: 2,
+    borderColor: COLORS.ink,
   },
   errorText: {
-    color: "#ff6666",
+    color: "#B71C1C",
     marginBottom: 8,
     fontSize: 13,
   },
   primaryButton: {
-    backgroundColor: ORANGE,
     borderRadius: 999,
     paddingVertical: 12,
     justifyContent: "center",
@@ -203,7 +210,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   primaryButtonText: {
-    color: "#ffffff",
+    color: COLORS.textPrimary,
     fontWeight: "700",
     fontSize: 16,
   },
@@ -215,11 +222,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   secondaryButtonText: {
-    color: "#f1f1f1",
+    color: COLORS.textSecondary,
     fontSize: 14,
   },
   secondaryButtonHighlight: {
-    color: ORANGE,
+    color: COLORS.accent,
     fontWeight: "600",
   },
 });

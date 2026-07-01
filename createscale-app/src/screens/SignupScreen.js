@@ -26,13 +26,15 @@ import {
 import { AuthContext } from "../context/AuthContext";
 import { signupWithCredentials } from "../api/auth";
 import SocialLoginButtons from "../components/SocialLoginButtons";
+import { COLORS } from "../config/theme";
+import PressableStamp from "../components/PressableStamp";
 
 // ----- Theme constants (so you can reuse them later) -----
 const { height: WINDOW_HEIGHT } = Dimensions.get("window");
 
-const PRIMARY_ORANGE = "#e68513";   // soft orange accent
-const SOFT_WHITE = "#fff4dd";       // pale, slightly yellow white
-const DEEP_BLACK = "#000000";       // pure black background
+const PRIMARY_ORANGE = COLORS.accent;
+const SOFT_WHITE = COLORS.background;
+const DEEP_BLACK = "#000000";
 
 // First sentence broken into words so we can animate each separately
 const introWords = [
@@ -310,16 +312,19 @@ export default function SignupScreen({ navigation }) {
                 ) : null}
 
                 {/* Chunky dopamine button */}
-                <TouchableOpacity
-                  style={styles.signupButton}
-                  activeOpacity={0.8}
+                <PressableStamp
                   onPress={handleSubmit}
                   disabled={isSubmitting}
+                  stampOffset={3}
+                  borderRadius={999}
+                  borderColor={COLORS.ink}
+                  borderWidth={2}
+                  style={styles.signupButton}
                 >
                   <Text style={styles.signupButtonText}>
                     {isSubmitting ? "Signing you up..." : "Sign up"}
                   </Text>
-                </TouchableOpacity>
+                </PressableStamp>
 
                 {/* Link to login */}
                 <View style={styles.loginRow}>
@@ -418,42 +423,44 @@ const styles = StyleSheet.create({
   },
   formCardShadow: {
     borderRadius: 28,
-    shadowColor: "#000",
-    shadowOpacity: 0.32,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 12 },
-    elevation: 12, // Android shadow
+    shadowColor: COLORS.ink,
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    shadowOffset: { width: 6, height: 6 },
+    elevation: 12,
   },
   formCard: {
     borderRadius: 28,
-    backgroundColor: "#111111",
+    backgroundColor: COLORS.card,
     paddingHorizontal: 22,
     paddingVertical: 26,
+    borderWidth: 2,
+    borderColor: COLORS.ink,
   },
   formTitle: {
     fontSize: 26,
     fontWeight: "800",
-    color: "#ffffff",
+    color: COLORS.textPrimary,
     marginBottom: 6,
   },
   formSubtitle: {
     fontSize: 15,
     lineHeight: 20,
-    color: "#d7d2c8",
+    color: COLORS.textSecondary,
     marginBottom: 18,
   },
   input: {
     height: 48,
     borderRadius: 14,
     paddingHorizontal: 14,
-    backgroundColor: "#222222",
-    borderWidth: 1,
-    borderColor: "#333333",
-    color: "#ffffff",
+    backgroundColor: COLORS.cream,
+    borderWidth: 2,
+    borderColor: COLORS.ink,
+    color: COLORS.textPrimary,
     marginBottom: 12,
   },
   errorText: {
-    color: "#ff6666",
+    color: "#B71C1C",
     fontSize: 13,
     marginBottom: 8,
     lineHeight: 18,
@@ -464,12 +471,11 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: PRIMARY_ORANGE,
   },
   signupButtonText: {
     fontSize: 18,
     fontWeight: "700",
-    color: "#ffffff",
+    color: COLORS.textPrimary,
   },
   loginRow: {
     flexDirection: "row",

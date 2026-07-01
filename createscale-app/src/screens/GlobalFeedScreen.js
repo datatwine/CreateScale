@@ -30,6 +30,8 @@ import { Ionicons } from "@expo/vector-icons";
 
 import { AuthContext } from "../context/AuthContext";
 import { API_BASE_URL } from "../config/api";
+import { COLORS } from "../config/theme";
+import PressableStamp from "../components/PressableStamp";
 
 // ---------------------------------------------------------------------------
 // Shared helpers (same logic as ProfileScreen — tiny, so duplicated here
@@ -59,36 +61,21 @@ function makeMediaUrl(pathOrUrl) {
 }
 
 // ---------------------------------------------------------------------------
-// Color palette — mirrors ProfileScreen so the app feels cohesive
-// ---------------------------------------------------------------------------
-
-const COLORS = {
-    background: "#0B0F1A",       // deep navy, close to the mockup
-    card: "#141A2E",             // slightly lighter navy for cards
-    cardOverlay: "rgba(0,0,0,0.55)",
-    accent: "#E68A00",           // orange, consistent with ProfileScreen
-    textPrimary: "#FFFFFF",
-    textSecondary: "#CFCFCF",
-    textMuted: "#8A8FA0",
-    pillBg: "#1E2438",           // inactive filter pill
-    pillActiveBg: "#E68A00",     // active filter pill
-    divider: "#2B2B2B",
-};
-
-// ---------------------------------------------------------------------------
-// FeedCard — one performer card matching the dark-photo-overlay design
+// FeedCard — one performer card with stamp effect
 // ---------------------------------------------------------------------------
 
 function FeedCard({ profile, onPress }) {
     const imageUri = makeMediaUrl(profile.profile_picture_url);
 
     return (
-        <TouchableOpacity
-            style={styles.card}
-            activeOpacity={0.85}
+        <PressableStamp
             onPress={onPress}
+            stampOffset={5}
+            borderRadius={16}
+            borderColor={COLORS.ink}
+            borderWidth={2}
+            style={styles.card}
         >
-            {/* Large profile photo — fills most of the card */}
             {imageUri ? (
                 <Image
                     source={{ uri: imageUri }}
@@ -96,7 +83,6 @@ function FeedCard({ profile, onPress }) {
                     resizeMode="cover"
                 />
             ) : (
-                // Fallback: initial letter on a dark background
                 <View style={[styles.cardImage, styles.cardImagePlaceholder]}>
                     <Text style={styles.cardInitial}>
                         {(profile.username || "?").charAt(0).toUpperCase()}
@@ -104,7 +90,6 @@ function FeedCard({ profile, onPress }) {
                 </View>
             )}
 
-            {/* Semi-transparent overlay with text at the bottom */}
             <View style={styles.cardOverlay}>
                 <Text style={styles.cardName} numberOfLines={1}>
                     {profile.username}
@@ -122,7 +107,7 @@ function FeedCard({ profile, onPress }) {
                     </Text>
                 ) : null}
             </View>
-        </TouchableOpacity>
+        </PressableStamp>
     );
 }
 
@@ -282,15 +267,9 @@ export default function GlobalFeedScreen({ navigation }) {
 
     return (
         <SafeAreaView style={styles.safeArea} edges={["top"]}>
+            <View style={{ flex: 1, backgroundColor: COLORS.background }}>
             {/* Header */}
             <View style={styles.header}>
-                {/* Back arrow to ProfileScreen */}
-                <TouchableOpacity
-                    onPress={() => navigation.goBack()}
-                    style={styles.backButton}
-                >
-                    <Ionicons name="arrow-back" size={24} color={COLORS.textPrimary} />
-                </TouchableOpacity>
 
                 <View style={styles.headerTextBlock}>
                     <Text style={styles.headerTitle}>Performing Artists</Text>
@@ -352,6 +331,7 @@ export default function GlobalFeedScreen({ navigation }) {
                     }
                 />
             )}
+            </View>
         </SafeAreaView>
     );
 }
@@ -363,7 +343,7 @@ export default function GlobalFeedScreen({ navigation }) {
 const styles = StyleSheet.create({
     safeArea: {
         flex: 1,
-        backgroundColor: COLORS.background,
+        backgroundColor: "#000",
     },
 
     // --- Header ---
@@ -421,10 +401,10 @@ const styles = StyleSheet.create({
         paddingHorizontal: 14,
         paddingVertical: 6,
         borderRadius: 999,
-        backgroundColor: COLORS.pillBg,
+        backgroundColor: COLORS.cream,
     },
     pillActive: {
-        backgroundColor: COLORS.pillActiveBg,
+        backgroundColor: COLORS.accent,
     },
     pillText: {
         fontSize: 13,
@@ -432,13 +412,14 @@ const styles = StyleSheet.create({
         color: COLORS.textSecondary,
     },
     pillTextActive: {
-        color: COLORS.textPrimary,
+        color: COLORS.card,
     },
 
     // --- Feed list ---
     listContent: {
         paddingHorizontal: 16,
         paddingBottom: 24,
+        gap: 16,
     },
 
     // --- Card ---
@@ -446,21 +427,13 @@ const styles = StyleSheet.create({
         borderRadius: 16,
         overflow: "hidden",
         backgroundColor: COLORS.card,
-        marginBottom: 16,
-
-        // Subtle shadow for depth
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
-        elevation: 5,
     },
     cardImage: {
         width: "100%",
         height: 220,
     },
     cardImagePlaceholder: {
-        backgroundColor: "#1A2040",
+        backgroundColor: COLORS.cream,
         alignItems: "center",
         justifyContent: "center",
     },
@@ -473,12 +446,12 @@ const styles = StyleSheet.create({
     // Text overlay at the bottom of each card
     cardOverlay: {
         padding: 14,
-        backgroundColor: COLORS.cardOverlay,
+        backgroundColor: "rgba(0,0,0,0.55)",
     },
     cardName: {
         fontSize: 18,
         fontWeight: "700",
-        color: COLORS.textPrimary,
+        color: "#fff",
     },
     cardProfession: {
         fontSize: 14,
@@ -487,7 +460,7 @@ const styles = StyleSheet.create({
     },
     cardBio: {
         fontSize: 13,
-        color: COLORS.textMuted,
+        color: "rgba(255,255,255,0.7)",
         marginTop: 6,
         lineHeight: 18,
     },

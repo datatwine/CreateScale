@@ -1,7 +1,7 @@
 // App.js
 
 import React, { useContext } from "react";
-import { NavigationContainer } from "@react-navigation/native";
+import { NavigationContainer, DefaultTheme } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Ionicons } from "@expo/vector-icons";
@@ -15,22 +15,38 @@ import GlobalFeedScreen from "./src/screens/GlobalFeedScreen";
 import ProfileDetailScreen from "./src/screens/ProfileDetailScreen";
 import BookingsScreen from "./src/screens/BookingsScreen";
 import LiveEventsScreen from "./src/screens/LiveEventsScreen";
+import EditProfileScreen from "./src/screens/EditProfileScreen";
 
-import { View, Text, StyleSheet } from "react-native";
+import { View, Text, StatusBar, StyleSheet } from "react-native";
+import { COLORS } from "./src/config/theme";
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
+
+const WebTheme = {
+  ...DefaultTheme,
+  dark: false,
+  colors: {
+    ...DefaultTheme.colors,
+    background: COLORS.background,
+    card: COLORS.card,
+    text: COLORS.textPrimary,
+    border: COLORS.divider,
+    primary: COLORS.accent,
+  },
+};
 
 function MainTabs() {
   return (
     <Tab.Navigator
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: "#d17700",
-        tabBarInactiveTintColor: "#888",
+        tabBarActiveTintColor: COLORS.accent,
+        tabBarInactiveTintColor: COLORS.textMuted,
         tabBarStyle: {
-          backgroundColor: "#111",
-          borderTopColor: "#2a2a2a",
+          backgroundColor: COLORS.card,
+          borderTopColor: COLORS.ink,
+          borderTopWidth: 2,
         },
       }}
     >
@@ -40,7 +56,7 @@ function MainTabs() {
         options={{
           tabBarLabel: "Feed",
           tabBarIcon: ({ color }) => (
-            <Ionicons name="grid-outline" size={20} color={color} />
+            <Ionicons name="home-outline" size={20} color={color} />
           ),
         }}
       />
@@ -90,11 +106,12 @@ function RootNavigator() {
   }
 
   return (
-    <NavigationContainer>
+    <NavigationContainer theme={WebTheme}>
       {token ? (
-        <Stack.Navigator screenOptions={{ headerShown: false }}>
+        <Stack.Navigator screenOptions={{ headerShown: false, animation: "fade" }}>
           <Stack.Screen name="MainTabs" component={MainTabs} />
           <Stack.Screen name="ProfileDetail" component={ProfileDetailScreen} />
+          <Stack.Screen name="EditProfile" component={EditProfileScreen} />
         </Stack.Navigator>
       ) : (
         <Stack.Navigator screenOptions={{ headerShown: false }}>
@@ -109,7 +126,10 @@ function RootNavigator() {
 export default function App() {
   return (
     <AuthProvider>
-      <RootNavigator />
+      <View style={{ flex: 1, backgroundColor: "#000" }}>
+        <StatusBar barStyle="light-content" backgroundColor="#000000" translucent={false} />
+        <RootNavigator />
+      </View>
     </AuthProvider>
   );
 }
