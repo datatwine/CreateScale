@@ -110,6 +110,7 @@ Every section below zooms into one part of this picture. Read them in order for 
 19. [Common Commands Cheat Sheet](#19-common-commands-cheat-sheet)
 20. [DOs and DON'Ts](#20-dos-and-donts)
 21. [Further Reading](#21-further-reading)
+22. [Kubernetes and k3s Infrastructure](#22-kubernetes-and-k3s-infrastructure)
 
 ---
 
@@ -1441,6 +1442,823 @@ Curated links to official documentation for every technology in the stack. Bookm
 - [How Cloudflare works](https://developers.cloudflare.com/fundamentals/concepts/how-cloudflare-works/)
 - [WAF custom rules](https://developers.cloudflare.com/waf/custom-rules/)
 - [R2 storage](https://developers.cloudflare.com/r2/)
+
+---
+
+## 22. Kubernetes and k3s Infrastructure
+
+The application runs on **k3s** — a lightweight Kubernetes distribution — on Hetzner Cloud servers in Singapore. This section explains Kubernetes from scratch: why we use it, how it works, what every manifest does, how pods scale, how nodes scale, and how to operate the cluster. By the end you should be able to read, modify, and write your own manifests.
+
+### The Big Picture
+
+Before Kubernetes, we ran Docker containers directly on AWS EC2 instances. Nginx discovered Spot instances by polling the EC2 API. Scaling meant launching new VMs, waiting for boot scripts, and hoping Nginx picked them up. If a container crashed, nothing restarted it. If a VM died, traffic hit a dead backend until Nginx's health check noticed (up to 10 seconds).
+
+Kubernetes replaces all of that with a single system that:
+
+1. **Runs your containers** and restarts them if they crash
+2. **Scales pods** (containers) up/down based on CPU usage — automatically
+3. **Scales nodes** (servers) up/down based on pod demand — automatically
+4. **Routes traffic** to healthy pods only (built-in load balancing)
+5. **Rolls out new versions** with zero downtime
+6. **Self-heals** — if a node dies, pods are rescheduled to surviving nodes
+
+```
+Internet
+  │
+  ▼
+Cloudflare (SSL, DDoS, CDN)
+  │
+  ▼
+AWS Global Accelerator (3.33.130.190)
+  │
+  ▼
+Hetzner Load Balancer (5.223.35.241)
+  │
+  ▼ (targets servers labeled role=k3s)
+  │
+  ├────────────────────────────────────────────┐
+  │                                            │
+  ▼                                            ▼
+k3s Master Node (5.223.45.51)           Worker Nodes (auto-scaled)
+CPX22 · 3 CPU · 4GB · 10.0.0.3         CPX22 · 3 CPU · 4GB · 10.0.0.x
+  │                                            │
+  ├─ Traefik (ingress controller)              ├─ Django pods (fleet)
+  ├─ Django pod (resident)                     ├─ Node Exporter
+  ├─ Celery Worker                             └─ Promtail
+  ├─ Celery Beat
+  ├─ Prometheus Agent                    Created/destroyed by
+  ├─ Cluster Autoscaler                  Cluster Autoscaler based
+  ├─ Node Exporter                       on pod demand
+  └─ Promtail
+
+      Private Network: 10.0.0.0/16 (artkhoj-net)
+      All inter-node traffic stays on this network.
+      DB box (10.0.0.2) is on the same private net.
+```
+
+### Why k3s and Not Full Kubernetes (k8s)?
+
+**Kubernetes (k8s)** is a container orchestration platform originally built by Google for managing thousands of servers. Full k8s requires multiple control-plane nodes, etcd clusters, and significant memory overhead — overkill for a small fleet.
+
+**k3s** is a certified Kubernetes distribution by Rancher (now SUSE) that strips out the bloat:
+
+| | Full k8s | k3s |
+|---|---|---|
+| Control plane RAM | ~2 GB | ~512 MB |
+| Binary size | ~300 MB + many components | Single ~60 MB binary |
+| Default ingress | None (install yourself) | Traefik (built-in) |
+| Default storage | None | SQLite or embedded etcd |
+| Container runtime | containerd (configurable) | containerd (built-in) |
+| Certificate management | Manual setup | Auto-generated |
+| Certified Kubernetes? | Yes | Yes — passes the same conformance tests |
+
+k3s runs the exact same Kubernetes API. Every `kubectl` command, every manifest, every Helm chart works identically. The difference is operational — k3s is easier to install, uses less memory, and has sane defaults.
+
+**Why we chose it:** Our fleet is 1 master + up to 15 workers. We do not need multi-master HA or complex networking plugins. k3s gives us real Kubernetes without the operational tax.
+
+### Core Concepts
+
+Before reading manifests, you need to understand six concepts. Everything else builds on these.
+
+| Concept | What it is | Analogy |
+|---------|-----------|---------|
+| **Cluster** | The entire system — master + all workers | The whole fleet of servers |
+| **Node** | A single server in the cluster. Master nodes run the control plane. Worker nodes run your app. | One server (like one EC2 instance) |
+| **Pod** | The smallest deployable unit. Contains one or more containers sharing a network. Usually 1 pod = 1 container. | One running Docker container |
+| **Namespace** | A virtual partition of the cluster. Keeps resources organized and isolated. | A folder — `artkhoj` for our app, `kube-system` for k8s internals |
+| **Manifest** | A YAML file that declares the desired state ("I want 3 Django pods"). Kubernetes makes reality match. | A Dockerfile, but for infrastructure |
+| **Label** | Key-value tag on any resource. Used for selecting, filtering, and connecting resources. | Tags on AWS resources |
+
+**The key mental model:** You do not tell Kubernetes what to do step-by-step. You tell it what you want (declarative), and it figures out how to get there. If you say "I want 3 replicas" and a pod crashes, Kubernetes launches a new one. You never say "start a container" — you say "I want this deployment to exist" and Kubernetes handles the rest.
+
+### Our Nodes
+
+The cluster runs on Hetzner Cloud in Singapore (`sin` region):
+
+| Node | Role | IP (private) | IP (public) | What runs on it |
+|------|------|-------------|------------|-----------------|
+| k3s master | Control plane + workloads | 10.0.0.3 | 5.223.45.51 | Traefik, resident Django pod, Celery, Prometheus, autoscaler |
+| web-pool workers | Workloads only | 10.0.0.x | auto-assigned | Fleet Django pods, Node Exporter, Promtail |
+| DB box | Not part of k3s | 10.0.0.2 | (has public IP) | PostgreSQL, Redis, Grafana, Loki, Prometheus server |
+
+The master runs the Kubernetes API server, scheduler, and controller manager. Workers only run pods. The DB box is a standalone server on the same private network — not managed by Kubernetes.
+
+**Private networking:** All nodes connect via Hetzner's private network `artkhoj-net` (10.0.0.0/16). Pod-to-pod traffic, metrics scraping (Prometheus), and database connections all use private IPs. Public IPs are only used for the Hetzner Load Balancer to reach nodes and for SSH access.
+
+When a new worker boots, its cloud-init script:
+1. Configures the private network interface (`enp7s0`)
+2. Sets up k3s-agent to use the private IP
+3. Labels the server in Hetzner's API (`role=k3s`) so the load balancer targets it
+4. Starts k3s-agent, which joins the cluster
+
+### Anatomy of a Manifest
+
+Every Kubernetes manifest is a YAML file with four top-level fields:
+
+```yaml
+apiVersion: apps/v1          # Which API group and version
+kind: Deployment              # What type of resource
+metadata:                     # Name, namespace, labels
+  name: django
+  namespace: artkhoj
+spec:                         # The actual specification (varies by kind)
+  replicas: 1
+  ...
+```
+
+**apiVersion** tells Kubernetes which schema to validate against. Common ones:
+- `v1` — core resources (Namespace, Service, Secret, ConfigMap, Pod)
+- `apps/v1` — workloads (Deployment, DaemonSet)
+- `batch/v1` — batch jobs (Job, CronJob)
+- `autoscaling/v2` — autoscaling (HorizontalPodAutoscaler)
+- `networking.k8s.io/v1` — networking (Ingress)
+- `rbac.authorization.k8s.io/v1` — permissions (ClusterRole, ClusterRoleBinding)
+
+**kind** is the resource type. The next section covers every kind we use.
+
+### Resource Kinds — What We Use and Why
+
+Our cluster uses 11 resource types across 16 manifest files in `deploy/k8s/`. Here is every kind, what it does, and a real example from our codebase.
+
+---
+
+#### Namespace (`00-namespace.yaml`)
+
+A namespace is a virtual partition. Resources in one namespace cannot accidentally interfere with resources in another.
+
+```yaml
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: artkhoj
+```
+
+Our app lives in `artkhoj`. Kubernetes system components live in `kube-system`. When you run `kubectl` commands, you almost always need `-n artkhoj` or `-n kube-system` to specify which namespace.
+
+---
+
+#### Deployment (`11-deployment-web.yaml`, `11b-deployment-web-resident.yaml`, `12-deployment-worker.yaml`, `13-deployment-beat.yaml`)
+
+A Deployment manages a set of identical pods. You declare how many replicas you want, what container image to run, and Kubernetes maintains that count. If a pod crashes, the Deployment creates a new one.
+
+Here is our main Django deployment (`11-deployment-web.yaml`), annotated:
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: django                    # Name of this deployment
+  namespace: artkhoj              # Lives in the artkhoj namespace
+spec:
+  replicas: 1                     # Start with 1 pod (HPA scales this up)
+  selector:
+    matchLabels:                  # "This deployment manages pods with these labels"
+      app: django
+      role: fleet
+  strategy:
+    type: RollingUpdate           # Replace pods one-by-one, not all at once
+    rollingUpdate:
+      maxUnavailable: 0           # Never kill a pod before its replacement is ready
+      maxSurge: 1                 # Launch 1 extra pod during updates
+  template:                       # Template for the pods this deployment creates
+    metadata:
+      labels:
+        app: django               # These labels must match selector above
+        role: fleet               # "fleet" = runs on workers, scaled by HPA
+    spec:
+      affinity:
+        nodeAffinity:             # WHERE to schedule these pods
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: node-role.kubernetes.io/control-plane
+                    operator: DoesNotExist    # NOT on the master node
+      containers:
+        - name: django
+          image: ghcr.io/datatwine/createscale:latest
+          ports:
+            - containerPort: 8000
+          envFrom:
+            - secretRef:
+                name: artkhoj-env   # All env vars from a Kubernetes Secret
+          resources:
+            requests:               # "I need at least this much"
+              cpu: "250m"           # 250 millicpu = 25% of one CPU core
+              memory: "512Mi"       # 512 megabytes
+            limits:                 # "Never exceed this"
+              cpu: "1"              # 1 full CPU core
+              memory: "1Gi"         # 1 gigabyte
+          startupProbe:             # "Is the container booting up?"
+            httpGet:
+              path: /metrics
+              port: 8000
+            failureThreshold: 30    # Try 30 times (30 × 5s = 150s max boot time)
+            periodSeconds: 5
+          readinessProbe:           # "Can this pod accept traffic?"
+            httpGet:
+              path: /metrics
+              port: 8000
+            periodSeconds: 5
+          livenessProbe:            # "Is this pod still alive?"
+            httpGet:
+              path: /metrics
+              port: 8000
+            periodSeconds: 15
+```
+
+**Key details:**
+
+- **`selector.matchLabels`** connects the Deployment to its pods. The Deployment only manages pods whose labels match.
+- **`role: fleet`** vs **`role: resident`**: Fleet pods run on workers and are scaled by HPA. The resident pod (`11b-deployment-web-resident.yaml`) runs on the master (operator: `Exists` instead of `DoesNotExist`) and is NOT scaled — it is a safety net so the master always serves traffic even if all workers die.
+- **Resources**: `requests` are guaranteed minimums (used for scheduling decisions). `limits` are hard caps (pod is killed if it exceeds memory limit). CPU is measured in millicores — `250m` = 0.25 CPU cores.
+- **Probes**: `startupProbe` runs during boot (generous timeout). Once passed, `readinessProbe` and `livenessProbe` take over. If `readinessProbe` fails, the pod is removed from the Service (no traffic). If `livenessProbe` fails, the pod is killed and restarted.
+- **`envFrom: secretRef`**: All environment variables come from a Kubernetes Secret named `artkhoj-env`. This replaces the `.env` file from the Docker Compose setup.
+
+**Celery Worker** (`12-deployment-worker.yaml`) and **Celery Beat** (`13-deployment-beat.yaml`) are the same pattern — different `command`, different resource limits, no probes (they do not serve HTTP). Beat uses `strategy: Recreate` because only one beat scheduler should run at a time (no rolling update).
+
+---
+
+#### Service (`20-service-web.yaml`)
+
+A Service gives pods a stable internal address. Pods come and go (scaling, crashes, updates), but the Service name stays constant.
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: django
+  namespace: artkhoj
+spec:
+  selector:
+    app: django              # Route traffic to ALL pods with label app=django
+  ports:
+    - port: 8000
+      targetPort: 8000
+```
+
+Any pod in the cluster can reach Django at `django.artkhoj.svc.cluster.local:8000` (or just `django:8000` from within the same namespace). The Service load-balances across all pods matching `app: django` — both `role: fleet` and `role: resident` pods receive traffic.
+
+Think of a Service as the Kubernetes equivalent of Nginx's upstream block — but automatic. No discovery scripts, no config reloads.
+
+---
+
+#### Ingress (`21-ingress-web.yaml`)
+
+An Ingress exposes a Service to the outside world by defining routing rules. It tells the ingress controller (Traefik, in our case) how to route external HTTP requests to internal Services.
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: artkhoj
+  namespace: artkhoj
+  annotations:
+    traefik.ingress.kubernetes.io/router.middlewares: >-
+      artkhoj-sec-headers@kubernetescrd,
+      artkhoj-body-limit@kubernetescrd,
+      artkhoj-gzip@kubernetescrd
+spec:
+  rules:
+    - host: stagefreedom.org
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: django
+                port:
+                  number: 8000
+```
+
+This says: "Requests to `stagefreedom.org/*` go to the `django` Service on port 8000." The annotations attach Traefik middlewares for security headers, body size limits, and gzip compression — the same things Nginx config used to handle.
+
+**Traefik** is k3s's built-in ingress controller. It replaces Nginx. It watches for Ingress resources and automatically configures routing. No config files to edit, no reload commands to run.
+
+---
+
+#### Middleware (`22-middlewares.yaml`)
+
+Traefik middlewares are the equivalent of Nginx config directives. They are Kubernetes custom resources (CRDs) specific to Traefik.
+
+```yaml
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: sec-headers
+  namespace: artkhoj
+spec:
+  headers:
+    customResponseHeaders:
+      X-Content-Type-Options: "nosniff"
+      X-Frame-Options: "DENY"
+      Referrer-Policy: "strict-origin-when-cross-origin"
+```
+
+We have three middlewares: `sec-headers` (security headers), `body-limit` (max upload size 25MB), and `gzip` (compression). They are referenced by name in the Ingress annotations.
+
+---
+
+#### Job (`10-job-migrate.yaml`)
+
+A Job runs a container to completion and then stops. Unlike a Deployment (which keeps pods running forever), a Job runs once and exits.
+
+```yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: django-migrate
+  namespace: artkhoj
+spec:
+  backoffLimit: 3                # Retry up to 3 times if it fails
+  template:
+    spec:
+      restartPolicy: Never       # Do not restart on failure (let backoffLimit handle it)
+      containers:
+        - name: migrate
+          image: ghcr.io/datatwine/createscale:latest
+          command: ["python", "manage.py", "migrate", "--noinput"]
+          envFrom:
+            - secretRef:
+                name: artkhoj-env
+```
+
+CI/CD deletes the old Job and creates a new one on each deploy. This runs `python manage.py migrate` exactly once per deployment.
+
+---
+
+#### DaemonSet (`41-daemonset-node-exporter.yaml`)
+
+A DaemonSet runs exactly one pod on every node in the cluster. When a new worker joins, the DaemonSet automatically schedules a pod on it. When a worker is removed, the pod goes with it.
+
+```yaml
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: node-exporter
+  namespace: artkhoj
+spec:
+  selector:
+    matchLabels:
+      app: node-exporter
+  template:
+    spec:
+      hostNetwork: true          # Use the node's network, not pod networking
+      containers:
+        - name: node-exporter
+          image: prom/node-exporter:v1.8.1
+          ports:
+            - containerPort: 9100
+              hostPort: 9100     # Expose on the node's IP directly
+          volumeMounts:          # Mount host filesystem (read-only) to read CPU/memory
+            - name: proc
+              mountPath: /host/proc
+              readOnly: true
+            - name: sys
+              mountPath: /host/sys
+              readOnly: true
+```
+
+Node Exporter collects CPU, memory, and load metrics from each node. Prometheus scrapes it at port 9100. `hostNetwork: true` means the pod uses the node's IP address directly — necessary because Prometheus needs to reach each node individually.
+
+Promtail (`40-daemonset-promtail.yaml`) is also a DaemonSet — it ships container logs from every node to Loki on the DB box.
+
+---
+
+#### HorizontalPodAutoscaler (`30-hpa-web.yaml`)
+
+HPA scales the **number of pods** based on metrics. It watches CPU usage and adjusts the Deployment's replica count.
+
+```yaml
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: django-hpa
+  namespace: artkhoj
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: django                 # Which deployment to scale
+  minReplicas: 1
+  maxReplicas: 60                # Upper bound
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 60   # Target: 60% average CPU across all pods
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 0    # Scale up immediately
+      policies:
+        - type: Percent
+          value: 100                   # Double the pod count per 30s
+          periodSeconds: 30
+    scaleDown:
+      stabilizationWindowSeconds: 600  # Wait 10 minutes before scaling down
+      policies:
+        - type: Pods
+          value: 2                     # Remove max 2 pods per 60s
+          periodSeconds: 60
+```
+
+**How it works:**
+1. HPA checks average CPU across all `django` pods every 15 seconds
+2. If average CPU > 60%, it calculates how many pods are needed to bring it to 60%
+3. It updates the Deployment's replica count
+4. The Deployment creates new pods
+5. Scale-up is aggressive (double every 30s, no stabilization). Scale-down is conservative (wait 10 minutes, remove 2 at a time). This prevents flapping — scaling up fast for traffic spikes, scaling down slowly to avoid premature removal.
+
+**HPA vs Cluster Autoscaler:** HPA scales **pods** (containers). If there are not enough nodes to run the new pods, they sit in `Pending` state. That is where the Cluster Autoscaler comes in — it watches for Pending pods and adds new servers.
+
+---
+
+#### ConfigMap and Secret
+
+**ConfigMap** stores non-sensitive configuration. **Secret** stores sensitive data (encoded in base64).
+
+Our Prometheus agent config (`60-prometheus-agent.yaml`) uses a ConfigMap:
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-agent-config
+  namespace: artkhoj
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 45s
+    remote_write:
+      - url: http://10.0.0.2:9090/api/v1/write    # DB box private IP
+    scrape_configs:
+      - job_name: 'web-fleet'
+        kubernetes_sd_configs:
+          - role: pod
+        ...
+```
+
+The ConfigMap is mounted as a file inside the Prometheus container. Prometheus reads it as `/etc/prometheus/prometheus.yml`.
+
+Our app's environment variables live in a Secret named `artkhoj-env`. Every Deployment references it via `envFrom: secretRef`. This is the k3s equivalent of the `.env` file — but managed by Kubernetes instead of sitting on disk.
+
+> **Warning:** `01-secret.example.yaml` is an EXAMPLE file with placeholder values. NEVER apply it to the cluster — it will overwrite the real secret with dummy values. The real secret was created manually on the master with `kubectl create secret`.
+
+---
+
+#### RBAC — ServiceAccount, ClusterRole, ClusterRoleBinding (`50-rbac-prometheus.yaml`)
+
+RBAC (Role-Based Access Control) controls what pods are allowed to do inside the cluster. By default, pods cannot query the Kubernetes API. Prometheus needs to discover pods for scraping, so it needs explicit permission.
+
+```yaml
+# 1. Create a service account (an identity for the pod)
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: prometheus-discovery
+  namespace: artkhoj
+
+# 2. Create a role defining what actions are allowed
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: prometheus-discovery
+rules:
+  - apiGroups: [""]
+    resources: ["nodes", "pods", "endpoints", "services"]
+    verbs: ["get", "list", "watch"]       # Read-only access
+
+# 3. Bind the role to the service account
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: prometheus-discovery
+roleRef:
+  kind: ClusterRole
+  name: prometheus-discovery
+subjects:
+  - kind: ServiceAccount
+    name: prometheus-discovery
+    namespace: artkhoj
+```
+
+The Prometheus Deployment then uses `serviceAccountName: prometheus-discovery` in its pod spec. This gives it permission to list pods — which is how Prometheus discovers Django pods and Node Exporter pods automatically using `kubernetes_sd_configs`.
+
+---
+
+### The Two Autoscalers — Pods vs Nodes
+
+Scaling in Kubernetes happens at two levels, and two separate systems handle them:
+
+```
+Traffic increases
+       │
+       ▼
+HPA detects high CPU (>60% average)
+       │
+       ▼
+HPA increases Deployment replicas (e.g., 3 → 8 pods)
+       │
+       ▼
+Scheduler tries to place new pods on nodes
+       │
+       ├── Nodes have room → pods start immediately
+       │
+       └── No room → pods stuck in "Pending"
+                │
+                ▼
+       Cluster Autoscaler detects Pending pods
+                │
+                ▼
+       Autoscaler provisions new Hetzner server
+                │
+                ▼
+       Server boots, joins cluster (~90 seconds)
+                │
+                ▼
+       Scheduler places Pending pods on new node
+```
+
+| | HPA (Pod Autoscaler) | Cluster Autoscaler (Node Autoscaler) |
+|---|---|---|
+| Scales | Pods (containers) | Nodes (servers) |
+| Trigger | CPU > 60% average | Pods stuck in Pending |
+| Config location | `deploy/k8s/30-hpa-web.yaml` | `deploy/k8s/hetzner/cluster-autoscaler-values.yaml` |
+| Range | 1–60 pods | 1–15 nodes |
+| Managed by | Kubernetes built-in | Helm chart (third-party) |
+| Scale-up speed | Seconds (just start a container) | ~90 seconds (boot a server) |
+| Scale-down | Wait 10 min, remove 2 pods/min | Wait 20 min, node must be <15% utilized |
+
+**Cluster Autoscaler scale-down settings** (from `cluster-autoscaler-values.yaml`):
+
+```yaml
+extraArgs:
+  scale-down-unneeded-time: 20m              # Node must be idle for 20 minutes
+  scale-down-delay-after-add: 15m            # After adding a node, wait 15 min before removing any
+  scale-down-delay-after-delete: 5m          # After removing a node, wait 5 min before removing another
+  scale-down-utilization-threshold: "0.15"   # Node must be below 15% utilization
+```
+
+These conservative settings prevent the autoscaler from killing workers too aggressively during load tests or variable traffic.
+
+### Helm — Package Manager for Kubernetes
+
+**Helm** is like `pip` for Kubernetes. Instead of writing complex manifests by hand for third-party tools, you install them from pre-built packages called **charts**.
+
+Our 16 manifest files in `deploy/k8s/` are for our own app — we wrote them. The Cluster Autoscaler, however, is a third-party tool with its own Deployment, ServiceAccount, RBAC roles, and configuration — roughly 8-10 resources. Instead of writing all those manifests ourselves, we use the official Helm chart.
+
+**Key terms:**
+
+| Term | What it is |
+|------|-----------|
+| Chart | A package of Kubernetes manifests with templated values. Like a Python package on PyPI. |
+| Values file | YAML that configures the chart. Like passing arguments to a function. |
+| Release | A deployed instance of a chart. `helm upgrade` updates the release. |
+| Repository | Where charts are hosted. Like PyPI for Python. `autoscaler` repo hosts the cluster-autoscaler chart. |
+
+**How we use Helm:**
+
+```bash
+# Add the chart repository (one-time)
+helm repo add autoscaler https://kubernetes.github.io/autoscaler
+
+# Install/upgrade the autoscaler with our values
+helm upgrade cluster-autoscaler autoscaler/cluster-autoscaler \
+  -n kube-system \
+  -f /root/cluster-autoscaler-values.yaml \
+  -f /tmp/autoscaler-secrets.yaml
+```
+
+Helm reads the values files, generates the full set of manifests, and applies them. The `-f` flag merges values files in order — later files override earlier ones.
+
+**Critical rule:** Once Helm manages a resource, do NOT modify it with `kubectl set env` or `kubectl edit`. Helm does not know about imperative changes and will overwrite them on the next `helm upgrade`. This is exactly what caused the LT7.4 incident — a manual `kubectl set env` fix was silently wiped by a subsequent `helm upgrade`.
+
+**CI/CD integration:** The `deploy-autoscaler` job in `.github/workflows/deploy-k3s.yml` runs `helm upgrade` automatically when `cluster-autoscaler-values.yaml` changes. Secrets (`HCLOUD_TOKEN`, `HCLOUD_CLUSTER_CONFIG`) are stored in GitHub Secrets and reconstructed at deploy time — they never appear in the repo.
+
+### Networking — How Everything Talks
+
+All nodes (master, workers, DB box) are on Hetzner's private network `artkhoj-net` (10.0.0.0/16). Here is how traffic flows:
+
+**External traffic (user → app):**
+```
+User → Cloudflare → AWS Global Accelerator → Hetzner LB (5.223.35.241)
+  → k3s nodes (port 80/443) → Traefik → Django Service → Django pod
+```
+
+The Hetzner Load Balancer targets all servers with the label `role=k3s`. Traefik (running on the master) routes based on the Ingress rules to the Django Service, which load-balances across all Django pods.
+
+**Internal traffic (pod → database):**
+```
+Django pod → 10.0.0.2:5432 (PostgreSQL on DB box, private IP)
+Django pod → 10.0.0.2:6379 (Redis on DB box, private IP)
+```
+
+Database connections use private IPs. No traffic leaves the private network. The DB box is not part of the k3s cluster — it is a standalone server running PostgreSQL and Redis in Docker.
+
+**Metrics traffic (Prometheus scraping):**
+```
+Prometheus Agent (pod in cluster)
+  → scrapes Django pods at pod-IP:8000/metrics  (via Kubernetes service discovery)
+  → scrapes Node Exporter at node-IP:9100       (via Kubernetes service discovery)
+  → remote_write to 10.0.0.2:9090               (Prometheus on DB box, private IP)
+```
+
+Prometheus Agent runs inside the cluster and uses `kubernetes_sd_configs` to automatically discover pods. It scrapes metrics and forwards them to the Prometheus server on the DB box via `remote_write`.
+
+**Flannel (pod networking):** k3s uses Flannel as its network overlay. Each node gets a subnet (e.g., 10.42.0.0/24, 10.42.1.0/24). Pods get IPs from this range. Flannel handles routing between pods on different nodes using VXLAN tunnels over the private network interface (`enp7s0`). You rarely need to think about this — just know that any pod can reach any other pod by IP.
+
+### kubectl — The Command Line Tool
+
+`kubectl` is how you interact with the cluster. It runs on the master node (SSH in first: `ssh root@5.223.45.51`). Every command needs `export KUBECONFIG=/etc/rancher/k3s/k3s.yaml` set first, or you get "connection refused."
+
+#### Viewing Resources
+
+```bash
+# Set this first (or add to ~/.bashrc)
+export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+
+# ---- Nodes (servers) ----
+kubectl get nodes                           # List all nodes and their status
+kubectl get nodes -o wide                   # With IPs, OS, kernel version
+kubectl describe node <node-name>           # Detailed info: capacity, pods, conditions
+kubectl top nodes                           # CPU/memory usage per node (needs metrics-server)
+
+# ---- Pods (containers) ----
+kubectl get pods -n artkhoj                 # List pods in our namespace
+kubectl get pods -n artkhoj -o wide         # With node name and IP
+kubectl get pods -n kube-system             # System pods (autoscaler, traefik, etc.)
+kubectl get pods --all-namespaces           # Everything across all namespaces
+kubectl describe pod <pod-name> -n artkhoj  # Events, status, restart count, node placement
+kubectl top pods -n artkhoj                 # CPU/memory usage per pod
+
+# ---- Deployments ----
+kubectl get deployments -n artkhoj          # List deployments with replica counts
+kubectl describe deployment django -n artkhoj  # Detailed deployment info
+
+# ---- Services ----
+kubectl get svc -n artkhoj                  # List services and their cluster IPs
+
+# ---- HPA ----
+kubectl get hpa -n artkhoj                  # Current targets, min/max, current replicas
+
+# ---- Everything ----
+kubectl get all -n artkhoj                  # Pods, deployments, services, HPAs in one view
+```
+
+#### Reading Logs
+
+```bash
+# Logs from a specific pod
+kubectl logs <pod-name> -n artkhoj
+
+# Follow logs (like tail -f)
+kubectl logs -f <pod-name> -n artkhoj
+
+# Logs from ALL pods in a deployment
+kubectl logs deployment/django -n artkhoj
+
+# Last 50 lines
+kubectl logs --tail=50 <pod-name> -n artkhoj
+
+# Logs from a crashed/restarted pod (previous container)
+kubectl logs <pod-name> -n artkhoj --previous
+```
+
+#### Debugging
+
+```bash
+# Shell into a running pod
+kubectl exec -it <pod-name> -n artkhoj -- /bin/bash
+
+# Run a one-off command
+kubectl exec <pod-name> -n artkhoj -- python manage.py shell
+
+# Check why pods are Pending (look at Events section)
+kubectl describe pod <pod-name> -n artkhoj
+
+# Check events cluster-wide (useful for debugging scheduling/scaling)
+kubectl get events -n artkhoj --sort-by=.lastTimestamp
+
+# Check cluster autoscaler logs
+kubectl logs deployment/cluster-autoscaler-hetzner-cluster-autoscaler -n kube-system --tail=100
+
+# Check what is in a Secret (base64 encoded)
+kubectl get secret artkhoj-env -n artkhoj -o yaml
+```
+
+#### Modifying Resources
+
+```bash
+# Apply a manifest (create or update)
+kubectl apply -f deploy/k8s/11-deployment-web.yaml
+
+# Apply all manifests in a directory
+kubectl apply -f deploy/k8s/
+
+# Delete a resource
+kubectl delete pod <pod-name> -n artkhoj           # Pod will be recreated by Deployment
+kubectl delete job django-migrate -n artkhoj        # Delete a completed Job
+
+# Force restart all pods in a deployment (rolling restart)
+kubectl rollout restart deployment/django -n artkhoj
+
+# Set a new image (CI/CD does this)
+kubectl set image deployment/django django=ghcr.io/datatwine/createscale:<sha> -n artkhoj
+
+# Watch rollout progress
+kubectl rollout status deployment/django -n artkhoj
+
+# Scale manually (bypasses HPA temporarily)
+kubectl scale deployment/django --replicas=5 -n artkhoj
+```
+
+#### The `-n` Flag
+
+Almost every command needs `-n <namespace>`:
+- `-n artkhoj` — our app resources
+- `-n kube-system` — Kubernetes system components (autoscaler, Traefik, metrics-server, CoreDNS)
+
+If you forget `-n`, kubectl uses the `default` namespace and you will see nothing.
+
+### CI/CD Pipeline for k3s (`.github/workflows/deploy-k3s.yml`)
+
+The k3s pipeline has 7 jobs:
+
+```
+Push to main
+    │
+    ▼
+GUARDRAILS ──── Ruff (lint) + Bandit (security scan)
+    │
+    ▼
+BUILD ───────── docker compose build (validates Dockerfile)
+    │
+    ▼
+TEST ────────── PostgreSQL + Redis services, migrations check, pytest
+    │
+    ├──────────────────────┬──────────────────────┐
+    ▼                      ▼                      ▼
+PUSH-IMAGE             DEPLOY-DB             DEPLOY-AUTOSCALER
+ARM64 to GHCR          SSH to DB box         Helm upgrade (if values changed)
+    │                   git pull + compose up  via kubeconfig
+    ▼
+DEPLOY-WEB
+Apply manifests
+Run migration Job
+Roll new image
+Wait for rollout
+```
+
+**Key differences from the AWS pipeline:**
+- No Nginx. Traefik handles routing automatically via the Ingress resource.
+- No SSM. Deploy-web uses `kubectl` directly (kubeconfig stored as GitHub Secret).
+- No upstream discovery. Kubernetes Service auto-discovers pods by label.
+- No canary deploy. Rolling update strategy handles zero-downtime natively.
+- Autoscaler config deployed via Helm (only when values file changes).
+- Firewall is opened for the CI runner's IP before deploy, closed after (Hetzner API).
+
+### Manifest File Reference
+
+All files live in `deploy/k8s/`. The naming convention uses a numeric prefix for ordering:
+
+| File | Kind | Purpose |
+|------|------|---------|
+| `00-namespace.yaml` | Namespace | Creates the `artkhoj` namespace |
+| `01-secret.example.yaml` | Secret | EXAMPLE only — never apply this |
+| `10-job-migrate.yaml` | Job | Runs `python manage.py migrate` once per deploy |
+| `11-deployment-web.yaml` | Deployment | Django fleet pods (run on workers, HPA-scaled) |
+| `11b-deployment-web-resident.yaml` | Deployment | Django resident pod (runs on master, always 1) |
+| `12-deployment-worker.yaml` | Deployment | Celery worker |
+| `13-deployment-beat.yaml` | Deployment | Celery beat scheduler |
+| `20-service-web.yaml` | Service | Internal load balancer for Django pods |
+| `21-ingress-web.yaml` | Ingress | Routes `stagefreedom.org` traffic to Django |
+| `22-middlewares.yaml` | Middleware | Traefik: security headers, body limit, gzip |
+| `30-hpa-web.yaml` | HPA | Autoscales Django pods (1–60) at 60% CPU |
+| `40-daemonset-promtail.yaml` | DaemonSet | Ships logs from every node to Loki |
+| `41-daemonset-node-exporter.yaml` | DaemonSet | CPU/memory metrics from every node |
+| `50-rbac-prometheus.yaml` | SA + RBAC | Permissions for Prometheus to discover pods |
+| `60-prometheus-agent.yaml` | ConfigMap + Deployment | Scrapes metrics, remote_writes to DB box |
+| `promtail-config.yaml` | ConfigMap | Promtail log shipping configuration |
+| `hetzner/cluster-autoscaler-values.yaml` | Helm values | Cluster Autoscaler config (1–15 nodes) |
+
+### DOs and DON'Ts
+
+| DO | DO NOT |
+|----|--------|
+| Always specify `-n artkhoj` or `-n kube-system` | Run `kubectl` without `-n` (hits empty `default` namespace) |
+| Use `kubectl apply -f` to change resources | Use `kubectl edit` or `kubectl set env` on Helm-managed resources (autoscaler) |
+| Check `kubectl get events` when debugging | Guess why pods are Pending or CrashLooping |
+| Read pod logs with `kubectl logs` before theorizing | Assume the cause of a failure without observing |
+| Set `export KUBECONFIG=/etc/rancher/k3s/k3s.yaml` first | Run kubectl without KUBECONFIG (connection refused) |
+| Use Helm for the autoscaler, `kubectl apply` for everything else | Mix Helm and kubectl for the same resource |
+| Let HPA handle scaling — do not manually set replicas | Run `kubectl scale` in production (HPA will override it anyway) |
+| Delete a Job before re-creating it (Jobs are immutable once complete) | `kubectl apply` an existing completed Job (will fail) |
+| Use private IPs (10.0.0.x) for inter-node traffic | Use public IPs (costs money, higher latency, may be firewalled) |
+| Commit manifest changes to the repo | Apply manifests on the master without updating the repo (causes drift) |
+
+[k3s docs](https://docs.k3s.io/) | [Kubernetes concepts](https://kubernetes.io/docs/concepts/) | [kubectl cheat sheet](https://kubernetes.io/docs/reference/kubectl/cheatsheet/) | [Helm docs](https://helm.sh/docs/)
 
 ---
 
