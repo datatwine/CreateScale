@@ -1,18 +1,9 @@
 import React, { useState, useContext } from "react";
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-} from "react-native";
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, ScrollView, StatusBar } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { AuthContext } from "../context/AuthContext";
 import SocialLoginButtons from "../components/SocialLoginButtons";
 import { COLORS } from "../config/theme";
-import PressableStamp from "../components/PressableStamp";
 
 export default function LoginScreen({ navigation }) {
   const { login } = useContext(AuthContext);
@@ -51,116 +42,92 @@ export default function LoginScreen({ navigation }) {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.fullScreen}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-    >
-      {/* Background split: left black, center orange line, right pale white */}
-      <View style={styles.backgroundRow}>
-        <View style={styles.leftHalf} />
-        <View style={styles.divider} />
-        <View style={styles.rightHalf} />
-      </View>
+    <SafeAreaView edges={["top"]} style={styles.safeArea}>
+      <StatusBar barStyle="light-content" backgroundColor="#000000" translucent={false} />
+      <KeyboardAvoidingView
+        style={styles.fullScreen}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      >
+        <ScrollView contentContainerStyle={styles.overlay}>
+          <Text style={styles.brandTitle}>CreateScale</Text>
+          <Text style={styles.brandSubtitle}>Log in to your live experiences</Text>
 
-      {/* Foreground content overlays the background */}
-      <ScrollView contentContainerStyle={styles.overlay}>
-        <Text style={styles.brandTitle}>CreateScale</Text>
-        <Text style={styles.brandSubtitle}>Log in to your live experiences</Text>
-
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Welcome back 👋</Text>
-          <Text style={styles.cardSubtitle}>
-            Use the same username & password you use on the website.
-          </Text>
-
-          <TextInput
-            style={styles.input}
-            placeholder="Username"
-            placeholderTextColor="#888"
-            autoCapitalize="none"
-            value={username}
-            onChangeText={setUsername}
-          />
-
-          <TextInput
-            style={styles.input}
-            placeholder="Password"
-            placeholderTextColor="#888"
-            secureTextEntry
-            value={password}
-            onChangeText={setPassword}
-          />
-
-          {error ? <Text style={styles.errorText}>{error}</Text> : null}
-
-          <PressableStamp
-            onPress={handleLoginPress}
-            disabled={loading}
-            stampOffset={3}
-            borderRadius={999}
-            borderColor={COLORS.ink}
-            borderWidth={2}
-            style={[styles.primaryButton, loading && styles.disabledButton]}
-          >
-            <Text style={styles.primaryButtonText}>
-              {loading ? "Logging in..." : "Log in"}
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Welcome back 👋</Text>
+            <Text style={styles.cardSubtitle}>
+              Use the same username & password you use on the website.
             </Text>
-          </PressableStamp>
 
-          <TouchableOpacity onPress={goToSignup} style={styles.secondaryButton}>
-            <Text style={styles.secondaryButtonText}>
-              New here? <Text style={styles.secondaryButtonHighlight}>Sign up</Text>
-            </Text>
-          </TouchableOpacity>
+            <TextInput
+              style={styles.input}
+              placeholder="Username"
+              placeholderTextColor={COLORS.textMuted}
+              autoCapitalize="none"
+              value={username}
+              onChangeText={setUsername}
+            />
 
-          <SocialLoginButtons />
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+            <TextInput
+              style={styles.input}
+              placeholder="Password"
+              placeholderTextColor={COLORS.textMuted}
+              secureTextEntry
+              value={password}
+              onChangeText={setPassword}
+            />
+
+            {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
+            <TouchableOpacity
+              activeOpacity={0.85}
+              onPress={handleLoginPress}
+              disabled={loading}
+              style={[styles.primaryButton, loading && styles.disabledButton]}
+            >
+              <Text style={styles.primaryButtonText}>
+                {loading ? "Logging in..." : "Log in"}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity onPress={goToSignup} style={styles.secondaryButton}>
+              <Text style={styles.secondaryButtonText}>
+                New here? <Text style={styles.secondaryButtonHighlight}>Sign up</Text>
+              </Text>
+            </TouchableOpacity>
+
+            <SocialLoginButtons />
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
-const ORANGE = COLORS.accent;
-const PALE_WHITE = COLORS.background;
-
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: "#000",
+  },
   fullScreen: {
     flex: 1,
-    backgroundColor: "#000000",
-  },
-  backgroundRow: {
-    // This view fills the screen and draws the 3 background stripes.
-    ...StyleSheet.absoluteFillObject,
-    flexDirection: "row",
-  },
-  leftHalf: {
-    flex: 1,
-    backgroundColor: "#000000",
-  },
-  divider: {
-    width: 4,
-    backgroundColor: ORANGE,
-  },
-  rightHalf: {
-    flex: 1,
-    backgroundColor: PALE_WHITE,
+    backgroundColor: COLORS.background,
   },
   overlay: {
-    // Foreground content is stacked over background using absolute fill.
-    flex: 1,
+    flexGrow: 1,
     paddingHorizontal: 24,
-    justifyContent: "center",
+    justifyContent: "flex-start",
+    paddingTop: 60,
   },
   brandTitle: {
     fontSize: 28,
     fontWeight: "700",
-    color: ORANGE,
+    color: COLORS.accent,
     textAlign: "center",
     marginBottom: 4,
   },
   brandSubtitle: {
     fontSize: 14,
-    color: COLORS.textPrimary,
+    color: COLORS.textSecondary,
     textAlign: "center",
     marginBottom: 24,
   },
@@ -170,11 +137,6 @@ const styles = StyleSheet.create({
     padding: 20,
     borderWidth: 2,
     borderColor: COLORS.ink,
-    shadowColor: COLORS.ink,
-    shadowOpacity: 1,
-    shadowRadius: 0,
-    shadowOffset: { width: 4, height: 4 },
-    elevation: 6,
   },
   cardTitle: {
     fontSize: 20,
@@ -196,6 +158,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     borderWidth: 2,
     borderColor: COLORS.ink,
+    fontSize: 14,
   },
   errorText: {
     color: "#B71C1C",
@@ -208,9 +171,18 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     marginTop: 4,
+    backgroundColor: COLORS.accent,
+    borderWidth: 2,
+    borderColor: COLORS.ink,
+    // 3D stamp shadow (bottom-right)
+    shadowColor: COLORS.ink,
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    shadowOffset: { width: 3, height: 3 },
+    elevation: 6,
   },
   primaryButtonText: {
-    color: COLORS.textPrimary,
+    color: COLORS.card,
     fontWeight: "700",
     fontSize: 16,
   },

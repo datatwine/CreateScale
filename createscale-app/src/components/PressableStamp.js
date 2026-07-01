@@ -1,5 +1,5 @@
 import React, { useRef } from "react";
-import { Animated, Pressable, StyleSheet, View } from "react-native";
+import { Animated, Pressable, View } from "react-native";
 import { COLORS } from "../config/theme";
 
 export default function PressableStamp({
