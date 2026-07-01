@@ -21,12 +21,12 @@ import {
     Animated,
     FlatList,
     RefreshControl,
-    SafeAreaView,
     StyleSheet,
     Text,
     TouchableOpacity,
     View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 
 import { AuthContext } from "../context/AuthContext";
@@ -374,7 +374,7 @@ export default function LiveEventsScreen({ navigation }) {
     });
 
     return (
-        <SafeAreaView style={styles.safeArea}>
+        <SafeAreaView style={styles.safeArea} edges={["top"]}>
             {/* Header */}
             <View style={styles.header}>
                 <TouchableOpacity

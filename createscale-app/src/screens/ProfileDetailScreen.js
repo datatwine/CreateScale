@@ -27,7 +27,6 @@ import {
     Alert,
     Image,
     Platform,
-    SafeAreaView,
     ScrollView,
     StyleSheet,
     Text,
@@ -35,10 +34,10 @@ import {
     TouchableOpacity,
     View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-
-import { AuthContext } from "../context/AuthContext";
 import { API_BASE_URL } from "../config/api";
+import { AuthContext } from "../context/AuthContext";
 
 // ---------------------------------------------------------------------------
 // Shared helpers (same as GlobalFeedScreen / ProfileScreen)
@@ -398,7 +397,7 @@ export default function ProfileDetailScreen({ route, navigation }) {
     // --- Loading state ---
     if (loading || !profile) {
         return (
-            <SafeAreaView style={styles.safeArea}>
+            <SafeAreaView style={styles.safeArea} edges={["top"]}>
                 <View style={styles.centeredLoader}>
                     <ActivityIndicator size="large" color={COLORS.accent} />
                     <Text style={styles.loadingText}>Loading profile…</Text>
@@ -411,7 +410,7 @@ export default function ProfileDetailScreen({ route, navigation }) {
     const uploads = profile.uploads || [];
 
     return (
-        <SafeAreaView style={styles.safeArea}>
+        <SafeAreaView style={styles.safeArea} edges={["top"]}>
             <ScrollView contentContainerStyle={styles.scrollContent}>
                 {/* Header with back button */}
                 <View style={styles.header}>

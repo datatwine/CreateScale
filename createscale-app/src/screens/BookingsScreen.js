@@ -30,17 +30,16 @@ import {
     ActivityIndicator,
     Alert,
     FlatList,
-    SafeAreaView,
     StyleSheet,
     Text,
     TextInput,
     TouchableOpacity,
     View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-
-import { AuthContext } from "../context/AuthContext";
 import { API_BASE_URL } from "../config/api";
+import { AuthContext } from "../context/AuthContext";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -421,7 +420,7 @@ export default function BookingsScreen({ navigation }) {
     // --- Render ---
 
     return (
-        <SafeAreaView style={styles.safeArea}>
+        <SafeAreaView style={styles.safeArea} edges={["top"]}>
             {/* Header */}
             <View style={styles.header}>
                 <TouchableOpacity

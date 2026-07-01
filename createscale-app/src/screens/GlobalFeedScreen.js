@@ -20,12 +20,12 @@ import {
     Alert,
     FlatList,
     Image,
-    SafeAreaView,
     StyleSheet,
     Text,
     TouchableOpacity,
     View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 
 import { AuthContext } from "../context/AuthContext";
@@ -281,7 +281,7 @@ export default function GlobalFeedScreen({ navigation }) {
     };
 
     return (
-        <SafeAreaView style={styles.safeArea}>
+        <SafeAreaView style={styles.safeArea} edges={["top"]}>
             {/* Header */}
             <View style={styles.header}>
                 {/* Back arrow to ProfileScreen */}
@@ -292,7 +292,7 @@ export default function GlobalFeedScreen({ navigation }) {
                     <Ionicons name="arrow-back" size={24} color={COLORS.textPrimary} />
                 </TouchableOpacity>
 
-                <View>
+                <View style={styles.headerTextBlock}>
                     <Text style={styles.headerTitle}>Performing Artists</Text>
                     <Text style={styles.headerSubtitle}>
                         Discover talented performers from around the world
@@ -373,6 +373,9 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         paddingTop: 8,
         paddingBottom: 12,
+    },
+    headerTextBlock: {
+        flexShrink: 1,
     },
     backButton: {
         marginRight: 12,

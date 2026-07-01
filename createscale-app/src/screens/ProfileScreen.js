@@ -10,7 +10,6 @@ import {
   ActivityIndicator,
   Alert,
   Image,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
@@ -18,6 +17,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import * as ImagePicker from "expo-image-picker";
 import * as ImageManipulator from "expo-image-manipulator";
@@ -787,21 +787,9 @@ export default function ProfileScreen() {
    * Uses direct navigate() because getState().routeNames is unreliable
    * with createNativeStackNavigator.
    */
-  const navigateIfAvailable = (routeName) => {
-    try {
-      navigation.navigate(routeName);
-    } catch (err) {
-      console.warn("Route not available:", routeName, err);
-      Alert.alert(
-        "Coming soon",
-        `The "${routeName}" screen isn't wired into the app yet.`
-      );
-    }
-  };
-
-// -------------------------------------------------------------------------
-// Derived display helpers
-// -------------------------------------------------------------------------
+  // -------------------------------------------------------------------------
+  // Derived display helpers
+  // -------------------------------------------------------------------------
 
 const profileInitial =
   (profile?.username || "?").charAt(0).toUpperCase();
@@ -884,7 +872,7 @@ if (!profile) {
 }
 
 return (
-  <SafeAreaView style={styles.safeArea}>
+  <SafeAreaView style={styles.safeArea} edges={["top"]}>
     {/* Split background (black / cream) */}
     <View style={styles.splitBackground}>
       <View style={styles.leftBackground} />
@@ -1014,43 +1002,6 @@ return (
             value={profession}
             onChangeText={setProfession}
           />
-        </View>
-
-        {/* Explore links – future-ready navigation */}
-        <View style={styles.sectionBlock}>
-          <Text style={styles.sectionTitle}>EXPLORE</Text>
-          <View style={styles.exploreRow}>
-            <TouchableOpacity
-              style={styles.exploreButton}
-              onPress={() =>
-                navigateIfAvailable("GlobalFeed")
-              }
-            >
-              <Text style={styles.exploreButtonText}>
-                Global feed
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.exploreButton}
-              onPress={() =>
-                navigateIfAvailable("LiveEvents")
-              }
-            >
-              <Text style={styles.exploreButtonText}>
-                Live events
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.exploreButton}
-              onPress={() =>
-                navigateIfAvailable("Bookings")
-              }
-            >
-              <Text style={styles.exploreButtonText}>
-                Bookings
-              </Text>
-            </TouchableOpacity>
-          </View>
         </View>
 
         {/* Uploads header + caption + add button */}
@@ -1321,24 +1272,6 @@ const styles = StyleSheet.create({
     borderColor: COLORS.divider,
     color: COLORS.textPrimary,
     fontSize: 14,
-  },
-
-  exploreRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10,
-    marginTop: 8,
-  },
-  exploreButton: {
-    borderRadius: 999,
-    backgroundColor: COLORS.buttonDark,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  exploreButtonText: {
-    color: COLORS.textPrimary,
-    fontSize: 14,
-    fontWeight: "500",
   },
 
   linkButtonText: {
