@@ -21,17 +21,19 @@ import {
     Animated,
     FlatList,
     RefreshControl,
-    SafeAreaView,
     StyleSheet,
     Text,
     TouchableOpacity,
     View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 
 import { AuthContext } from "../context/AuthContext";
 import { API_BASE_URL } from "../config/api";
 import { computeCountdown } from "../utils/countdown";
+import { COLORS } from "../config/theme";
+import PressableStamp from "../components/PressableStamp";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -61,44 +63,29 @@ function formatTime(timeStr) {
 }
 
 // ---------------------------------------------------------------------------
-// Color palette — consistent with BookingsScreen / ProfileScreen
-// ---------------------------------------------------------------------------
-
-const COLORS = {
-    background: "#0B0F1A",
-    card: "#141A2E",
-    cardPast: "#0F1220",       // slightly dimmer for past events
-    accent: "#E68A00",
-    accentDim: "#A36200",
-    textPrimary: "#FFFFFF",
-    textSecondary: "#CFCFCF",
-    textMuted: "#8A8FA0",
-    textDimmed: "#5A5F70",     // for past events
-    divider: "#2B2B2B",
-    liveGreen: "#2E7D32",
-    pastGrey: "#424242",
-    tabActive: "#E68A00",
-    tabInactive: "#2A2A3A",
-};
-
-// ---------------------------------------------------------------------------
 // EventCard — one event row (used for both upcoming and past)
 // ---------------------------------------------------------------------------
 
 function EventCard({ event, isPast }) {
-    const cardBg = isPast ? COLORS.cardPast : COLORS.card;
-    const textColor = isPast ? COLORS.textDimmed : COLORS.textSecondary;
+    const cardBg = isPast ? COLORS.cream : COLORS.card;
+    const textColor = isPast ? COLORS.textMuted : COLORS.textSecondary;
     const titleColor = isPast ? COLORS.textMuted : COLORS.textPrimary;
 
     return (
-        <View style={[styles.card, { backgroundColor: cardBg }]}>
+        <PressableStamp
+            stampOffset={4}
+            borderRadius={16}
+            borderColor={COLORS.ink}
+            borderWidth={2}
+            style={[styles.card, { backgroundColor: cardBg }]}
+        >
             {/* Date + time row */}
             <View style={styles.cardTopRow}>
                 <View style={styles.dateBlock}>
                     <Ionicons
                         name="calendar"
                         size={16}
-                        color={isPast ? COLORS.textDimmed : COLORS.accent}
+                        color={isPast ? COLORS.textMuted : COLORS.accent}
                     />
                     <Text style={[styles.dateText, { color: titleColor }]}>
                         {formatDate(event.date)}
@@ -147,11 +134,11 @@ function EventCard({ event, isPast }) {
 
             {/* Status pill */}
             {isPast && (
-                <View style={[styles.statusPill, { backgroundColor: COLORS.pastGrey }]}>
+                <View style={[styles.statusPill, { backgroundColor: COLORS.muted }]}>
                     <Text style={styles.statusPillText}>Completed</Text>
                 </View>
             )}
-        </View>
+        </PressableStamp>
     );
 }
 
@@ -401,15 +388,10 @@ export default function LiveEventsScreen({ navigation }) {
     });
 
     return (
-        <SafeAreaView style={styles.safeArea}>
+        <SafeAreaView style={styles.safeArea} edges={["top"]}>
+            <View style={{ flex: 1, backgroundColor: COLORS.background }}>
             {/* Header */}
             <View style={styles.header}>
-                <TouchableOpacity
-                    onPress={() => navigation.goBack()}
-                    style={styles.backButton}
-                >
-                    <Ionicons name="arrow-back" size={24} color={COLORS.textPrimary} />
-                </TouchableOpacity>
                 <View style={{ flex: 1 }}>
                     <Text style={styles.headerTitle}>Live Events</Text>
                     <Text style={styles.headerSubtitle}>
@@ -448,8 +430,8 @@ export default function LiveEventsScreen({ navigation }) {
                         <View style={[
                             styles.countBadge,
                             scope === "upcoming"
-                                ? { backgroundColor: COLORS.liveGreen }
-                                : { backgroundColor: COLORS.tabInactive },
+                                ? { backgroundColor: COLORS.success }
+                                : { backgroundColor: COLORS.cream },
                         ]}>
                             <Text style={styles.countBadgeText}>{upcomingCount}</Text>
                         </View>
@@ -481,8 +463,8 @@ export default function LiveEventsScreen({ navigation }) {
                         <View style={[
                             styles.countBadge,
                             scope === "past"
-                                ? { backgroundColor: COLORS.pastGrey }
-                                : { backgroundColor: COLORS.tabInactive },
+                                ? { backgroundColor: COLORS.muted }
+                                : { backgroundColor: COLORS.cream },
                         ]}>
                             <Text style={styles.countBadgeText}>{pastCount}</Text>
                         </View>
@@ -543,6 +525,7 @@ export default function LiveEventsScreen({ navigation }) {
                     }
                 />
             )}
+            </View>
         </SafeAreaView>
     );
 }
@@ -554,7 +537,7 @@ export default function LiveEventsScreen({ navigation }) {
 const styles = StyleSheet.create({
     safeArea: {
         flex: 1,
-        backgroundColor: COLORS.background,
+        backgroundColor: COLORS.black,
     },
 
     // --- Header ---
@@ -564,10 +547,6 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         paddingTop: 8,
         paddingBottom: 8,
-    },
-    backButton: {
-        marginRight: 12,
-        padding: 4,
     },
     headerTitle: {
         fontSize: 24,
@@ -599,7 +578,7 @@ const styles = StyleSheet.create({
         borderRadius: 10,
     },
     tabActive: {
-        backgroundColor: COLORS.tabActive,
+        backgroundColor: COLORS.accent,
     },
     tabText: {
         fontSize: 14,
@@ -664,7 +643,7 @@ const styles = StyleSheet.create({
     countdownSep: {
         fontSize: 28,
         fontWeight: "700",
-        color: COLORS.accentDim,
+        color: COLORS.accentDark,
         marginBottom: 14,
     },
 
@@ -677,11 +656,8 @@ const styles = StyleSheet.create({
 
     // --- Card ---
     card: {
-        borderRadius: 14,
         padding: 14,
         marginBottom: 12,
-        borderWidth: 1,
-        borderColor: COLORS.divider,
     },
     cardTopRow: {
         flexDirection: "row",
@@ -730,7 +706,7 @@ const styles = StyleSheet.create({
         flexDirection: "row",
         alignItems: "center",
         gap: 4,
-        backgroundColor: "rgba(255,255,255,0.05)",
+        backgroundColor: COLORS.cream,
         paddingHorizontal: 10,
         paddingVertical: 5,
         borderRadius: 999,

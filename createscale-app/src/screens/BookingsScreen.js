@@ -30,17 +30,18 @@ import {
     ActivityIndicator,
     Alert,
     FlatList,
-    SafeAreaView,
     StyleSheet,
     Text,
     TextInput,
     TouchableOpacity,
     View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-
-import { AuthContext } from "../context/AuthContext";
 import { API_BASE_URL } from "../config/api";
+import { AuthContext } from "../context/AuthContext";
+import { COLORS } from "../config/theme";
+import PressableStamp from "../components/PressableStamp";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -52,31 +53,6 @@ function buildApiUrl(path) {
     const rel = path.replace(/^\/+/, "");
     return `${base}/${rel}`;
 }
-
-// ---------------------------------------------------------------------------
-// Color palette — consistent with the rest of the app
-// ---------------------------------------------------------------------------
-
-const COLORS = {
-    background: "#0B0F1A",
-    card: "#141A2E",
-    accent: "#E68A00",
-    textPrimary: "#FFFFFF",
-    textSecondary: "#CFCFCF",
-    textMuted: "#8A8FA0",
-    divider: "#2B2B2B",
-    inputBg: "#181818",
-    // Status badge colors
-    statusPending: "#E68A00",       // amber
-    statusAccepted: "#2E7D32",      // green
-    statusDeclined: "#B71C1C",      // red
-    statusCancelled: "#6D4C41",     // brown-ish
-    statusExpired: "#424242",       // grey
-    // Action button colors
-    acceptGreen: "#388E3C",
-    declineRed: "#C62828",
-    cancelOrange: "#E65100",
-};
 
 // ---------------------------------------------------------------------------
 // Status helpers
@@ -94,12 +70,12 @@ const STATUS_LABELS = {
 
 /** Background color for the status badge. */
 const STATUS_COLORS = {
-    pending: COLORS.statusPending,
-    accepted: COLORS.statusAccepted,
-    declined: COLORS.statusDeclined,
-    cancelled_client: COLORS.statusCancelled,
-    cancelled_performer: COLORS.statusCancelled,
-    auto_expired: COLORS.statusExpired,
+    pending: COLORS.accent,
+    accepted: COLORS.success,
+    declined: COLORS.warning,
+    cancelled_client: COLORS.muted,
+    cancelled_performer: COLORS.muted,
+    auto_expired: COLORS.info,
 };
 
 /** Is this status still "active" (i.e. can have actions)? */
@@ -202,10 +178,14 @@ function EngagementCard({ engagement, myUserId, token, onActionDone }) {
     };
 
     return (
-        <TouchableOpacity
-            style={styles.card}
-            activeOpacity={0.85}
+        <PressableStamp
+            stampOffset={4}
+            stampOffsetY={5}
+            borderRadius={14}
+            borderColor={COLORS.ink}
+            borderWidth={2}
             onPress={() => setExpanded(!expanded)}
+            style={styles.card}
         >
             {/* Top row: role label + other party + status badge */}
             <View style={styles.cardTopRow}>
@@ -279,19 +259,19 @@ function EngagementCard({ engagement, myUserId, token, onActionDone }) {
                             {/* Performer: Accept + Decline (only when pending) */}
                             {canAccept && (
                                 <TouchableOpacity
-                                    style={[styles.actionBtn, { backgroundColor: COLORS.acceptGreen }]}
+                                    style={[styles.actionBtn, { backgroundColor: COLORS.successButton }]}
                                     onPress={() => confirmAction("accept", "Accept")}
                                 >
-                                    <Ionicons name="checkmark-circle" size={16} color="#fff" />
+                                    <Ionicons name="checkmark-circle" size={16} color={COLORS.white} />
                                     <Text style={styles.actionBtnText}>Accept</Text>
                                 </TouchableOpacity>
                             )}
                             {canDecline && (
                                 <TouchableOpacity
-                                    style={[styles.actionBtn, { backgroundColor: COLORS.declineRed }]}
+                                    style={[styles.actionBtn, { backgroundColor: COLORS.danger }]}
                                     onPress={() => confirmAction("decline", "Decline")}
                                 >
-                                    <Ionicons name="close-circle" size={16} color="#fff" />
+                                    <Ionicons name="close-circle" size={16} color={COLORS.white} />
                                     <Text style={styles.actionBtnText}>Decline</Text>
                                 </TouchableOpacity>
                             )}
@@ -314,7 +294,7 @@ function EngagementCard({ engagement, myUserId, token, onActionDone }) {
                                         multiline
                                     />
                                     <TouchableOpacity
-                                        style={[styles.actionBtn, { backgroundColor: COLORS.cancelOrange }]}
+                                        style={[styles.actionBtn, { backgroundColor: COLORS.warningButton }]}
                                         onPress={() =>
                                             confirmAction(
                                                 canCancelClient ? "cancel_client" : "cancel_performer",
@@ -322,7 +302,7 @@ function EngagementCard({ engagement, myUserId, token, onActionDone }) {
                                             )
                                         }
                                     >
-                                        <Ionicons name="ban" size={16} color="#fff" />
+                                        <Ionicons name="ban" size={16} color={COLORS.white} />
                                         <Text style={styles.actionBtnText}>
                                             Cancel as {canCancelClient ? "client" : "performer"}
                                         </Text>
@@ -358,7 +338,7 @@ function EngagementCard({ engagement, myUserId, token, onActionDone }) {
                     color={COLORS.textMuted}
                 />
             </View>
-        </TouchableOpacity>
+        </PressableStamp>
     );
 }
 
@@ -421,15 +401,10 @@ export default function BookingsScreen({ navigation }) {
     // --- Render ---
 
     return (
-        <SafeAreaView style={styles.safeArea}>
+        <SafeAreaView style={styles.safeArea} edges={["top"]}>
+            <View style={{ flex: 1, backgroundColor: COLORS.background }}>
             {/* Header */}
             <View style={styles.header}>
-                <TouchableOpacity
-                    onPress={() => navigation.goBack()}
-                    style={styles.backButton}
-                >
-                    <Ionicons name="arrow-back" size={24} color={COLORS.textPrimary} />
-                </TouchableOpacity>
                 <View>
                     <Text style={styles.headerTitle}>Bookings</Text>
                     <Text style={styles.headerSubtitle}>
@@ -471,6 +446,7 @@ export default function BookingsScreen({ navigation }) {
                     }
                 />
             )}
+            </View>
         </SafeAreaView>
     );
 }
@@ -482,7 +458,7 @@ export default function BookingsScreen({ navigation }) {
 const styles = StyleSheet.create({
     safeArea: {
         flex: 1,
-        backgroundColor: COLORS.background,
+        backgroundColor: COLORS.black,
     },
 
     // --- Header ---
@@ -492,10 +468,6 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         paddingTop: 8,
         paddingBottom: 12,
-    },
-    backButton: {
-        marginRight: 12,
-        padding: 4,
     },
     headerTitle: {
         fontSize: 24,
@@ -519,9 +491,6 @@ const styles = StyleSheet.create({
         backgroundColor: COLORS.card,
         borderRadius: 14,
         padding: 14,
-        marginBottom: 12,
-        borderWidth: 1,
-        borderColor: COLORS.divider,
     },
     cardTopRow: {
         flexDirection: "row",
@@ -551,11 +520,13 @@ const styles = StyleSheet.create({
         paddingHorizontal: 10,
         paddingVertical: 4,
         borderRadius: 999,
+        borderWidth: 1.5,
+        borderColor: COLORS.ink,
     },
     statusBadgeText: {
         fontSize: 11,
         fontWeight: "600",
-        color: "#FFFFFF",
+        color: COLORS.white,
     },
 
     // --- Detail rows (date/time/venue/occasion) ---
@@ -595,7 +566,7 @@ const styles = StyleSheet.create({
     },
     emergencyNote: {
         fontSize: 12,
-        color: COLORS.statusDeclined,
+        color: COLORS.warning,
         fontStyle: "italic",
         marginTop: 4,
     },
@@ -615,7 +586,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
     },
     actionBtnText: {
-        color: "#FFFFFF",
+        color: COLORS.white,
         fontSize: 14,
         fontWeight: "600",
     },
@@ -631,7 +602,7 @@ const styles = StyleSheet.create({
         fontStyle: "italic",
     },
     emergencyInput: {
-        backgroundColor: COLORS.inputBg,
+        backgroundColor: COLORS.cream,
         borderRadius: 10,
         borderWidth: 1,
         borderColor: COLORS.divider,
