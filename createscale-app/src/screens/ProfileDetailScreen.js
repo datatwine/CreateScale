@@ -27,7 +27,6 @@ import {
     Alert,
     Image,
     Platform,
-    SafeAreaView,
     ScrollView,
     StyleSheet,
     Text,
@@ -35,10 +34,12 @@ import {
     TouchableOpacity,
     View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-
-import { AuthContext } from "../context/AuthContext";
 import { API_BASE_URL } from "../config/api";
+import { AuthContext } from "../context/AuthContext";
+import { COLORS } from "../config/theme";
+import PressableStamp from "../components/PressableStamp";
 
 // ---------------------------------------------------------------------------
 // Shared helpers (same as GlobalFeedScreen / ProfileScreen)
@@ -67,69 +68,28 @@ function makeMediaUrl(pathOrUrl) {
 }
 
 // ---------------------------------------------------------------------------
-// Color palette — consistent with ProfileScreen + GlobalFeedScreen
+// UploadGridItem — square thumbnail for 3-column grid
 // ---------------------------------------------------------------------------
 
-const COLORS = {
-    background: "#0B0F1A",
-    card: "#141A2E",
-    accent: "#E68A00",
-    textPrimary: "#FFFFFF",
-    textSecondary: "#CFCFCF",
-    textMuted: "#8A8FA0",
-    divider: "#2B2B2B",
-    inputBg: "#181818",
-    badgeGreen: "#1B5E20",
-    badgeGreenText: "#A5D6A7",
-    badgeAmber: "#5D4037",
-    badgeAmberText: "#FFE0B2",
-    danger: "#B71C1C",
-    dangerText: "#FFCDD2",
-};
-
-// ---------------------------------------------------------------------------
-// UploadCard — reusable read-only card (same layout as ProfileScreen)
-// ---------------------------------------------------------------------------
-
-function UploadCard({ upload }) {
+function UploadGridItem({ upload }) {
     const imageUrl = makeMediaUrl(upload.image_url);
     const videoUrl = makeMediaUrl(upload.video_url);
-    const caption = upload.caption || "";
 
     return (
-        <View style={styles.uploadCard}>
-            {/* Image preview */}
-            {imageUrl ? (
-                <Image
-                    source={{ uri: imageUrl }}
-                    style={styles.uploadImage}
-                    resizeMode="cover"
-                />
-            ) : videoUrl ? (
-                // Video placeholder — future: use expo-av <Video>
-                <View style={styles.uploadFallback}>
-                    <Ionicons name="videocam" size={32} color={COLORS.textMuted} />
-                    <Text style={styles.uploadFallbackText}>Video upload</Text>
-                </View>
-            ) : (
-                <View style={styles.uploadFallback}>
-                    <Text style={styles.uploadFallbackText}>No preview</Text>
-                </View>
-            )}
-
-            {/* Caption */}
-            {caption ? (
-                <Text style={styles.uploadCaption} numberOfLines={2}>
-                    {caption}
-                </Text>
-            ) : null}
-
-            {/* Date */}
-            {upload.upload_date ? (
-                <Text style={styles.uploadDate}>
-                    {new Date(upload.upload_date).toLocaleDateString()}
-                </Text>
-            ) : null}
+        <View style={styles.gridItem}>
+            <View style={styles.gridItemInner}>
+                {imageUrl ? (
+                    <Image source={{ uri: imageUrl }} style={styles.gridImage} resizeMode="cover" />
+                ) : videoUrl ? (
+                    <View style={styles.gridFallback}>
+                        <Ionicons name="videocam" size={20} color={COLORS.textMuted} />
+                    </View>
+                ) : (
+                    <View style={styles.gridFallback}>
+                        <Ionicons name="image-outline" size={20} color={COLORS.textMuted} />
+                    </View>
+                )}
+            </View>
         </View>
     );
 }
@@ -160,7 +120,7 @@ function HireSection({ targetProfile, myProfile, token, onHireSuccess }) {
     if (myProfile?.client_blacklisted) {
         return (
             <View style={styles.hireNotice}>
-                <Ionicons name="ban" size={18} color={COLORS.dangerText} />
+                <Ionicons name="ban" size={18} color={"#FFCDD2"} />
                 <Text style={styles.hireNoticeText}>
                     You are currently blocked from hiring performers.
                 </Text>
@@ -172,7 +132,7 @@ function HireSection({ targetProfile, myProfile, token, onHireSuccess }) {
     if (!myProfile?.is_potential_client) {
         return (
             <View style={styles.hireNotice}>
-                <Ionicons name="information-circle" size={18} color={COLORS.badgeAmberText} />
+                <Ionicons name="information-circle" size={18} color={"#FFE0B2"} />
                 <Text style={styles.hireNoticeText}>
                     Enable "I hire performers" on your profile to send hire requests.
                 </Text>
@@ -184,7 +144,7 @@ function HireSection({ targetProfile, myProfile, token, onHireSuccess }) {
     if (!myProfile?.client_approved) {
         return (
             <View style={styles.hireNotice}>
-                <Ionicons name="time" size={18} color={COLORS.badgeAmberText} />
+                <Ionicons name="time" size={18} color={"#FFE0B2"} />
                 <Text style={styles.hireNoticeText}>
                     Your account is waiting for admin approval to hire performers.
                 </Text>
@@ -242,20 +202,22 @@ function HireSection({ targetProfile, myProfile, token, onHireSuccess }) {
 
     if (!showForm) {
         return (
-            <TouchableOpacity
-                style={styles.hireButton}
+            <PressableStamp
+                stampOffset={3} borderRadius={999} borderColor={COLORS.ink} borderWidth={2}
                 onPress={() => setShowForm(true)}
+                style={styles.hireButton}
             >
                 <Ionicons name="briefcase" size={18} color={COLORS.textPrimary} />
                 <Text style={styles.hireButtonText}>
                     Hire {targetProfile.username}
                 </Text>
-            </TouchableOpacity>
+            </PressableStamp>
         );
     }
 
     // Inline hire form (mirrors hire_form.html fields)
     return (
+        <PressableStamp stampOffset={4} borderRadius={16} borderColor={COLORS.ink} borderWidth={2}>
         <View style={styles.hireForm}>
             <Text style={styles.hireFormTitle}>
                 Hire {targetProfile.username}
@@ -325,6 +287,7 @@ function HireSection({ targetProfile, myProfile, token, onHireSuccess }) {
                 </TouchableOpacity>
             </View>
         </View>
+        </PressableStamp>
     );
 }
 
@@ -398,7 +361,7 @@ export default function ProfileDetailScreen({ route, navigation }) {
     // --- Loading state ---
     if (loading || !profile) {
         return (
-            <SafeAreaView style={styles.safeArea}>
+            <SafeAreaView style={styles.safeArea} edges={["top"]}>
                 <View style={styles.centeredLoader}>
                     <ActivityIndicator size="large" color={COLORS.accent} />
                     <Text style={styles.loadingText}>Loading profile…</Text>
@@ -411,8 +374,9 @@ export default function ProfileDetailScreen({ route, navigation }) {
     const uploads = profile.uploads || [];
 
     return (
-        <SafeAreaView style={styles.safeArea}>
-            <ScrollView contentContainerStyle={styles.scrollContent}>
+        <SafeAreaView style={styles.safeArea} edges={["top"]}>
+            <View style={{ flex: 1, backgroundColor: COLORS.background }}>
+            <ScrollView bounces={false} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
                 {/* Header with back button */}
                 <View style={styles.header}>
                     <TouchableOpacity
@@ -453,7 +417,7 @@ export default function ProfileDetailScreen({ route, navigation }) {
                     {/* Performer badge */}
                     {profile.is_performer && (
                         <View style={styles.performerBadge}>
-                            <Ionicons name="star" size={14} color={COLORS.badgeGreenText} />
+                            <Ionicons name="star" size={14} color={"#A5D6A7"} />
                             <Text style={styles.performerBadgeText}>
                                 Available for hire
                             </Text>
@@ -507,12 +471,17 @@ export default function ProfileDetailScreen({ route, navigation }) {
                 <View style={styles.sectionBlock}>
                     <Text style={styles.sectionTitle}>Uploads</Text>
                     {uploads.length > 0 ? (
-                        uploads.map((u) => <UploadCard key={u.id} upload={u} />)
+                        <View style={styles.gridContainer}>
+                            {uploads.map((u) => (
+                                <UploadGridItem key={u.id} upload={u} />
+                            ))}
+                        </View>
                     ) : (
                         <Text style={styles.emptyText}>No uploads yet.</Text>
                     )}
                 </View>
             </ScrollView>
+            </View>
         </SafeAreaView>
     );
 }
@@ -528,7 +497,6 @@ const styles = StyleSheet.create({
     },
     scrollContent: {
         paddingHorizontal: 16,
-        paddingBottom: 32,
     },
 
     // --- Header ---
@@ -553,6 +521,8 @@ const styles = StyleSheet.create({
     profileCard: {
         backgroundColor: COLORS.card,
         borderRadius: 20,
+        borderWidth: 2,
+        borderColor: COLORS.ink,
         padding: 20,
         alignItems: "center",
         marginBottom: 16,
@@ -568,7 +538,7 @@ const styles = StyleSheet.create({
         borderColor: COLORS.accent,
     },
     avatarPlaceholder: {
-        backgroundColor: "#1A2040",
+        backgroundColor: COLORS.cream,
         alignItems: "center",
         justifyContent: "center",
     },
@@ -591,7 +561,7 @@ const styles = StyleSheet.create({
         flexDirection: "row",
         alignItems: "center",
         gap: 6,
-        backgroundColor: COLORS.badgeGreen,
+        backgroundColor: "#1B5E20",
         paddingHorizontal: 10,
         paddingVertical: 4,
         borderRadius: 999,
@@ -600,7 +570,7 @@ const styles = StyleSheet.create({
     performerBadgeText: {
         fontSize: 12,
         fontWeight: "600",
-        color: COLORS.badgeGreenText,
+        color: "#A5D6A7",
     },
     infoRow: {
         flexDirection: "row",
@@ -636,6 +606,9 @@ const styles = StyleSheet.create({
         gap: 8,
         backgroundColor: COLORS.card,
         borderRadius: 12,
+        borderWidth: 1.5,
+        borderColor: COLORS.accent,
+        borderStyle: "dashed",
         padding: 14,
         marginBottom: 12,
     },
@@ -649,8 +622,6 @@ const styles = StyleSheet.create({
         alignItems: "center",
         justifyContent: "center",
         gap: 8,
-        backgroundColor: COLORS.accent,
-        borderRadius: 999,
         paddingVertical: 12,
         paddingHorizontal: 20,
         marginBottom: 12,
@@ -663,8 +634,6 @@ const styles = StyleSheet.create({
 
     // --- Hire form ---
     hireForm: {
-        backgroundColor: COLORS.card,
-        borderRadius: 16,
         padding: 16,
         marginBottom: 12,
     },
@@ -687,7 +656,7 @@ const styles = StyleSheet.create({
         marginTop: 10,
     },
     formInput: {
-        backgroundColor: COLORS.inputBg,
+        backgroundColor: COLORS.cream,
         borderRadius: 10,
         borderWidth: 1,
         borderColor: COLORS.divider,
@@ -755,45 +724,33 @@ const styles = StyleSheet.create({
         marginBottom: 12,
     },
 
-    // --- Upload cards (same as ProfileScreen) ---
-    uploadCard: {
-        width: "100%",
-        padding: 10,
-        marginBottom: 16,
-        borderRadius: 14,
+    // --- Upload grid ---
+    gridContainer: {
+        flexDirection: "row",
+        flexWrap: "wrap",
+    },
+    gridItem: {
+        width: "33.333%",
+        aspectRatio: 1,
+        padding: 2,
+    },
+    gridItemInner: {
+        flex: 1,
+        borderRadius: 6,
         backgroundColor: COLORS.card,
-        borderWidth: 1,
-        borderColor: COLORS.divider,
+        borderWidth: 1.5,
+        borderColor: COLORS.ink,
+        overflow: "hidden",
     },
-    uploadImage: {
+    gridImage: {
         width: "100%",
-        aspectRatio: 3 / 4,
-        borderRadius: 12,
-        marginBottom: 8,
+        height: "100%",
     },
-    uploadFallback: {
-        width: "100%",
-        height: 140,
-        borderRadius: 12,
-        marginBottom: 8,
-        backgroundColor: "#1A2040",
+    gridFallback: {
+        flex: 1,
         alignItems: "center",
         justifyContent: "center",
-    },
-    uploadFallbackText: {
-        color: COLORS.textMuted,
-        fontSize: 13,
-        marginTop: 4,
-    },
-    uploadCaption: {
-        color: COLORS.textPrimary,
-        fontSize: 13,
-        marginTop: 2,
-    },
-    uploadDate: {
-        color: COLORS.textMuted,
-        fontSize: 11,
-        marginTop: 4,
+        backgroundColor: COLORS.cream,
     },
 
     // --- Loaders ---

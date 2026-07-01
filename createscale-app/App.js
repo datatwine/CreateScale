@@ -1,8 +1,10 @@
 // App.js
 
 import React, { useContext } from "react";
-import { NavigationContainer } from "@react-navigation/native";
+import { NavigationContainer, DefaultTheme } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import { Ionicons } from "@expo/vector-icons";
 import { AuthProvider, AuthContext } from "./src/context/AuthContext";
 
 // Screens
@@ -13,37 +15,90 @@ import GlobalFeedScreen from "./src/screens/GlobalFeedScreen";
 import ProfileDetailScreen from "./src/screens/ProfileDetailScreen";
 import BookingsScreen from "./src/screens/BookingsScreen";
 import LiveEventsScreen from "./src/screens/LiveEventsScreen";
+import EditProfileScreen from "./src/screens/EditProfileScreen";
 
-
-// Later: we'll add a "MainApp" or "Home" stack that includes GlobalFeed, etc.
-// For now, we'll just make a placeholder.
-import { View, Text, StyleSheet } from "react-native";
+import { View, Text, StatusBar, StyleSheet } from "react-native";
+import { COLORS } from "./src/config/theme";
 
 const Stack = createNativeStackNavigator();
+const Tab = createBottomTabNavigator();
 
-// Very simple placeholder for "logged-in area"
-function PlaceholderHomeScreen() {
-  const { user } = useContext(AuthContext);
+const WebTheme = {
+  ...DefaultTheme,
+  dark: false,
+  colors: {
+    ...DefaultTheme.colors,
+    background: COLORS.background,
+    card: COLORS.card,
+    text: COLORS.textPrimary,
+    border: COLORS.divider,
+    primary: COLORS.accent,
+  },
+};
 
+function MainTabs() {
   return (
-    <View style={styles.homeContainer}>
-      <Text style={styles.homeTitle}>You are logged in 🎉</Text>
-      <Text style={styles.homeSubtitle}>
-        {user ? `Hello, ${user.username}` : "We haven't loaded your profile yet."}
-      </Text>
-      <Text style={styles.homeSubtitle}>
-        Later this will be your Global Feed / Dashboard screen.
-      </Text>
-    </View>
+    <Tab.Navigator
+      screenOptions={{
+        headerShown: false,
+        tabBarActiveTintColor: COLORS.accent,
+        tabBarInactiveTintColor: COLORS.textMuted,
+        tabBarStyle: {
+          backgroundColor: COLORS.card,
+          borderTopColor: COLORS.ink,
+          borderTopWidth: 2,
+          height:55,
+        },
+      }}
+    >
+      <Tab.Screen
+        name="GlobalFeed"
+        component={GlobalFeedScreen}
+        options={{
+          tabBarLabel: "Feed",
+          tabBarIcon: ({ color }) => (
+            <Ionicons name="home-outline" size={20} color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="LiveEvents"
+        component={LiveEventsScreen}
+        options={{
+          tabBarLabel: "Events",
+          tabBarIcon: ({ color }) => (
+            <Ionicons name="calendar-outline" size={20} color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="Bookings"
+        component={BookingsScreen}
+        options={{
+          tabBarLabel: "Bookings",
+          tabBarIcon: ({ color }) => (
+            <Ionicons name="briefcase-outline" size={20} color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="Profile"
+        component={ProfileScreen}
+        options={{
+          tabBarLabel: "Profile",
+          tabBarIcon: ({ color }) => (
+            <Ionicons name="person-outline" size={20} color={color} />
+          ),
+        }}
+      />
+    </Tab.Navigator>
   );
 }
 
-// A component that chooses which stack to show based on auth state
 function RootNavigator() {
   const { token, initializing } = useContext(AuthContext);
 
   if (initializing) {
-    // Tiny splash-like screen while we read AsyncStorage.
     return (
       <View style={styles.loadingContainer}>
         <Text style={styles.loadingText}>Loading your session…</Text>
@@ -52,23 +107,14 @@ function RootNavigator() {
   }
 
   return (
-    <NavigationContainer>
+    <NavigationContainer theme={WebTheme}>
       {token ? (
-        // User is logged in -> show “app” stack
-        <Stack.Navigator>
-          {/* After login, go straight to the profile view */}
-          <Stack.Screen name="Profile" component={ProfileScreen} />
-          {/* GlobalFeed — navigated to from the "Global feed" pill in ProfileScreen */}
-          <Stack.Screen name="GlobalFeed" component={GlobalFeedScreen} />
-          {/* ProfileDetail — read-only view of another user, with hire flow */}
+        <Stack.Navigator screenOptions={{ headerShown: false, animation: "fade" }}>
+          <Stack.Screen name="MainTabs" component={MainTabs} />
           <Stack.Screen name="ProfileDetail" component={ProfileDetailScreen} />
-          {/* Bookings — engagement dashboard for client + performer */}
-          <Stack.Screen name="Bookings" component={BookingsScreen} />
-          {/* LiveEvents — public accepted engagements, upcoming + past */}
-          <Stack.Screen name="LiveEvents" component={LiveEventsScreen} />
+          <Stack.Screen name="EditProfile" component={EditProfileScreen} />
         </Stack.Navigator>
       ) : (
-        // User is not logged in -> show auth stack
         <Stack.Navigator screenOptions={{ headerShown: false }}>
           <Stack.Screen name="Login" component={LoginScreen} />
           <Stack.Screen name="Signup" component={SignupScreen} />
@@ -79,10 +125,12 @@ function RootNavigator() {
 }
 
 export default function App() {
-  // Wrap the entire app inside AuthProvider so all screens can use AuthContext.
   return (
     <AuthProvider>
-      <RootNavigator />
+      <View style={{ flex: 1, backgroundColor: COLORS.background }}>
+        <StatusBar barStyle="light-content" backgroundColor="#000000" translucent={false} />
+        <RootNavigator />
+      </View>
     </AuthProvider>
   );
 }
@@ -90,31 +138,12 @@ export default function App() {
 const styles = StyleSheet.create({
   loadingContainer: {
     flex: 1,
-    backgroundColor: "#000000",
+    backgroundColor: "#FFF8EE",
     justifyContent: "center",
     alignItems: "center",
   },
   loadingText: {
-    color: "#fef5e7", // pale white-ish
+    color: "#fef5e7",
     fontSize: 18,
-  },
-  homeContainer: {
-    flex: 1,
-    backgroundColor: "#f9f9f9",
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 24,
-  },
-  homeTitle: {
-    fontSize: 24,
-    fontWeight: "700",
-    color: "#d17700", // your orange
-    marginBottom: 8,
-  },
-  homeSubtitle: {
-    fontSize: 16,
-    color: "#444",
-    textAlign: "center",
-    marginTop: 4,
   },
 });
