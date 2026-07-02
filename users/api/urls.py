@@ -1,7 +1,14 @@
 from django.urls import path
 from rest_framework.routers import DefaultRouter
 
-from bookings.api.views import CreateHireRequestAPIView, EngagementViewSet, PerformerPayoutsAPIView, ClientPaymentsAPIView
+from bookings.api.views import (
+    CreateHireRequestAPIView,
+    EngagementViewSet,
+    PerformerPayoutsAPIView,
+    ClientPaymentsAPIView,
+    CreatePaymentOrderAPIView,
+    VerifyPaymentAPIView,
+)
 from users.oauth_views import SocialLoginAPIView
 from .views import (
     TokenLoginAPIView,
@@ -58,6 +65,10 @@ urlpatterns = [
     # Payment history — mirrors bookings/views.py performer_payouts + client_payments
     path("bookings/payouts/performer/", PerformerPayoutsAPIView.as_view(), name="api-bookings-performer-payouts"),
     path("bookings/payments/client/", ClientPaymentsAPIView.as_view(), name="api-bookings-client-payments"),
+
+    # Checkout — mirrors bookings/views.py create_payment_order + verify_payment
+    path("bookings/payments/<int:pk>/create-order/", CreatePaymentOrderAPIView.as_view(), name="api-bookings-create-order"),
+    path("bookings/payments/<int:pk>/verify/", VerifyPaymentAPIView.as_view(), name="api-bookings-verify-payment"),
 ]
 
 urlpatterns += router.urls

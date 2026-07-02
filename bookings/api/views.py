@@ -10,6 +10,7 @@ from rest_framework.views import APIView
 
 from users.models import Profile
 from bookings.models import Engagement
+from bookings.services.payments import PaymentService
 from .serializers import EngagementSerializer, EngagementCreateSerializer, EngagementActionSerializer, PaymentHistorySerializer
 
 
@@ -105,6 +106,53 @@ class ClientPaymentsAPIView(APIView):
               .select_related("client", "performer")
               .order_by("-paid_at"))
         return Response(PaymentHistorySerializer(qs, many=True).data)
+
+
+class CreatePaymentOrderAPIView(APIView):
+    """
+    POST /api/bookings/payments/<pk>/create-order/
+    Step 1 of checkout: mobile posts here when the client taps "Pay Now".
+    Returns the Razorpay order_id + key_id so the app can open checkout.
+    Thin wrapper around PaymentService.create_order() — same logic as
+    the web view (bookings/views.py:288-299), token auth instead of session.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        engagement = get_object_or_404(Engagement, pk=pk)
+        if engagement.client_id != request.user.id:
+            raise PermissionDenied
+        try:
+            order_data = PaymentService.create_order(engagement)
+            return Response(order_data)
+        except (ValueError, RuntimeError) as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class VerifyPaymentAPIView(APIView):
+    """
+    POST /api/bookings/payments/<pk>/verify/
+    Step 2 of checkout: mobile posts here after the Razorpay checkout
+    succeeds. Body contains order_id, payment_id, and HMAC signature.
+    Thin wrapper around PaymentService.verify_and_capture() — same logic
+    as the web view (bookings/views.py:302-320), token auth instead of session.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        engagement = get_object_or_404(Engagement, pk=pk)
+        if engagement.client_id != request.user.id:
+            raise PermissionDenied
+        try:
+            data = request.data
+            PaymentService.verify_and_capture(
+                data["razorpay_order_id"],
+                data["razorpay_payment_id"],
+                data["razorpay_signature"],
+            )
+            return Response({"status": "ok"})
+        except (ValueError, KeyError) as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class EngagementViewSet(viewsets.ViewSet):
