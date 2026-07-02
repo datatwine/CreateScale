@@ -5,6 +5,7 @@ from bookings.models import Engagement
 class EngagementSerializer(serializers.ModelSerializer):
     client = serializers.SerializerMethodField()
     performer = serializers.SerializerMethodField()
+    payment_deadline = serializers.SerializerMethodField()
 
     class Meta:
         model = Engagement
@@ -19,6 +20,9 @@ class EngagementSerializer(serializers.ModelSerializer):
             "status",
             "client_emergency_reason",
             "performer_emergency_reason",
+            "fee",
+            "payment_status",
+            "payment_deadline",
             "created_at",
             "updated_at",
         ]
@@ -28,6 +32,10 @@ class EngagementSerializer(serializers.ModelSerializer):
 
     def get_performer(self, obj):
         return {"id": obj.performer_id, "username": obj.performer.username}
+
+    def get_payment_deadline(self, obj):
+        deadline = obj.payment_deadline()
+        return deadline.isoformat() if deadline else None
 
 
 class EngagementCreateSerializer(serializers.Serializer):
