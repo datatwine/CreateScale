@@ -23,7 +23,9 @@ jest.mock("react-native-safe-area-context", () => ({
     useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
 }));
 
-jest.mock("../config/api", () => ({ API_BASE_URL: "http://localhost:8000" }));
+// Real config/api.js's API_BASE_URL already ends in "/api" — mock must
+// match that shape or a double "/api/api/..." bug goes undetected.
+jest.mock("../config/api", () => ({ API_BASE_URL: "http://localhost:8000/api" }));
 
 global.fetch = jest.fn();
 
@@ -118,7 +120,7 @@ describe("PerformerPayoutsScreen fetch URL", () => {
         await fetchPerformerPayouts("test-token");
 
         expect(global.fetch).toHaveBeenCalledWith(
-            "http://localhost:8000/api/bookings/payouts/performer/",
+            "http://localhost:8000/api/bookings/payouts/performer/", // single /api, not /api/api
             expect.objectContaining({
                 headers: expect.objectContaining({ Authorization: "Token test-token" }),
             }),

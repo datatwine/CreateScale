@@ -10,7 +10,12 @@
  * Run: npm test -- session
  */
 
-import { isUnauthorized, fetchWithTimeout } from "../utils/session";
+jest.mock("@react-native-async-storage/async-storage", () => ({
+    getItem: jest.fn(),
+}));
+
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { isUnauthorized, fetchWithTimeout, getStoredToken, AUTH_TOKEN_KEY } from "../utils/session";
 
 // ---------------------------------------------------------------------------
 // isUnauthorized
@@ -95,5 +100,35 @@ describe("fetchWithTimeout", () => {
 
         await jest.advanceTimersByTimeAsync(5000);
         await assertion;
+    });
+});
+
+// ---------------------------------------------------------------------------
+// getStoredToken — single source of truth for the AsyncStorage key.
+//
+// Bug: PerformerPayoutsScreen/ClientPaymentsScreen read AsyncStorage under
+// "authToken" while AuthContext stores the token under "@auth_token" — the
+// key mismatch meant every payment-history fetch sent a null token and
+// got a 401. Centralizing the key removes this class of bug.
+// ---------------------------------------------------------------------------
+
+describe("getStoredToken", () => {
+    beforeEach(() => {
+        AsyncStorage.getItem.mockReset();
+    });
+
+    test("reads the token under AUTH_TOKEN_KEY", async () => {
+        AsyncStorage.getItem.mockResolvedValueOnce("tok-123");
+
+        const token = await getStoredToken();
+
+        expect(AsyncStorage.getItem).toHaveBeenCalledWith(AUTH_TOKEN_KEY);
+        expect(token).toBe("tok-123");
+    });
+
+    test("AUTH_TOKEN_KEY matches the key AuthContext uses", () => {
+        // AuthContext.js stores/reads the token under "@auth_token" — any
+        // screen fetching its own token must use this same constant.
+        expect(AUTH_TOKEN_KEY).toBe("@auth_token");
     });
 });

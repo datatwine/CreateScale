@@ -15,7 +15,7 @@ export function paymentStatusLabel(status) {
 }
 
 export async function fetchPerformerPayouts(token) {
-    const res = await fetch(`${API_BASE_URL}/api/bookings/payouts/performer/`, {
+    const res = await fetch(`${API_BASE_URL}/bookings/payouts/performer/`, {
         headers: { Authorization: `Token ${token}` },
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -23,7 +23,7 @@ export async function fetchPerformerPayouts(token) {
 }
 
 export async function fetchClientPayments(token) {
-    const res = await fetch(`${API_BASE_URL}/api/bookings/payments/client/`, {
+    const res = await fetch(`${API_BASE_URL}/bookings/payments/client/`, {
         headers: { Authorization: `Token ${token}` },
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);

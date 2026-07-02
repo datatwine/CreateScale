@@ -19,3 +19,13 @@ export function kycColor(status) {
     if (status === "rejected") return "red";
     return "grey";
 }
+
+/** "View payouts received" only applies to performers. */
+export function shouldShowPayoutsLink(profile) {
+    return Boolean(profile?.is_performer);
+}
+
+/** "View payments made" only applies to clients. */
+export function shouldShowPaymentsLink(profile) {
+    return Boolean(profile?.is_potential_client);
+}

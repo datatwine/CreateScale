@@ -7,10 +7,10 @@ import {
     TouchableOpacity,
     View,
 } from "react-native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useNavigation } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { fetchClientPayments, paymentStatusColor } from "../utils/paymentHistory";
+import { getStoredToken } from "../utils/session";
 
 function PaymentRow({ item }) {
     const statusColor = paymentStatusColor(item.payment_status);
@@ -39,7 +39,7 @@ export function ClientPaymentsScreen() {
     useEffect(() => {
         (async () => {
             try {
-                const token = await AsyncStorage.getItem("authToken");
+                const token = await getStoredToken();
                 setData(await fetchClientPayments(token));
             } catch (e) {
                 setError(e.message);
