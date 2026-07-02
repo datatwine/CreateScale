@@ -1,6 +1,19 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
 /** DRF returns 401 when the token is invalid/expired/deleted server-side. */
 export function isUnauthorized(status) {
     return status === 401;
+}
+
+/**
+ * Single source of truth for the AsyncStorage key AuthContext stores the
+ * DRF token under. Any screen reading its own token must use this so it
+ * can't silently drift out of sync with AuthContext and send a null token.
+ */
+export const AUTH_TOKEN_KEY = "@auth_token";
+
+export async function getStoredToken() {
+    return AsyncStorage.getItem(AUTH_TOKEN_KEY);
 }
 
 /**

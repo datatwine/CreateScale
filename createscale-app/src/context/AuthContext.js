@@ -3,7 +3,7 @@
 import React, { createContext, useState, useEffect } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { loginWithUsernamePassword, fetchAuthMe } from "../api/auth";
-import { isUnauthorized } from "../utils/session";
+import { isUnauthorized, AUTH_TOKEN_KEY } from "../utils/session";
 
 // This context will be used by screens to access:
 // - authState.token
@@ -25,7 +25,7 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     (async () => {
       try {
-        const storedToken = await AsyncStorage.getItem("@auth_token");
+        const storedToken = await AsyncStorage.getItem(AUTH_TOKEN_KEY);
         if (storedToken) {
           try {
             const me = await fetchAuthMe(storedToken);
@@ -37,7 +37,7 @@ export function AuthProvider({ children }) {
               // Token was invalidated/deleted server-side — clear it so
               // the app renders the Login stack instead of getting stuck
               // showing a "logged in" screen with no valid session.
-              await AsyncStorage.removeItem("@auth_token");
+              await AsyncStorage.removeItem(AUTH_TOKEN_KEY);
             } else {
               // Network/timeout error — keep the token, let per-screen
               // fetches surface the problem instead of forcing a logout
@@ -62,7 +62,7 @@ export function AuthProvider({ children }) {
     const newToken = data.token;
 
     setToken(newToken);
-    await AsyncStorage.setItem("@auth_token", newToken);
+    await AsyncStorage.setItem(AUTH_TOKEN_KEY, newToken);
 
     // Optional: fetch user
     try {
@@ -76,7 +76,7 @@ export function AuthProvider({ children }) {
   // Called by OAuth social login buttons — token already obtained from backend
   const loginWithToken = async (newToken) => {
     setToken(newToken);
-    await AsyncStorage.setItem("@auth_token", newToken);
+    await AsyncStorage.setItem(AUTH_TOKEN_KEY, newToken);
     try {
       const me = await fetchAuthMe(newToken);
       setUser(me);
@@ -88,7 +88,7 @@ export function AuthProvider({ children }) {
   const logout = async () => {
     setToken(null);
     setUser(null);
-    await AsyncStorage.removeItem("@auth_token");
+    await AsyncStorage.removeItem(AUTH_TOKEN_KEY);
     // Later we can also call backend /auth/logout/ if you want.
   };
 

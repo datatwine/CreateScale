@@ -7,10 +7,10 @@ import {
     TouchableOpacity,
     View,
 } from "react-native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useNavigation } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { fetchPerformerPayouts, paymentStatusColor } from "../utils/paymentHistory";
+import { getStoredToken } from "../utils/session";
 
 function PayoutRow({ item }) {
     const statusColor = paymentStatusColor(item.payment_status);
@@ -39,7 +39,7 @@ export function PerformerPayoutsScreen() {
     useEffect(() => {
         (async () => {
             try {
-                const token = await AsyncStorage.getItem("authToken");
+                const token = await getStoredToken();
                 setData(await fetchPerformerPayouts(token));
             } catch (e) {
                 setError(e.message);

@@ -30,7 +30,7 @@ import { Ionicons } from "@expo/vector-icons"; // only once
 import { AuthContext } from "../context/AuthContext";
 import { API_BASE_URL } from "../config/api";
 import { uploadMedia } from "../api/upload";
-import { maskAccountNumber, kycLabel, kycColor } from "../utils/settingsDrawer";
+import { maskAccountNumber, kycLabel, kycColor, shouldShowPayoutsLink, shouldShowPaymentsLink } from "../utils/settingsDrawer";
 import { isUnauthorized } from "../utils/session";
 
 // ---------------------------------------------------------------------------
@@ -1299,32 +1299,36 @@ return (
           </View>
         )}
 
-        {/* Payment history — everyone */}
-        <View style={styles.drawerSection}>
-          <Text style={styles.drawerSectionTitle}>Your Payments</Text>
+        {/* Payment history — only for the roles that generate it */}
+        {(shouldShowPayoutsLink(profile) || shouldShowPaymentsLink(profile)) && (
+          <View style={styles.drawerSection}>
+            <Text style={styles.drawerSectionTitle}>Your Payments</Text>
 
-          {profile?.is_performer && (
-            <TouchableOpacity
-              style={styles.drawerLink}
-              onPress={() => {
-                setDrawerVisible(false);
-                navigation.navigate("PerformerPayouts");
-              }}
-            >
-              <Text style={styles.drawerLinkText}>📥  View payouts received</Text>
-            </TouchableOpacity>
-          )}
+            {shouldShowPayoutsLink(profile) && (
+              <TouchableOpacity
+                style={styles.drawerLink}
+                onPress={() => {
+                  setDrawerVisible(false);
+                  navigation.navigate("PerformerPayouts");
+                }}
+              >
+                <Text style={styles.drawerLinkText}>📥  View payouts received</Text>
+              </TouchableOpacity>
+            )}
 
-          <TouchableOpacity
-            style={styles.drawerLink}
-            onPress={() => {
-              setDrawerVisible(false);
-              navigation.navigate("ClientPayments");
-            }}
-          >
-            <Text style={styles.drawerLinkText}>📤  View payments made</Text>
-          </TouchableOpacity>
-        </View>
+            {shouldShowPaymentsLink(profile) && (
+              <TouchableOpacity
+                style={styles.drawerLink}
+                onPress={() => {
+                  setDrawerVisible(false);
+                  navigation.navigate("ClientPayments");
+                }}
+              >
+                <Text style={styles.drawerLinkText}>📤  View payments made</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
       </View>
     </Modal>
   </SafeAreaView>
