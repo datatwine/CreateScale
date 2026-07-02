@@ -31,6 +31,7 @@ import { AuthContext } from "../context/AuthContext";
 import { API_BASE_URL } from "../config/api";
 import { uploadMedia } from "../api/upload";
 import { maskAccountNumber, kycLabel, kycColor } from "../utils/settingsDrawer";
+import { isUnauthorized } from "../utils/session";
 
 // ---------------------------------------------------------------------------
 // Client-side media compression helpers
@@ -391,6 +392,12 @@ export default function ProfileScreen() {
         // For debugging JSON parse problems:
         const text = await response.text();
         console.warn("Profile load failed:", response.status, text);
+        if (isUnauthorized(response.status)) {
+          // Stale/invalid token — bounce back to Login instead of getting
+          // stuck showing "couldn't load your profile" forever.
+          await logout();
+          return;
+        }
         throw new Error("Failed to load profile");
       }
 
@@ -412,7 +419,7 @@ export default function ProfileScreen() {
     } finally {
       setLoadingProfile(false);
     }
-  }, [token]);
+  }, [token, logout]);
 
   const loadUploads = useCallback(async () => {
     if (!token) return;
@@ -433,6 +440,10 @@ export default function ProfileScreen() {
       if (!response.ok) {
         const text = await response.text();
         console.warn("Uploads load failed:", response.status, text);
+        if (isUnauthorized(response.status)) {
+          await logout();
+          return;
+        }
         throw new Error("Failed to load uploads");
       }
 
@@ -453,7 +464,7 @@ export default function ProfileScreen() {
     } finally {
       setLoadingUploads(false);
     }
-  }, [token]);
+  }, [token, logout]);
 
   // Load profile and uploads when the screen mounts / token changes
   useEffect(() => {

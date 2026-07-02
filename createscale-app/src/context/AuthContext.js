@@ -3,6 +3,7 @@
 import React, { createContext, useState, useEffect } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { loginWithUsernamePassword, fetchAuthMe } from "../api/auth";
+import { isUnauthorized } from "../utils/session";
 
 // This context will be used by screens to access:
 // - authState.token
@@ -26,14 +27,23 @@ export function AuthProvider({ children }) {
       try {
         const storedToken = await AsyncStorage.getItem("@auth_token");
         if (storedToken) {
-          setToken(storedToken);
-
-          // Optional: preload user
           try {
             const me = await fetchAuthMe(storedToken);
+            setToken(storedToken);
             setUser(me);
           } catch (err) {
             console.log("Failed to preload user:", err.message);
+            if (isUnauthorized(err.status)) {
+              // Token was invalidated/deleted server-side — clear it so
+              // the app renders the Login stack instead of getting stuck
+              // showing a "logged in" screen with no valid session.
+              await AsyncStorage.removeItem("@auth_token");
+            } else {
+              // Network/timeout error — keep the token, let per-screen
+              // fetches surface the problem instead of forcing a logout
+              // on a transient connectivity issue.
+              setToken(storedToken);
+            }
           }
         }
       } catch (err) {
@@ -94,42 +104,5 @@ export function AuthProvider({ children }) {
   return (
     <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
   );
-}
-
-// ---------------------------------------------
-// Fetch uploads for the currently authenticated user
-// API endpoint: GET /api/users/me/uploads/
-// Returns a list of uploads with fields like:
-//   { id, caption, upload_date, image_url, video_url }
-// ---------------------------------------------
-export async function fetchMyUploads(token) {
-  const url = `${API_BASE_URL}/users/me/uploads/`;
-
-  const response = await fetch(url, {
-    method: "GET",
-    headers: {
-      "Content-Type": "application/json",
-      // DRF Token authentication uses the format: "Token <key>"
-      Authorization: `Token ${token}`,
-    },
-  });
-
-  if (!response.ok) {
-    // Read the text so error messages from Django/DRF are at least visible
-    const errorText = await response.text();
-    console.error(
-      "[fetchMyUploads] Failed:",
-      response.status,
-      response.statusText,
-      errorText
-    );
-    throw new Error(
-      `Failed to fetch uploads (${response.status}): ${response.statusText}`
-    );
-  }
-
-  // This should be a JSON array ([])
-  const data = await response.json();
-  return data;
 }
 
