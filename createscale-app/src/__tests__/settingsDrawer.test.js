@@ -5,7 +5,7 @@
  * Run:  npm test -- settingsDrawer
  */
 
-import { maskAccountNumber, kycLabel, kycColor } from "../utils/settingsDrawer";
+import { maskAccountNumber, kycLabel, kycColor, shouldShowPayoutsLink, shouldShowPaymentsLink } from "../utils/settingsDrawer";
 
 // ---------------------------------------------------------------------------
 // maskAccountNumber
@@ -74,5 +74,49 @@ describe("kycColor", () => {
         expect(kycColor(null)).toBe("grey");
         expect(kycColor("")).toBe("grey");
         expect(kycColor("unknown")).toBe("grey");
+    });
+});
+
+// ---------------------------------------------------------------------------
+// shouldShowPayoutsLink — "View payouts received" link visibility
+// ---------------------------------------------------------------------------
+
+describe("shouldShowPayoutsLink", () => {
+    test("shown when is_performer is true", () => {
+        expect(shouldShowPayoutsLink({ is_performer: true, is_potential_client: false })).toBe(true);
+    });
+
+    test("hidden when is_performer is false", () => {
+        expect(shouldShowPayoutsLink({ is_performer: false, is_potential_client: true })).toBe(false);
+    });
+
+    test("hidden when both roles are false", () => {
+        expect(shouldShowPayoutsLink({ is_performer: false, is_potential_client: false })).toBe(false);
+    });
+
+    test("hidden when profile is null", () => {
+        expect(shouldShowPayoutsLink(null)).toBe(false);
+    });
+});
+
+// ---------------------------------------------------------------------------
+// shouldShowPaymentsLink — "View payments made" link visibility
+// ---------------------------------------------------------------------------
+
+describe("shouldShowPaymentsLink", () => {
+    test("shown when is_potential_client is true", () => {
+        expect(shouldShowPaymentsLink({ is_performer: false, is_potential_client: true })).toBe(true);
+    });
+
+    test("hidden when is_potential_client is false", () => {
+        expect(shouldShowPaymentsLink({ is_performer: true, is_potential_client: false })).toBe(false);
+    });
+
+    test("hidden when both roles are false", () => {
+        expect(shouldShowPaymentsLink({ is_performer: false, is_potential_client: false })).toBe(false);
+    });
+
+    test("hidden when profile is null", () => {
+        expect(shouldShowPaymentsLink(null)).toBe(false);
     });
 });
