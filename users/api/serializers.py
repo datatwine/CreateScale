@@ -100,6 +100,10 @@ class MeProfileSerializer(serializers.ModelSerializer):
     profile_picture_url = serializers.SerializerMethodField()
     cover_photo_url = serializers.SerializerMethodField()
     bank_account_last4 = serializers.SerializerMethodField()
+    # Same bounds as PaymentDetailsForm.clean_performer_fee (users/forms.py).
+    performer_fee = serializers.IntegerField(
+        min_value=500, max_value=500000, required=False,
+    )
 
     class Meta:
         model = Profile
@@ -118,11 +122,15 @@ class MeProfileSerializer(serializers.ModelSerializer):
             "client_approved",
             "performer_blacklisted",
             "client_blacklisted",
-            # Settings drawer — read-only payment/KYC fields
+            # KYC — settings drawer displays these, KYC form writes them
             "razorpay_kyc_status",
             "performer_fee",
+            "phone_number",
+            "pan_number",
+            "bank_account_number",   # write-only — use bank_account_last4 to read
             "bank_account_last4",
             "bank_ifsc",
+            "bank_account_holder_name",
             "razorpay_account_id",
         ]
         extra_kwargs = {
@@ -132,8 +140,7 @@ class MeProfileSerializer(serializers.ModelSerializer):
             "performer_blacklisted": {"read_only": True},
             "client_blacklisted":   {"read_only": True},
             "razorpay_kyc_status":  {"read_only": True},
-            "performer_fee":        {"read_only": True},
-            "bank_ifsc":            {"read_only": True},
+            "bank_account_number":  {"write_only": True, "required": False},
             "razorpay_account_id":  {"read_only": True},
         }
 
@@ -147,6 +154,52 @@ class MeProfileSerializer(serializers.ModelSerializer):
         if not obj.bank_account_number:
             return ""
         return obj.bank_account_number[-4:]
+
+    def update(self, instance, validated_data):
+        """
+        Mirrors users.views.update_payment_details: after saving the KYC
+        fields, spin up a Razorpay linked account if the performer just
+        completed their details and doesn't have one yet. Idempotent on
+        re-submit (skipped once razorpay_account_id is set). Onboarding
+        failures don't lose the saved fields — same as the web view, the
+        user can retry without re-entering everything.
+        """
+        instance = super().update(instance, validated_data)
+
+        should_onboard = (
+            instance.is_performer
+            and not instance.razorpay_account_id
+            and instance.pan_number
+            and instance.bank_account_number
+            and instance.bank_ifsc
+            and instance.phone_number
+        )
+        if should_onboard:
+            try:
+                from bookings.services.razorpay_client import get_client
+                client = get_client()
+                account = client.account.create({
+                    "type": "route",
+                    "reference_id": f"user_{instance.user_id}",
+                    "email": instance.user.email or f"user{instance.user_id}@artkhoj.local",
+                    "phone": instance.phone_number,
+                    "legal_business_name": instance.bank_account_holder_name,
+                    "business_type": "individual",
+                    "contact_name": instance.bank_account_holder_name,
+                    "profile": {
+                        "category": "ecommerce",
+                        "subcategory": "marketplace",
+                    },
+                    "legal_info": {"pan": instance.pan_number},
+                })
+                instance.razorpay_account_id = account["id"]
+                instance.razorpay_kyc_status = "pending"
+                instance.save(update_fields=["razorpay_account_id", "razorpay_kyc_status"])
+            except Exception:
+                # Saved fields stay saved; user can retry onboarding later.
+                pass
+
+        return instance
 
 
 class PublicProfileDetailSerializer(serializers.ModelSerializer):
