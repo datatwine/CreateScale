@@ -218,6 +218,8 @@ services:
     container_name: db-registry-1
     ports:
       - "5000:5000"
+    environment:
+      REGISTRY_PROXY_REMOTEURL: https://ghcr.io
     volumes:
       - registry-data:/var/lib/registry
     restart: unless-stopped
