@@ -202,12 +202,25 @@ services:
       - loki_data:/tmp/loki
     ports:
       - "3100:3100"
-    command: -config.file=/etc/loki/local-config.yaml
+    environment:
+      - R2_ACCESS_KEY_ID=${R2_ACCESS_KEY_ID}
+      - R2_SECRET_ACCESS_KEY=${R2_SECRET_ACCESS_KEY}
+      - R2_ENDPOINT=${R2_ENDPOINT}
+    command: -config.file=/etc/loki/local-config.yaml -config.expand-env=true
     logging:
       driver: json-file
       options:
         max-size: "10m"
         max-file: "3"
+
+  registry:
+    image: registry:2
+    container_name: db-registry-1
+    ports:
+      - "5000:5000"
+    volumes:
+      - registry-data:/var/lib/registry
+    restart: unless-stopped
 
   docker_stats_exporter:
     build:
@@ -227,3 +240,4 @@ volumes:
   prometheus_data:
   grafana_data:
   loki_data:
+  registry-data:

@@ -167,6 +167,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'allauth.account.middleware.AccountMiddleware',
+    'myproject.middleware.audit.AuditMiddleware',
     'django_prometheus.middleware.PrometheusAfterMiddleware',
 ]
 

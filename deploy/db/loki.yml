@@ -1,10 +1,3 @@
-# =============================================================================
-# Loki config — Centralized log aggregation for the web fleet
-# =============================================================================
-# Deployed to the DB box. Receives log streams from Promtail agents running
-# on each web instance. Logs are stored locally for 7 days.
-# =============================================================================
-
 auth_enabled: false
 
 server:
@@ -12,10 +5,6 @@ server:
 
 common:
   path_prefix: /tmp/loki
-  storage:
-    filesystem:
-      chunks_directory: /tmp/loki/chunks
-      rules_directory: /tmp/loki/rules
   replication_factor: 1
   ring:
     kvstore:
@@ -23,6 +12,8 @@ common:
 
 schema_config:
   configs:
+    # Pre-cutover data: stays on local filesystem
+    # "from" = "use this config for data ingested starting this date"
     - from: 2020-10-24
       store: tsdb
       object_store: filesystem
@@ -30,6 +21,37 @@ schema_config:
       index:
         prefix: index_
         period: 24h
+    # Post-cutover data: goes directly to R2
+    - from: 2026-07-15
+      store: tsdb
+      object_store: s3
+      schema: v13
+      index:
+        prefix: index_
+        period: 24h
 
+storage_config:
+  filesystem:
+    directory: /tmp/loki/chunks
+  aws:
+    endpoint: ${R2_ENDPOINT}
+    bucketnames: artkhoj-logs
+    access_key_id: ${R2_ACCESS_KEY_ID}
+    secret_access_key: ${R2_SECRET_ACCESS_KEY}
+    s3forcepathstyle: true
+    region: auto
+
+# 256MB LRU cache — recent chunks served from memory, older from R2.
+# When full, oldest entries evicted. Evicted data still in R2, just
+# slightly slower to query. At scale, bump this or move to Redis cache.
+chunk_store_config:
+  chunk_cache_config:
+    embedded_cache:
+      enabled: true
+      max_size_mb: 256
+      ttl: 336h
+
+# Deletes LOCAL pre-cutover filesystem chunks after 14 days.
+# R2 data is not affected — lives forever.
 limits_config:
-  retention_period: 168h  # 7 days
+  retention_period: 336h
