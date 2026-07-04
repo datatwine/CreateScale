@@ -704,6 +704,52 @@ body.border-stripe .upload-card:hover {
 }
 .file-pick-btn.has-file .pick-sub { color: var(--ink-soft); }
 
+/* Swap notice wrapper — provides spacing from the pick button above */
+.swap-wrap {
+  padding-top: 20px;
+}
+
+/* Swap notice — shown when user picks one media type, hinting to clear & pick the other.
+   Styled with a dotted border to distinguish from the pick button. */
+.swap-notice {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 20px;
+  background: transparent;
+  border: 2px dashed var(--ink);
+  border-radius: var(--radius-chunky);
+  font-family: "Bricolage Grotesque", sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  width: 100%;
+  justify-content: space-between;
+  user-select: none;
+}
+.swap-notice span { flex: 1; }
+.swap-clear-btn {
+  background: var(--orange);
+  border: 2px solid var(--ink);
+  border-radius: 50%;
+  width: 34px; height: 34px;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--ink);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  flex-shrink: 0;
+  transition: transform 0.12s, box-shadow 0.12s, background 0.12s;
+}
+.swap-clear-btn:hover {
+  background: var(--orange-deep);
+  color: #fff;
+}
+
 /* ==================== RESPONSIVE ==================== */
 @media (max-width: 780px) {
   .uploads-grid { grid-template-columns: repeat(2, 1fr); }
