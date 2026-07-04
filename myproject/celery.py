@@ -31,6 +31,12 @@ app.conf.beat_schedule = {
         "task": "bookings.tasks.expire_unpaid_engagements",
         "schedule": crontab(minute=0),
     },
+    # Hourly: auto-expire pending requests older than 24h that nobody
+    # responded to. Keeps the performer's queue clean.
+    "expire-stale-pending": {
+        "task": "bookings.tasks.expire_stale_pending_engagements",
+        "schedule": crontab(minute=0),
+    },
     # Daily at 02:00 local: release held transfers for events that finished
     # >24h ago and weren't disputed. 02:00 keeps the cron well clear of
     # peak traffic.

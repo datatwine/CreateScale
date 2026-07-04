@@ -1,9 +1,16 @@
 
 # Create your models here.
+import re
+
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.contrib.auth.models import User
 
 from users.utils.image import process_image, is_fresh_upload
+
+PAN_RE  = re.compile(r"^[A-Z]{5}[0-9]{4}[A-Z]$")
+IFSC_RE = re.compile(r"^[A-Z]{4}0[A-Z0-9]{6}$")
+PHONE_RE = re.compile(r"^[6-9]\d{9}$")
 
 class Profile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
@@ -80,6 +87,25 @@ class Profile(models.Model):
 
     def __str__(self):
         return f'{self.user.username} Profile'
+
+    def clean(self):
+        if self.pan_number:
+            pan = self.pan_number.upper().strip()
+            if not PAN_RE.match(pan):
+                raise ValidationError({"pan_number": "Invalid PAN format. Expected: ABCDE1234F"})
+            self.pan_number = pan
+        if self.bank_ifsc:
+            ifsc = self.bank_ifsc.upper().strip()
+            if not IFSC_RE.match(ifsc):
+                raise ValidationError({"bank_ifsc": "Invalid IFSC code format."})
+            self.bank_ifsc = ifsc
+        if self.phone_number:
+            phone = self.phone_number.strip()
+            if not PHONE_RE.match(phone):
+                raise ValidationError({"phone_number": "Enter a valid 10-digit Indian mobile number."})
+            self.phone_number = phone
+        if self.performer_fee is not None and (self.performer_fee < 500 or self.performer_fee > 500000):
+            raise ValidationError({"performer_fee": "Fee must be between ₹500 and ₹5,00,000."})
 
     def save(self, *args, **kwargs):
         # Compress only brand-new uploads. Re-saves (admin edits, etc.) skip this.
