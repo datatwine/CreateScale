@@ -45,10 +45,14 @@ class UploadForm(forms.ModelForm):
         fields = ["image", "video", "caption"]
 
     def clean(self):
-        cleaned_data = super().clean()
-        if not cleaned_data.get("image") and not cleaned_data.get("video"):
+        cleaned = super().clean()
+        if not cleaned.get("image") and not cleaned.get("video"):
             raise ValidationError("Upload requires at least one file (image or video).")
-        return cleaned_data
+        if cleaned.get("image") and cleaned.get("video"):
+            raise ValidationError(
+                "Upload only one file at a time — choose either a photo or a video, not both."
+            )
+        return cleaned
 
     def clean_image(self):
         image = self.cleaned_data.get("image")
