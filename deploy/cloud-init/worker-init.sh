@@ -19,9 +19,9 @@ if [ -z "$PRIVATE_IP" ] || [ -z "$GATEWAY" ]; then
 fi
 
 # --- Configure private network interface ---
-ip addr add ${PRIVATE_IP}/32 dev enp7s0
+ip addr add ${PRIVATE_IP}/32 dev enp7s0 2>/dev/null || true
 ip link set enp7s0 up
-ip route add 10.0.0.0/16 via ${GATEWAY} dev enp7s0
+ip route add 10.0.0.0/16 via ${GATEWAY} dev enp7s0 2>/dev/null || true
 
 # --- Write k3s agent config ---
 mkdir -p /etc/rancher/k3s
