@@ -1,5 +1,5 @@
 {
-  "imagesForArch": { "amd64": "404876137" },
+  "imagesForArch": { "amd64": "405000555" },
   "nodeConfigs": {
     "web-pool": {
       "cloudInit": "__CLOUD_INIT_B64__"
