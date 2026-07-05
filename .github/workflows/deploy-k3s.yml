@@ -450,7 +450,7 @@ jobs:
             HCLOUD_CLUSTER_CONFIG: "${HCLOUD_CLUSTER_CONFIG}"
           EOF
 
-          helm upgrade cluster-autoscaler autoscaler/cluster-autoscaler \
+          helm upgrade --install cluster-autoscaler autoscaler/cluster-autoscaler \
             -n kube-system \
             -f deploy/k8s/hetzner/cluster-autoscaler-values.yaml \
             -f /tmp/autoscaler-secrets.yaml

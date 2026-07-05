@@ -4,7 +4,7 @@
 # Manual usage: see "Going forward" in the PR description.
 cloudProvider: hetzner
 extraEnv:
-  HCLOUD_NETWORK: "artkhoj-net"
+  HCLOUD_NETWORK: "artkhoj-net-eu"
   HCLOUD_FIREWALL: "artkhoj-fw"
   HCLOUD_SSH_KEY: "artkhoj-key"
 extraArgs:
@@ -17,4 +17,4 @@ autoscalingGroups:
     minSize: 1
     maxSize: 15
     instanceType: cpx22
-    region: sin
+    region: fsn1
