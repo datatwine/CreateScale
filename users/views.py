@@ -190,7 +190,7 @@ def profile_detail(request, user_id):
     uploads = (
         Upload.objects
         .filter(profile=user_profile)
-        .order_by("-upload_date")
+        .order_by("-upload_date")[:20]
     )
 
     # Gig stats — accepted engagements with a past date (covered by the

@@ -5,7 +5,7 @@ Loaded by myproject/__init__.py so Django's autodiscover_tasks() picks up
 tasks.py modules in installed apps (e.g. users/tasks.py).
 
 Broker + result backend share the existing Redis instance (also used as the
-Django cache + session store + sorl-thumbnail KVStore). All Celery settings
+Django cache + session store). All Celery settings
 live in settings.py under the CELERY_ namespace.
 """
 

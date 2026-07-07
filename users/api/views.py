@@ -251,6 +251,7 @@ class MyUploadsAPIView(generics.ListCreateAPIView):
             upload.save()  # is_fresh_upload() returns False (name is already committed)
 
             cache.delete(f"uploads:{request.user.id}")
+            cache.delete(f"profile:{request.user.id}")
 
             # Background tasks
             if is_video:
@@ -271,6 +272,7 @@ class MyUploadsAPIView(generics.ListCreateAPIView):
         profile = self.request.user.profile
         upload = serializer.save(profile=profile)
         cache.delete(f"uploads:{self.request.user.id}")
+        cache.delete(f"profile:{self.request.user.id}")
         # Background ffmpeg re-encode for videos (no-op for images).
         # If the worker is offline, the message queues in Redis silently.
         if upload.video:
@@ -294,10 +296,12 @@ class MyUploadDeleteAPIView(generics.UpdateAPIView, generics.DestroyAPIView):
     def perform_update(self, serializer):
         serializer.save()
         cache.delete(f"uploads:{self.request.user.id}")
+        cache.delete(f"profile:{self.request.user.id}")
 
     def perform_destroy(self, instance):
         super().perform_destroy(instance)
         cache.delete(f"uploads:{self.request.user.id}")
+        cache.delete(f"profile:{self.request.user.id}")
 
 
 class GlobalFeedAPIView(_LenientPaginatorMixin, generics.GenericAPIView):
@@ -376,7 +380,7 @@ class ProfileDetailAPIView(generics.RetrieveAPIView):
             serializer = self.get_serializer(instance)
             return serializer.data
 
-        return Response(_cached(key, 60, compute))
+        return Response(_cached(key, 300, compute))
 
 
 class ProfessionsAPIView(APIView):
