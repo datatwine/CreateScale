@@ -1,5 +1,4 @@
 from rest_framework import serializers
-from sorl.thumbnail import get_thumbnail
 from users.models import Profile, Upload
 
 
@@ -38,15 +37,7 @@ class UploadSerializer(serializers.ModelSerializer):
         return _abs_url(self.context.get("request"), obj.image)
 
     def get_image_thumbnail_url(self, obj):
-        """300x300 center-cropped JPEG via sorl-thumbnail. Falls back to None on
-        any error — the Expo client then uses image_url instead."""
-        if not obj.image:
-            return None
-        try:
-            t = get_thumbnail(obj.image, "300x300", crop="center", quality=80)
-            return _abs_url(self.context.get("request"), t)
-        except Exception:
-            return None
+        return _abs_url(self.context.get("request"), obj.image) if obj.image else None
 
     def get_video_url(self, obj):
         return _abs_url(self.context.get("request"), obj.video)

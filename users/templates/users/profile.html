@@ -1,6 +1,6 @@
 {% extends 'users/base.html' %}
 {% load static %}
-{% load thumbnail %}
+
 
 {% block title %}{{ user.username }} · ArtKhoj{% endblock %}
 
@@ -162,12 +162,7 @@
                 {% if upload.image %}
                     <div class="upload-card" data-upload-id="{{ upload.id }}">
                         <div class="media-wrap">
-                            {# 300x300 thumbnail via sorl-thumbnail (falls back to full image on any failure) #}
-                            {% thumbnail upload.image "300x300" crop="center" as t %}
-                                <img src="{{ t.url }}" alt="{{ upload.caption }}" loading="lazy">
-                            {% empty %}
-                                <img src="{{ upload.image.url }}" alt="{{ upload.caption }}" loading="lazy">
-                            {% endthumbnail %}
+                            <img src="{{ upload.image.url }}" alt="{{ upload.caption }}" loading="lazy">
                         </div>
                         <button class="upload-menu-btn" onclick="toggleUploadMenu(this)" aria-label="Upload options">
                             <svg viewBox="0 0 24 24" width="18" height="18" fill="white"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
