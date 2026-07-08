@@ -10,6 +10,8 @@ from django.views.decorators.cache import cache_control
 
 from django.conf import settings as django_settings
 
+from users.forms import CustomPasswordResetForm
+
 from rest_framework import generics, serializers, status
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
@@ -29,6 +31,7 @@ from .serializers import (
     PresignedUploadSerializer,
     UploadSerializer,
     SignupSerializer,
+    ForgotPasswordSerializer,
 )
 
 
@@ -140,6 +143,40 @@ class SignupAPIView(APIView):
             {"token": token.key, "user_id": user.id, "username": user.username},
             status=status.HTTP_201_CREATED,
         )
+
+
+class ForgotPasswordAPIView(APIView):
+    """
+    POST /api/auth/forgot-password/
+    Body: {"email": "user@example.com"}
+    Returns: 200 {"detail": "Password reset link sent to your email."}
+            400 {"detail": "No account found with this email address."}
+    """
+
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = ForgotPasswordSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        email = serializer.validated_data["email"]
+        form = CustomPasswordResetForm({"email": email})
+        if not form.is_valid():
+            return Response(
+                {"detail": "No account found with this email address."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        form.save(
+            request=request,
+            use_https=request.is_secure(),
+            email_template_name="users/password_reset_email.txt",
+            html_email_template_name="users/password_reset_email.html",
+            subject_template_name="users/password_reset_subject.txt",
+            from_email=django_settings.DEFAULT_FROM_EMAIL,
+        )
+
+        return Response({"detail": "Password reset link sent to your email."})
 
 
 # -------------------------------------------------------------------
