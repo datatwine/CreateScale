@@ -59,6 +59,18 @@ SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 TIME_ZONE = os.getenv("TIME_ZONE", "Asia/Kolkata")
 USE_TZ = True
 
+# ---- Email (password reset, notifications) ----
+EMAIL_BACKEND = os.getenv("EMAIL_BACKEND", "django.core.mail.backends.smtp.EmailBackend")
+EMAIL_HOST = os.getenv("EMAIL_HOST", "")
+EMAIL_PORT = int(os.getenv("EMAIL_PORT", "587"))
+EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "True") == "True"
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
+DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "noreply@artkhoj.com")
+
+# Password reset link expires in 1 hour
+PASSWORD_RESET_TIMEOUT = int(os.getenv("PASSWORD_RESET_TIMEOUT", "3600"))
+
 
 # Application definition
 
@@ -410,9 +422,13 @@ import os
 SENTRY_DSN = os.getenv("SENTRY_DSN", "")
 
 if SENTRY_DSN:
-    import sentry_sdk
-    from sentry_sdk.integrations.django import DjangoIntegration
+    try:
+        import sentry_sdk
+        from sentry_sdk.integrations.django import DjangoIntegration
+    except ImportError:
+        sentry_sdk = None
 
+if SENTRY_DSN and sentry_sdk:
     # NOTE: sentry-sdk 2.x uses contextvars under the hood (which gevent
     # monkey-patches), so request-scoping works correctly with greenlets
     # WITHOUT a separate GeventIntegration. The dedicated integration was
