@@ -31,6 +31,7 @@ import { Ionicons } from "@expo/vector-icons";
 
 import { AuthContext } from "../context/AuthContext";
 import { API_BASE_URL } from "../config/api";
+import { computeCountdown } from "../utils/countdown";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -180,6 +181,9 @@ export default function LiveEventsScreen({ navigation }) {
     const [refreshing, setRefreshing] = useState(false);
     const [loadingMore, setLoadingMore] = useState(false);
 
+    // Countdown to the next upcoming event
+    const [countdown, setCountdown] = useState(null);
+
     // Animated underline for the tab indicator
     const tabAnim = useRef(new Animated.Value(0)).current;
 
@@ -211,6 +215,29 @@ export default function LiveEventsScreen({ navigation }) {
         },
         [token],
     );
+
+    // -----------------------------------------------------------------------
+    // Countdown ticker — fires when upcomingData changes, cleans up on unmount
+    // -----------------------------------------------------------------------
+
+    useEffect(() => {
+        // API returns events ascending by date — first item is the soonest
+        const next = upcomingData[0];
+        if (!next) { setCountdown(null); return; }
+
+        const target = new Date(`${next.date}T${next.time}`);
+        if (isNaN(target.getTime())) { setCountdown(null); return; }
+
+        // Tick immediately then every second
+        setCountdown(computeCountdown(target));
+        const id = setInterval(() => {
+            const c = computeCountdown(target);
+            setCountdown(c);
+            if (!c) clearInterval(id); // event has passed
+        }, 1000);
+
+        return () => clearInterval(id);
+    }, [upcomingData]);
 
     // -----------------------------------------------------------------------
     // Initial load for both scopes
@@ -475,6 +502,31 @@ export default function LiveEventsScreen({ navigation }) {
                     keyExtractor={(item) => String(item.id)}
                     renderItem={renderItem}
                     contentContainerStyle={styles.listContent}
+                    ListHeaderComponent={
+                        scope === "upcoming" && countdown ? (
+                            <View style={styles.countdownBanner}>
+                                <Text style={styles.countdownLabel}>Next event in</Text>
+                                <View style={styles.countdownRow}>
+                                    {[
+                                        { value: countdown.days,  unit: "Days" },
+                                        { value: countdown.hours, unit: "Hrs" },
+                                        { value: countdown.mins,  unit: "Min" },
+                                        { value: countdown.secs,  unit: "Sec" },
+                                    ].map(({ value, unit }, i, arr) => (
+                                        <React.Fragment key={unit}>
+                                            <View style={styles.countdownUnit}>
+                                                <Text style={styles.countdownNum}>{value}</Text>
+                                                <Text style={styles.countdownUnitLabel}>{unit}</Text>
+                                            </View>
+                                            {i < arr.length - 1 && (
+                                                <Text style={styles.countdownSep}>:</Text>
+                                            )}
+                                        </React.Fragment>
+                                    ))}
+                                </View>
+                            </View>
+                        ) : null
+                    }
                     showsVerticalScrollIndicator={false}
                     ListEmptyComponent={renderEmpty}
                     ListFooterComponent={renderFooter}
@@ -568,6 +620,52 @@ const styles = StyleSheet.create({
         fontSize: 11,
         fontWeight: "700",
         color: COLORS.textPrimary,
+    },
+
+    // --- Countdown banner ---
+    countdownBanner: {
+        backgroundColor: COLORS.card,
+        borderRadius: 14,
+        padding: 16,
+        marginBottom: 12,
+        alignItems: "center",
+        borderWidth: 1,
+        borderColor: COLORS.divider,
+    },
+    countdownLabel: {
+        fontSize: 12,
+        fontWeight: "600",
+        color: COLORS.textMuted,
+        letterSpacing: 1,
+        marginBottom: 10,
+        textTransform: "uppercase",
+    },
+    countdownRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 4,
+    },
+    countdownUnit: {
+        alignItems: "center",
+        minWidth: 52,
+    },
+    countdownNum: {
+        fontSize: 32,
+        fontWeight: "700",
+        color: COLORS.accent,
+        fontVariant: ["tabular-nums"],
+    },
+    countdownUnitLabel: {
+        fontSize: 11,
+        color: COLORS.textMuted,
+        marginTop: 2,
+        fontWeight: "500",
+    },
+    countdownSep: {
+        fontSize: 28,
+        fontWeight: "700",
+        color: COLORS.accentDim,
+        marginBottom: 14,
     },
 
     // --- List ---
