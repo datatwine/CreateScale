@@ -116,6 +116,8 @@ class Profile(models.Model):
         super().save(*args, **kwargs)
 
 class Upload(models.Model):
+    MAX_UPLOADS_PER_USER = 9
+
     profile = models.ForeignKey(Profile, on_delete=models.CASCADE, related_name='uploads')
     image = models.ImageField(upload_to='profile_pics', blank=True, null=True)
     video = models.FileField(upload_to='profile_videos', blank=True, null=True)
@@ -132,8 +134,12 @@ class Upload(models.Model):
         return f'{self.profile.user.username} Upload on {self.upload_date}'
 
     def save(self, *args, **kwargs):
-        # Compress only brand-new uploads. The Celery video task re-saves .video
-        # but never re-uploads .image, so this won't re-process compressed images.
+        if self._state.adding:
+            count = Upload.objects.filter(profile=self.profile).count()
+            if count >= self.MAX_UPLOADS_PER_USER:
+                raise ValidationError(
+                    f"Maximum {self.MAX_UPLOADS_PER_USER} uploads allowed."
+                )
         if is_fresh_upload(self.image):
             self.image = process_image(self.image, "gallery")
         super().save(*args, **kwargs)
