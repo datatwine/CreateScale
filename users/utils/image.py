@@ -4,7 +4,7 @@ Server-side image safety net.
 Catches every upload path (web form, DRF API, Django admin, future clients) and:
   - applies camera rotation from EXIF then STRIPS all EXIF (removes GPS, etc.)
   - downscales the longest edge to a per-kind cap
-  - re-encodes as JPEG quality 82 (progressive, optimized)
+  - re-encodes as WebP quality 60 (storage-optimized, visually equivalent on mobile)
   - is exception-safe: any PIL hiccup falls back to the original file untouched
 
 Called from model save() hooks via `is_fresh_upload()` so it only fires for
@@ -19,11 +19,11 @@ from django.core.files.uploadedfile import InMemoryUploadedFile
 
 _log = logging.getLogger(__name__)
 
-# kind -> (max longest edge px, JPEG quality)
+# kind -> (max longest edge px, WebP quality)
 IMAGE_PROFILES = {
-    "avatar":  (512,  82),   # Profile.profile_picture
-    "cover":   (1920, 82),   # Profile.cover_photo
-    "gallery": (1080, 82),   # Upload.image
+    "avatar":  (512,  60),   # Profile.profile_picture
+    "cover":   (1920, 60),   # Profile.cover_photo
+    "gallery": (1080, 60),   # Upload.image
 }
 
 
@@ -56,8 +56,8 @@ def process_image(uploaded_file, kind: str = "gallery"):
         # Apply camera rotation, then EXIF is dropped (the re-encoded file has none)
         img = ImageOps.exif_transpose(img)
         # JPEG has no alpha; convert palette/RGBA to plain RGB
-        if img.mode not in ("RGB", "L"):
-            img = img.convert("RGB")
+        if img.mode not in ("RGB", "RGBA", "L"):
+            img = img.convert("RGBA")
         # Resize only if larger than the per-kind cap, preserving aspect
         w, h = img.size
         if max(w, h) > max_edge:
@@ -65,14 +65,14 @@ def process_image(uploaded_file, kind: str = "gallery"):
             img = img.resize((round(w * scale), round(h * scale)), Image.LANCZOS)
 
         buf = BytesIO()
-        img.save(buf, format="JPEG", quality=quality, optimize=True, progressive=True)
+        img.save(buf, format="WEBP", quality=quality)
         buf.seek(0)
-        name = uploaded_file.name.rsplit(".", 1)[0] + ".jpg"
+        name = uploaded_file.name.rsplit(".", 1)[0] + ".webp"
         return InMemoryUploadedFile(
             file=buf,
             field_name="ImageField",
             name=name,
-            content_type="image/jpeg",
+            content_type="image/webp",
             size=buf.getbuffer().nbytes,
             charset=None,
         )

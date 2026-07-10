@@ -1,5 +1,6 @@
 
 from django.contrib.auth.decorators import login_required
+from django.core.exceptions import ValidationError
 
 from django.contrib.auth.models import User
 
@@ -71,7 +72,11 @@ def profile(request):
             if upload_form.is_valid():
                 upload = upload_form.save(commit=False)
                 upload.profile = user_profile
-                upload.save()
+                try:
+                    upload.save()
+                except ValidationError as e:
+                    messages.error(request, e.message)
+                    return redirect('profile')
                 # Kick off background ffmpeg re-encode for videos. If the
                 # worker is offline, the message queues in Redis and the
                 # upload still returns success — the user is never blocked.
@@ -176,6 +181,8 @@ def global_feed(request):
 from django.shortcuts import get_object_or_404
 
 @login_required
+@vary_on_cookie
+@cache_page(60)
 def profile_detail(request, user_id):
     from datetime import date
     from bookings.models import Engagement
