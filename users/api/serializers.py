@@ -52,6 +52,7 @@ class UploadSerializer(serializers.ModelSerializer):
         return _abs_url(self.context.get("request"), obj.video)
 
     def validate(self, attrs):
+        # On update (PATCH), media fields aren't required — only caption changes.
         if self.instance is not None:
             return attrs
         has_image = bool(attrs.get("image"))
