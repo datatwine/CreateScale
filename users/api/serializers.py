@@ -52,6 +52,8 @@ class UploadSerializer(serializers.ModelSerializer):
         return _abs_url(self.context.get("request"), obj.video)
 
     def validate(self, attrs):
+        if self.instance is not None:
+            return attrs
         has_image = bool(attrs.get("image"))
         has_video = bool(attrs.get("video"))
         if not has_image and not has_video:
