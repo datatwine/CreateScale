@@ -37,14 +37,14 @@ export async function uploadMedia({ token, fileUri, fileName, contentType, capti
     }
 
     if (!presignRes.ok) throw new Error(`Presign failed: ${presignRes.status}`);
-    const { url, fields, key } = await presignRes.json();
+    const { url, key, content_type } = await presignRes.json();
 
-    // Step 2: Upload directly to R2
-    const formData = new FormData();
-    Object.entries(fields).forEach(([k, v]) => formData.append(k, v));
-    formData.append("file", { uri: fileUri, name: fileName, type: contentType });
-
-    const r2Res = await fetch(url, { method: "POST", body: formData });
+    // Step 2: PUT file directly to R2
+    const r2Res = await fetch(url, {
+        method: "PUT",
+        headers: { "Content-Type": content_type },
+        body: { uri: fileUri, name: fileName, type: content_type },
+    });
     if (!r2Res.ok && r2Res.status !== 204) {
         throw new Error(`R2 upload failed: ${r2Res.status}`);
     }
