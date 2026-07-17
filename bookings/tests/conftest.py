@@ -51,15 +51,23 @@ def client_user(db):
 
 @pytest.fixture
 def performer_user(db):
-    """A performer with a fully-approved Razorpay linked account + ₹2000 fee."""
+    """A performer payable in BOTH modes: Route linked account approved AND
+    complete bank details on file for payouts mode."""
     u = User.objects.create_user("performer1", password="x")
     Profile.objects.update_or_create(
         user=u,
         defaults={
             "is_performer": True,
             "performer_fee": 2000,
+            # Route-mode credentials:
             "razorpay_account_id": "acc_test123",
             "razorpay_kyc_status": "approved",
+            # Payouts-mode credentials (bank details on file):
+            "bank_account_holder_name": "Performer One",
+            "bank_account_number": "1234567890",
+            "bank_ifsc": "HDFC0001234",
+            "pan_number": "ABCDE1234F",
+            "phone_number": "9876543210",
         },
     )
     _refresh_profile_cache(u)
@@ -93,3 +101,20 @@ def mock_razorpay(monkeypatch):
         lambda: mock_rzp,
     )
     return mock_rzp
+
+
+@pytest.fixture
+def mock_razorpayx(monkeypatch):
+    """
+    Patch the raw RazorpayX API module so payouts-mode tests never hit HTTP.
+    Mirrors mock_razorpay: patches create_contact/create_fund_account/
+    create_payout/new_idempotency_key to return canned ids.
+    """
+    import bookings.services.razorpayx as rx
+    monkeypatch.setattr(rx, "create_contact", lambda **k: {"id": "cont_test"})
+    monkeypatch.setattr(rx, "create_fund_account", lambda **k: {"id": "fa_test"})
+    monkeypatch.setattr(
+        rx, "create_payout", lambda **k: {"id": "pout_test", "status": "queued"}
+    )
+    monkeypatch.setattr(rx, "new_idempotency_key", lambda: "idem_test")
+    return rx

@@ -55,9 +55,16 @@ class TestCreatePaymentOrderView:
         assert data["key_id"] == "rzp_test_key"
 
     def test_400_on_service_failure(self, client, engagement, client_user, mock_razorpay):
-        # Performer not KYC-approved → service raises → JSON 400
-        engagement.performer.profile.razorpay_kyc_status = ""
-        engagement.performer.profile.save()
+        # Performer setup incomplete → service raises → JSON 400. Clear ALL
+        # payment-setup fields so the performer is unpayable in EITHER mode
+        # (Route: linked account + KYC; payouts: bank details on file).
+        p = engagement.performer.profile
+        p.razorpay_account_id = ""
+        p.razorpay_kyc_status = ""
+        p.bank_account_holder_name = ""
+        p.bank_account_number = ""
+        p.bank_ifsc = ""
+        p.save()
         engagement.status = Engagement.STATUS_ACCEPTED
         engagement.save()
 

@@ -7,9 +7,13 @@ Three scheduled tasks:
     Engagement.payment_deadline() which handles short-notice bookings.
   - expire_stale_pending_engagements: hourly. Marks pending engagements
     older than 24h as auto_expired so stale requests don't pile up.
-  - release_completed_event_payouts: daily at 02:00. Unholds the Razorpay
-    transfer for events that ended N hours ago (24h dispute window passed).
-    Disputed engagements are explicitly skipped.
+  - release_completed_event_payouts: daily at 02:00. Releases payment for
+    events that ended N hours ago (24h dispute window passed). Disputed
+    engagements are explicitly skipped. release_to_performer() branches on
+    RAZORPAY_ROUTE_ENABLED: Route mode unholds the escrowed transfer (terminal
+    'released'); payouts mode fires a RazorpayX payout (engagement lands in
+    payout_processing, flipped to 'released' later by the payout.processed
+    webhook). Either way this task's job is unchanged.
 
 All tasks are safe to run multiple times — every state transition is
 idempotent at the model/PaymentService layer.
@@ -91,6 +95,11 @@ def release_completed_event_payouts() -> int:
     Release payouts for events that ended N hours ago. The dispute window
     (default 24h after event end) must have closed first. Disputed
     engagements are skipped entirely — they wait for admin action.
+
+    release_to_performer() branches internally on RAZORPAY_ROUTE_ENABLED. In
+    payouts mode engagements move to payout_processing (not released) here — the
+    webhook completes them — and because processing/failed rows no longer match
+    the payment_status=PAID filter, they're never re-processed by a later run.
     """
     cutoff = timezone.now() - timedelta(
         hours=settings.RAZORPAY_DISPUTE_WINDOW_HOURS

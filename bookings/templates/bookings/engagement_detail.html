@@ -170,12 +170,26 @@
                 </div>
             {% endif %}
 
-            {# ── Paid in escrow indicator — performer side ── #}
+            {# ── Payment indicator — performer side ── #}
             {% if engagement.payment_status == 'paid' %}
                 <div class="actions-section">
                     <div class="cancel-card" style="background:#EDFBEE;border:1.5px solid #a8e6b0;">
                         <div class="cancel-card-title" style="color:#1a7f2e;">✓ Client paid ₹{{ engagement.fee }}</div>
-                        <p class="cancel-hint">Money is held in escrow. Released to your account 24h after the event.</p>
+                        <p class="cancel-hint">Payment secured. Released to your account shortly after the event.</p>
+                    </div>
+                </div>
+            {% elif engagement.payment_status == 'payout_processing' %}
+                <div class="actions-section">
+                    <div class="cancel-card" style="background:#EDFBEE;border:1.5px solid #a8e6b0;">
+                        <div class="cancel-card-title" style="color:#1a7f2e;">↗ Payout on the way · ₹{{ engagement.fee }}</div>
+                        <p class="cancel-hint">Your payout is on its way to your bank.</p>
+                    </div>
+                </div>
+            {% elif engagement.payment_status == 'payout_failed' %}
+                <div class="actions-section">
+                    <div class="cancel-card" style="background:#FFF4E5;border:1.5px solid #f5c98a;">
+                        <div class="cancel-card-title" style="color:#9a5b00;">⏳ Payout delayed · ₹{{ engagement.fee }}</div>
+                        <p class="cancel-hint">Payout delayed — our team is on it.</p>
                     </div>
                 </div>
             {% elif engagement.payment_status == 'released' %}
@@ -243,7 +257,14 @@
                 <div class="actions-section">
                     <div class="cancel-card" style="background:#EDFBEE;border:1.5px solid #a8e6b0;">
                         <div class="cancel-card-title" style="color:#1a7f2e;">✓ Paid ₹{{ engagement.fee }}</div>
-                        <p class="cancel-hint">Money is held in escrow. Released to the performer 24h after the event.</p>
+                        <p class="cancel-hint">Payment secured. Released to the performer after the event.</p>
+                    </div>
+                </div>
+            {% elif engagement.payment_status == 'payout_processing' or engagement.payment_status == 'payout_failed' %}
+                <div class="actions-section">
+                    <div class="cancel-card" style="background:#EDFBEE;border:1.5px solid #a8e6b0;">
+                        <div class="cancel-card-title" style="color:#1a7f2e;">✓ Payment complete · ₹{{ engagement.fee }}</div>
+                        <p class="cancel-hint">Your payment is complete. Nothing more to do.</p>
                     </div>
                 </div>
             {% elif engagement.payment_status == 'released' %}
