@@ -72,6 +72,7 @@
         <!-- Profile grid -->
         <div class="profiles-grid">
             {% for profile in profiles %}
+                {% if profile.user.id != current_user_id %}
                 {% cache 300 profile_card profile.user.id %}
                 <a href="{% url 'profile-detail' profile.user.id %}"
                    class="performer-card"
@@ -99,6 +100,7 @@
 
                 </a>
                 {% endcache %}
+                {% endif %}
             {% empty %}
                 <div class="feed-empty">
                     <strong>No artists found</strong>
