@@ -119,12 +119,11 @@
             <p class="artist-bio">{{ profile.bio }}</p>
         {% endif %}
 
-        <!-- ===== HIRE SECTION (conditional states) ===== -->
-        {% if request.user.is_authenticated and request.user != profile.user and profile.is_performer %}
+        <!-- ===== HIRE SECTION ===== -->
+        {% if hire_state != "none" %}
             <div class="hire-section">
                 <div class="hire-section-title">Book this artist</div>
 
-                {# Performer's standard fee — snapshotted into engagement at hire time. #}
                 {% if profile.performer_fee %}
                     <div class="performer-fee" style="margin:12px 0;padding:10px 16px;background:#FFF1E0;border:1.5px solid #FFD9B0;border-radius:12px;display:inline-flex;align-items:center;gap:10px;">
                         <span style="font-size:13px;color:#5A4F47;">Standard rate</span>
@@ -136,25 +135,22 @@
                     </div>
                 {% endif %}
 
-                {% if request.user.profile.client_blacklisted %}
+                {% if hire_state == "blacklisted" %}
                     <div class="hire-info blocked">
                         <span class="info-icon">🚫</span>
                         <span>Your account is currently restricted from hiring performers.</span>
                     </div>
-
-                {% elif not request.user.profile.is_potential_client %}
+                {% elif hire_state == "toggle_off" %}
                     <div class="hire-info">
                         <span class="info-icon">💡</span>
                         <span>To hire performers, enable the <strong>"I hire performers"</strong> toggle on your own profile first.</span>
                     </div>
-
-                {% elif not request.user.profile.client_approved %}
+                {% elif hire_state == "pending" %}
                     <div class="hire-info">
                         <span class="info-icon">⏳</span>
                         <span>Your account is waiting for admin approval to hire performers.</span>
                     </div>
-
-                {% else %}
+                {% elif hire_state == "ready" %}
                     <a href="{% url 'bookings:create-hire' profile.user.id %}" class="btn-hire">
                         <span class="hire-emoji">🎭</span>
                         Hire {{ profile.user.username }}

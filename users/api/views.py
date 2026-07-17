@@ -173,6 +173,7 @@ class MeProfileAPIView(generics.RetrieveUpdateAPIView):
         response = super().update(request, *args, **kwargs)
         cache.delete(f"me:{request.user.id}")
         cache.delete(f"profile:{request.user.id}")
+        cache.delete(f"web:profile:{request.user.id}")
         return response
 
 
@@ -256,6 +257,7 @@ class MyUploadsAPIView(generics.ListCreateAPIView):
 
             cache.delete(f"uploads:{request.user.id}")
             cache.delete(f"profile:{request.user.id}")
+            cache.delete(f"web:profile:{request.user.id}")
 
             # Background tasks
             if is_video:
@@ -280,6 +282,7 @@ class MyUploadsAPIView(generics.ListCreateAPIView):
             raise serializers.ValidationError(e.message)
         cache.delete(f"uploads:{self.request.user.id}")
         cache.delete(f"profile:{self.request.user.id}")
+        cache.delete(f"web:profile:{self.request.user.id}")
         # Background ffmpeg re-encode for videos (no-op for images).
         # If the worker is offline, the message queues in Redis silently.
         if upload.video:
@@ -304,11 +307,13 @@ class MyUploadDeleteAPIView(generics.UpdateAPIView, generics.DestroyAPIView):
         serializer.save()
         cache.delete(f"uploads:{self.request.user.id}")
         cache.delete(f"profile:{self.request.user.id}")
+        cache.delete(f"web:profile:{self.request.user.id}")
 
     def perform_destroy(self, instance):
         super().perform_destroy(instance)
         cache.delete(f"uploads:{self.request.user.id}")
         cache.delete(f"profile:{self.request.user.id}")
+        cache.delete(f"web:profile:{self.request.user.id}")
 
 
 class GlobalFeedAPIView(_LenientPaginatorMixin, generics.GenericAPIView):
