@@ -29,4 +29,7 @@ urlpatterns = [
 
     # Razorpay webhook — backup channel; verifies its own HMAC; CSRF exempt
     path("webhook/razorpay/",   views.razorpay_webhook,  name="razorpay-webhook"),
+
+    # RazorpayX payout webhook — separate secret; CSRF exempt; idempotent
+    path("webhook/razorpayx/",  views.razorpayx_webhook, name="razorpayx-webhook"),
 ]

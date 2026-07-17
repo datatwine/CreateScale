@@ -347,7 +347,7 @@ def raise_dispute(request, pk):
     if engagement.payment_status != Engagement.PAYMENT_PAID:
         messages.error(
             request,
-            "Only paid bookings (with money in escrow) can be disputed.",
+            "Only paid bookings can be disputed.",
         )
         return redirect("bookings:engagement-detail", pk=pk)
 
@@ -395,6 +395,27 @@ def razorpay_webhook(request):
     return HttpResponse(status=200)
 
 
+@csrf_exempt
+@require_POST
+def razorpayx_webhook(request):
+    """
+    RazorpayX payout webhook (payouts mode). Separate endpoint + separate secret
+    from the gateway webhook — RazorpayX is configured independently in its own
+    dashboard. Verifies HMAC over the raw body, then routes payout.* events.
+    Idempotent downstream: safe on RazorpayX's retries.
+    """
+    from .services.razorpayx import verify_webhook_signature
+    signature = request.headers.get("X-Razorpay-Signature", "")
+    if not verify_webhook_signature(request.body, signature):
+        return HttpResponse(status=400)
+    try:
+        event = json.loads(request.body)
+        PaymentService.handle_payout_webhook_event(event)
+    except (json.JSONDecodeError, KeyError):
+        return HttpResponse(status=400)
+    return HttpResponse(status=200)
+
+
 @login_required
 def performer_payouts(request):
     """Performer's payments dashboard — paid/released/refunded engagements."""
@@ -403,6 +424,8 @@ def performer_payouts(request):
             performer=request.user,
             payment_status__in=[
                 Engagement.PAYMENT_PAID,
+                Engagement.PAYMENT_PAYOUT_PROCESSING,
+                Engagement.PAYMENT_PAYOUT_FAILED,
                 Engagement.PAYMENT_RELEASED,
                 Engagement.PAYMENT_REFUNDED,
             ],
@@ -425,6 +448,8 @@ def client_payments(request):
             client=request.user,
             payment_status__in=[
                 Engagement.PAYMENT_PAID,
+                Engagement.PAYMENT_PAYOUT_PROCESSING,
+                Engagement.PAYMENT_PAYOUT_FAILED,
                 Engagement.PAYMENT_RELEASED,
                 Engagement.PAYMENT_REFUNDED,
             ],

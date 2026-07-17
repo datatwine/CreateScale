@@ -1,4 +1,5 @@
 
+from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
 
@@ -481,6 +482,33 @@ def update_payment_details(request):
         if form.is_valid():
             profile = form.save()
 
+            if not settings.RAZORPAY_ROUTE_ENABLED:
+                # ── Payouts mode: no linked account / KYC wait. Bank details on
+                # file = payable. Pre-create the RazorpayX contact + fund account
+                # now so the first real payout is a single call and any bad bank
+                # detail surfaces here, not weeks later at release time.
+                complete = (
+                    profile.is_performer
+                    and profile.bank_account_holder_name
+                    and profile.bank_account_number
+                    and profile.bank_ifsc
+                )
+                if complete and not profile.razorpayx_fund_account_id:
+                    try:
+                        from bookings.services.payments import PaymentService
+                        PaymentService.ensure_payout_destination(profile)
+                    except Exception as e:
+                        # Non-fatal: details are saved; release_to_performer will
+                        # create the destination lazily and retry.
+                        messages.warning(
+                            request,
+                            f"Details saved; payout setup will finish "
+                            f"automatically (note: {e}).",
+                        )
+                messages.success(request, "Payment details updated.")
+                return redirect("profile")
+
+            # ── Route mode: existing linked-account onboarding (verbatim) ──
             # Razorpay linked-account creation only when:
             #   - User is actually a performer (clients never need KYC)
             #   - No linked account exists yet (idempotent on re-submit)

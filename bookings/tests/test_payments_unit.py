@@ -18,6 +18,14 @@ from bookings.models import Engagement, Payment
 from bookings.services.payments import PaymentService
 
 
+@pytest.fixture(autouse=True)
+def route_mode(settings):
+    """This module validates Route-mode behavior (held transfers, reverse_all).
+    Pin the flag ON — the new default is OFF (payouts). Payouts-mode mirrors
+    live in test_payments_payouts.py."""
+    settings.RAZORPAY_ROUTE_ENABLED = True
+
+
 # ─────────────────────────────────────────────────────────────────────────
 # create_order
 # ─────────────────────────────────────────────────────────────────────────
