@@ -10,4 +10,5 @@ export const COLORS = {
   cream: "#FFF1E0",
   peach: "#FFD9B0",
   ink: "#1F1A17",
+  badgeGreenText: '#A5D6A7',
 };

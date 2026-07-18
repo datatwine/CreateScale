@@ -495,3 +495,20 @@ RAZORPAY_PLATFORM_FEE_PERCENT = int(os.environ.get("RAZORPAY_PLATFORM_FEE_PERCEN
 RAZORPAY_PAYMENT_WINDOW_HOURS = int(os.environ.get("RAZORPAY_PAYMENT_WINDOW_HOURS", "24"))
 RAZORPAY_DISPUTE_WINDOW_HOURS = int(os.environ.get("RAZORPAY_DISPUTE_WINDOW_HOURS", "24"))
 
+# ------------------------------------------------------------------------------
+# Route vs RazorpayX Payouts — disbursement engine toggle.
+# Route = split-at-collection escrow (needs ₹40L RBI PA approval). Default OFF:
+# collect the full amount into our own Razorpay balance and pay performers via
+# automated RazorpayX Payouts after the dispute window. Flip to "true" the day
+# Route is enabled — the escrow flow reactivates with zero code changes.
+# ------------------------------------------------------------------------------
+RAZORPAY_ROUTE_ENABLED   = os.environ.get("RAZORPAY_ROUTE_ENABLED", "false").lower() == "true"
+# RazorpayX source account money is debited FROM — the "Customer Identifier" /
+# Current Account number from the RazorpayX dashboard. DIFFERENT for test vs live.
+RAZORPAYX_ACCOUNT_NUMBER = os.environ.get("RAZORPAYX_ACCOUNT_NUMBER", "")
+# RazorpayX webhooks are configured separately from gateway webhooks and carry
+# their OWN secret. Verifies payout.* events at /bookings/webhook/razorpayx/.
+RAZORPAYX_WEBHOOK_SECRET = os.environ.get("RAZORPAYX_WEBHOOK_SECRET", "")
+# Payout rail. IMPS = near-instant (≤₹5L); NEFT/RTGS also valid. Case-sensitive.
+RAZORPAYX_PAYOUT_MODE    = os.environ.get("RAZORPAYX_PAYOUT_MODE", "IMPS")
+

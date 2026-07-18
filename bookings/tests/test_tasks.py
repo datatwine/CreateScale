@@ -74,7 +74,7 @@ class TestExpireUnpaid:
         engagement.accepted_at = soon - timedelta(hours=3)
         engagement.save()
         # Currently we're 4h before event; deadline = event-2h = +2h from now → NOT expired
-        count = expire_unpaid_engagements()
+        expire_unpaid_engagements()
         engagement.refresh_from_db()
         assert engagement.status == Engagement.STATUS_ACCEPTED  # still in window
 
@@ -137,7 +137,7 @@ class TestReleasePayouts:
         engagement.date = date.today() - timedelta(days=2)
         engagement.save()
 
-        second = Engagement.objects.create(
+        Engagement.objects.create(
             client=client_user, performer=performer_user,
             date=date.today() - timedelta(days=2),
             time=time(20, 0),

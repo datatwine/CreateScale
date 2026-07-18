@@ -16,13 +16,28 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import * as ImageManipulator from "expo-image-manipulator";
 import * as ImagePicker from "expo-image-picker";
-import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "../config/theme";
+import { Ionicons } from "@expo/vector-icons"; // only once
+
+
 import { AuthContext } from "../context/AuthContext";
 import { API_BASE_URL } from "../config/api";
 import { uploadMedia } from "../api/upload";
 import PressableStamp from "../components/PressableStamp";
 
+// ---------------------------------------------------------------------------
+// Client-side media compression helpers
+//
+// shrinkImage: hardware-backed resize/re-encode via expo-image-manipulator.
+//   Per-kind max dimension. Output JPEG quality 0.82. Idempotent if the image
+//   is already smaller than maxWidth.
+//
+// Note: Video compression removed for Expo Go compatibility.
+//   For production, use eas build with a custom development client.
+//
+// Both are wrapped in try/catch by callers: on any failure they fall back
+// to the original URI so the upload still works.
+// ---------------------------------------------------------------------------
 async function shrinkImage(uri, maxWidth) {
   const out = await ImageManipulator.manipulateAsync(
     uri,
@@ -32,22 +47,21 @@ async function shrinkImage(uri, maxWidth) {
   return out.uri;
 }
 
+// Lazy-load so Expo Go (no native modules) skips compression gracefully;
+// EAS production builds get full hardware-accelerated compression.
 let VideoCompressor = null;
 try {
   VideoCompressor = require("react-native-compressor").Video;
-} catch {}
+} catch {
+  // Expo Go — native module unavailable, compression will be skipped
+}
 
 async function compressVideo(uri) {
+  if (!VideoCompressor) return uri;
   return await VideoCompressor.compress(
     uri,
-    {
-      compressionMethod: "manual",
-      maxSize: 1920,           // longest side cap (1080p target)
-      bitrate: 4_000_000,      // 4 Mbps — strong quality for social video
-    },
-    // Progress callback (0..1). No-op for now; could drive a progress bar
-    // by lifting state into the component if desired.
-    () => {}
+    { compressionMethod: "manual", maxSize: 1920, bitrate: 4_000_000 },
+    () => {},
   );
 }
 
@@ -228,6 +242,9 @@ export default function ProfileScreen() {
 
   const [profile, setProfile] = useState(null);
   const [loadingProfile, setLoadingProfile] = useState(true);
+
+  // --- Uploads (media gallery) ---------------------------------------------
+
   const [uploads, setUploads] = useState([]);
   const [loadingUploads, setLoadingUploads] = useState(true);
   const [uploadingMedia, setUploadingMedia] = useState(false);
@@ -377,7 +394,6 @@ export default function ProfileScreen() {
         contentType: isVideo ? "video/mp4" : "image/jpeg",
         caption: "",
       });
-      setNewUploadCaption("");
       await loadUploads();
       Alert.alert("Uploaded", "Your media has been added.");
     } catch (err) {

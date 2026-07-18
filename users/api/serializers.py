@@ -89,6 +89,7 @@ class MeProfileSerializer(serializers.ModelSerializer):
     user_id = serializers.IntegerField(source="user.id", read_only=True)
     username = serializers.CharField(source="user.username", read_only=True)
     profile_picture_url = serializers.SerializerMethodField()
+    cover_photo_url = serializers.SerializerMethodField()
 
     class Meta:
         model = Profile
@@ -100,6 +101,8 @@ class MeProfileSerializer(serializers.ModelSerializer):
             "bio",
             "profile_picture",       # write (multipart)
             "profile_picture_url",   # read
+            "cover_photo",           # write (multipart)
+            "cover_photo_url",       # read
             "is_performer",
             "is_potential_client",
             "client_approved",
@@ -108,6 +111,7 @@ class MeProfileSerializer(serializers.ModelSerializer):
         ]
         extra_kwargs = {
             "profile_picture": {"write_only": True, "required": False},
+            "cover_photo": {"write_only": True, "required": False},
             "client_approved": {"read_only": True},
             "performer_blacklisted": {"read_only": True},
             "client_blacklisted": {"read_only": True},
@@ -115,6 +119,9 @@ class MeProfileSerializer(serializers.ModelSerializer):
 
     def get_profile_picture_url(self, obj):
         return _abs_url(self.context.get("request"), obj.profile_picture)
+
+    def get_cover_photo_url(self, obj):
+        return _abs_url(self.context.get("request"), obj.cover_photo)
 
 
 class PublicProfileDetailSerializer(serializers.ModelSerializer):
@@ -125,6 +132,7 @@ class PublicProfileDetailSerializer(serializers.ModelSerializer):
     user_id = serializers.IntegerField(source="user.id", read_only=True)
     username = serializers.CharField(source="user.username", read_only=True)
     profile_picture_url = serializers.SerializerMethodField()
+    cover_photo_url = serializers.SerializerMethodField()
     uploads = serializers.SerializerMethodField()
 
     class Meta:
@@ -136,12 +144,16 @@ class PublicProfileDetailSerializer(serializers.ModelSerializer):
             "location",
             "bio",
             "profile_picture_url",
+            "cover_photo_url",
             "is_performer",
             "uploads",
         ]
 
     def get_profile_picture_url(self, obj):
         return _abs_url(self.context.get("request"), obj.profile_picture)
+
+    def get_cover_photo_url(self, obj):
+        return _abs_url(self.context.get("request"), obj.cover_photo)
 
     def get_uploads(self, obj):
         request = self.context.get("request")

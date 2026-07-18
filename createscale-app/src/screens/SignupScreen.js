@@ -40,7 +40,15 @@ const introWords = [
 export default function SignupScreen({ navigation }) {
   const { login } = useContext(AuthContext);
 
+  // ScrollView ref for auto-scrolling to form on mount
   const scrollViewRef = useRef(null);
+
+  // This Animated value tracks vertical scroll position.
+  // We mostly use it to detect "user has started scrolling" rather than
+  // for fancy parallax.
+  // const scrollY = useRef(new Animated.Value(0)).current;
+
+  // We need to make sure we only start the animation ONCE.
   const hasStartedAnimations = useRef(false);
 
   const wordAnimations = useRef(
@@ -64,6 +72,17 @@ export default function SignupScreen({ navigation }) {
     return () => clearTimeout(timer);
   }, []);
 
+  // Auto-scroll to form section on component mount
+  useEffect(() => {
+    // Wait a moment for layout, then scroll to form (approximately 400px down)
+    const timer = setTimeout(() => {
+      scrollViewRef.current?.scrollTo({ y: 400, animated: true });
+    }, 300);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Called the first time the user scrolls a little bit.
+  // Runs a staggered animation for each word, then the trampoline for line 2.
   const startIntroAnimation = () => {
     if (hasStartedAnimations.current) return;
     hasStartedAnimations.current = true;
@@ -123,6 +142,7 @@ export default function SignupScreen({ navigation }) {
       <StatusBar barStyle="light-content" backgroundColor="#000000" translucent={false} />
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
         <Animated.ScrollView
+          ref={scrollViewRef}
           style={styles.scroll}
           contentContainerStyle={styles.scrollContent}
         >

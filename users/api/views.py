@@ -2,6 +2,7 @@ from datetime import date
 
 from django.contrib.auth import authenticate
 from django.core.cache import cache
+from django.core.exceptions import ValidationError
 from django.core.paginator import Paginator
 from django.shortcuts import get_object_or_404
 from django.utils.decorators import method_decorator
@@ -9,7 +10,7 @@ from django.views.decorators.cache import cache_control
 
 from django.conf import settings as django_settings
 
-from rest_framework import generics, status
+from rest_framework import generics, serializers, status
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.response import Response
@@ -172,6 +173,7 @@ class MeProfileAPIView(generics.RetrieveUpdateAPIView):
         response = super().update(request, *args, **kwargs)
         cache.delete(f"me:{request.user.id}")
         cache.delete(f"profile:{request.user.id}")
+        cache.delete(f"web:profile:{request.user.id}")
         return response
 
 
@@ -248,10 +250,14 @@ class MyUploadsAPIView(generics.ListCreateAPIView):
             else:
                 upload.image.name = key    # same — no re-upload, no Pillow in save()
 
-            upload.save()  # is_fresh_upload() returns False (name is already committed)
+            try:
+                upload.save()  # is_fresh_upload() returns False (name is already committed)
+            except ValidationError as e:
+                return Response({"detail": e.message}, status=status.HTTP_400_BAD_REQUEST)
 
             cache.delete(f"uploads:{request.user.id}")
             cache.delete(f"profile:{request.user.id}")
+            cache.delete(f"web:profile:{request.user.id}")
 
             # Background tasks
             if is_video:
@@ -270,9 +276,13 @@ class MyUploadsAPIView(generics.ListCreateAPIView):
     def perform_create(self, serializer):
         """Legacy multipart path — called by super().create() above."""
         profile = self.request.user.profile
-        upload = serializer.save(profile=profile)
+        try:
+            upload = serializer.save(profile=profile)
+        except ValidationError as e:
+            raise serializers.ValidationError(e.message)
         cache.delete(f"uploads:{self.request.user.id}")
         cache.delete(f"profile:{self.request.user.id}")
+        cache.delete(f"web:profile:{self.request.user.id}")
         # Background ffmpeg re-encode for videos (no-op for images).
         # If the worker is offline, the message queues in Redis silently.
         if upload.video:
@@ -297,11 +307,13 @@ class MyUploadDeleteAPIView(generics.UpdateAPIView, generics.DestroyAPIView):
         serializer.save()
         cache.delete(f"uploads:{self.request.user.id}")
         cache.delete(f"profile:{self.request.user.id}")
+        cache.delete(f"web:profile:{self.request.user.id}")
 
     def perform_destroy(self, instance):
         super().perform_destroy(instance)
         cache.delete(f"uploads:{self.request.user.id}")
         cache.delete(f"profile:{self.request.user.id}")
+        cache.delete(f"web:profile:{self.request.user.id}")
 
 
 class GlobalFeedAPIView(_LenientPaginatorMixin, generics.GenericAPIView):

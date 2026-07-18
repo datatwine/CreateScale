@@ -2,6 +2,7 @@
 # Create your models here.
 import re
 
+from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.contrib.auth.models import User
@@ -80,10 +81,32 @@ class Profile(models.Model):
         help_text="10-digit Indian mobile — required by Razorpay for linked account KYC.",
     )
 
+    # RazorpayX Payouts destination (payouts mode). Created once from the
+    # performer's bank details and cached here so each payout is a single API
+    # call. Empty in Route mode (Route uses razorpay_account_id instead).
+    razorpayx_contact_id      = models.CharField(max_length=64, blank=True, db_index=True)
+    razorpayx_fund_account_id = models.CharField(max_length=64, blank=True, db_index=True)
+
     @property
     def can_receive_payments(self) -> bool:
-        """True only when the performer's Razorpay linked account is approved."""
-        return bool(self.razorpay_account_id) and self.razorpay_kyc_status == "approved"
+        """
+        Gate checked by PaymentService.create_order() before charging a client.
+
+        Route ON  — the performer's Razorpay linked account must exist and have
+                    passed RBI KYC review (Razorpay holds the escrow, so Razorpay
+                    decides who's payable).
+        Route OFF — WE hold the money and pay out from the platform account, so
+                    "payable" just means complete bank details are on file. No
+                    linked account, no KYC-review wait. The RazorpayX contact /
+                    fund-account are created lazily at (or before) payout time.
+        """
+        if settings.RAZORPAY_ROUTE_ENABLED:
+            return bool(self.razorpay_account_id) and self.razorpay_kyc_status == "approved"
+        return bool(
+            self.bank_account_holder_name
+            and self.bank_account_number
+            and self.bank_ifsc
+        )
 
     def __str__(self):
         return f'{self.user.username} Profile'
@@ -116,6 +139,8 @@ class Profile(models.Model):
         super().save(*args, **kwargs)
 
 class Upload(models.Model):
+    MAX_UPLOADS_PER_USER = 9
+
     profile = models.ForeignKey(Profile, on_delete=models.CASCADE, related_name='uploads')
     image = models.ImageField(upload_to='profile_pics', blank=True, null=True)
     video = models.FileField(upload_to='profile_videos', blank=True, null=True)
@@ -132,8 +157,12 @@ class Upload(models.Model):
         return f'{self.profile.user.username} Upload on {self.upload_date}'
 
     def save(self, *args, **kwargs):
-        # Compress only brand-new uploads. The Celery video task re-saves .video
-        # but never re-uploads .image, so this won't re-process compressed images.
+        if self._state.adding:
+            count = Upload.objects.filter(profile=self.profile).count()
+            if count >= self.MAX_UPLOADS_PER_USER:
+                raise ValidationError(
+                    f"Maximum {self.MAX_UPLOADS_PER_USER} uploads allowed."
+                )
         if is_fresh_upload(self.image):
             self.image = process_image(self.image, "gallery")
         super().save(*args, **kwargs)

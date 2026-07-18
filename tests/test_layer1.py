@@ -32,6 +32,7 @@ EXCLUDED ENDPOINTS:
 import json
 from datetime import date, time, datetime
 
+from django.core.cache import cache
 from django.test import TestCase
 from rest_framework.test import APIClient
 from django.contrib.auth.models import User
@@ -283,6 +284,7 @@ class OwnershipIsolationTests(TestCase):
     """User A's data must never leak to User B."""
 
     def setUp(self):
+        cache.clear()
         # Create two completely separate users
         self.alice = User.objects.create_user(
             "alice", email="alice@test.com", password="AlicePass123!"
@@ -546,6 +548,7 @@ class ORJSONRendererTests(TestCase):
     """orjson renderer must produce valid JSON for all DRF data types."""
 
     def setUp(self):
+        cache.clear()
         self.user = User.objects.create_user(
             "orjsonuser", email="orjson@test.com", password="OrjsonPass123!"
         )

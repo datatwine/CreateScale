@@ -1,5 +1,7 @@
 
+from django.conf import settings
 from django.contrib.auth.decorators import login_required
+from django.core.exceptions import ValidationError
 
 from django.contrib.auth.models import User
 
@@ -71,7 +73,11 @@ def profile(request):
             if upload_form.is_valid():
                 upload = upload_form.save(commit=False)
                 upload.profile = user_profile
-                upload.save()
+                try:
+                    upload.save()
+                except ValidationError as e:
+                    messages.error(request, e.message)
+                    return redirect('profile')
                 # Kick off background ffmpeg re-encode for videos. If the
                 # worker is offline, the message queues in Redis and the
                 # upload still returns success — the user is never blocked.
@@ -131,47 +137,39 @@ def profile(request):
 from django.db.models import Q
 from .forms import ProfessionFilterForm
 from django.core.paginator import Paginator
-from django.views.decorators.cache import cache_page
-from django.views.decorators.vary import vary_on_cookie
+from django.core.cache import cache
 
 
 
 
 @login_required
-@vary_on_cookie          # make cache key vary per browser/session cookie → per user
-@cache_page(60)          # cache for 60 seconds; tweak as you like
 def global_feed(request):
-    # Fetch all profiles except the signed-in user's profile
-    profiles_qs = (
-    Profile.objects.exclude(user=request.user).select_related("user")  # avoid N+1 on profile.user
-        .only("user__username", "profession", "profile_picture")  # trim payload
-    )
-
-    # Handle filtering by profession
-    profession_filter_form = ProfessionFilterForm(request.GET or None)  # Form for profession filtering
-    
-    if profession_filter_form.is_valid():
-        professions = profession_filter_form.cleaned_data.get('professions')
-        if professions:
-            profiles_qs = profiles_qs.filter(profession__in=professions)  # Filter profiles by selected professions
-
-    # Pagination
-    page_number = request.GET.get("page")
-    paginator = Paginator(profiles_qs, 20)  # 20 profiles per page
-    profiles_page = paginator.get_page(page_number)
-
-    # For keeping filter in pagination links
+    profession_filter_form = ProfessionFilterForm(request.GET or None)
+    page_number = request.GET.get("page", "1")
     selected_profession = request.GET.get("professions", "")
+    professions_key = selected_profession or "all"
+    cache_key = f"web:feed:{page_number}:{professions_key}"
 
-    return render(
-        request,
-        "users/global_feed.html",
-        {
-            "profiles": profiles_page,               # Page object (iterable in template)
-            "profession_filter_form": profession_filter_form,
-            "selected_profession": selected_profession,
-        },
-    )
+    profiles_page = cache.get(cache_key)
+    if profiles_page is None:
+        profiles_qs = (
+            Profile.objects.select_related("user")
+            .only("user__id", "user__username", "profession", "profile_picture")
+        )
+        if profession_filter_form.is_valid():
+            professions = profession_filter_form.cleaned_data.get("professions")
+            if professions:
+                profiles_qs = profiles_qs.filter(profession__in=professions)
+        paginator = Paginator(profiles_qs, 20)
+        profiles_page = paginator.get_page(page_number)
+        cache.set(cache_key, profiles_page, 60)
+
+    return render(request, "users/global_feed.html", {
+        "profiles": profiles_page,
+        "profession_filter_form": profession_filter_form,
+        "selected_profession": selected_profession,
+        "current_user_id": request.user.id,
+    })
 
 from django.shortcuts import get_object_or_404
 
@@ -180,40 +178,49 @@ def profile_detail(request, user_id):
     from datetime import date
     from bookings.models import Engagement
 
-    # Get the profile of the user being viewed
-    user_profile = get_object_or_404(
-        Profile.objects.select_related("user"),
-        user__id=user_id,
-    )
+    cache_key = f"web:profile:{user_id}"
+    cached = cache.get(cache_key)
 
-    # All uploads for this profile, newest first
-    uploads = (
-        Upload.objects
-        .filter(profile=user_profile)
-        .order_by("-upload_date")[:20]
-    )
-
-    # Gig stats — accepted engagements with a past date (covered by the
-    # (performer, status, date) index on Engagement).
-    today = date.today()
-    gig_qs = Engagement.objects.filter(
-        performer=user_profile.user,
-        status=Engagement.STATUS_ACCEPTED,
-        date__lt=today,
-    )
-    gigs_count = gig_qs.count()
-    last_engagement = gig_qs.order_by("-date").first()
-
-    return render(
-        request,
-        "users/profile_detail.html",
-        {
+    if cached is None:
+        user_profile = get_object_or_404(
+            Profile.objects.select_related("user"),
+            user__id=user_id,
+        )
+        uploads = list(
+            Upload.objects.filter(profile=user_profile)
+            .order_by("-upload_date")[:20]
+        )
+        today = date.today()
+        gig_qs = Engagement.objects.filter(
+            performer=user_profile.user,
+            status=Engagement.STATUS_ACCEPTED,
+            date__lt=today,
+        )
+        cached = {
             "profile": user_profile,
             "uploads": uploads,
-            "gigs_count": gigs_count,
-            "last_engagement": last_engagement,
-        },
-    )
+            "gigs_count": gig_qs.count(),
+            "last_engagement": gig_qs.order_by("-date").first(),
+        }
+        cache.set(cache_key, cached, 60)
+
+    viewer = request.user
+    profile = cached["profile"]
+    hire_state = "none"
+    if viewer.is_authenticated and viewer != profile.user and profile.is_performer:
+        if viewer.profile.client_blacklisted:
+            hire_state = "blacklisted"
+        elif not viewer.profile.is_potential_client:
+            hire_state = "toggle_off"
+        elif not viewer.profile.client_approved:
+            hire_state = "pending"
+        else:
+            hire_state = "ready"
+
+    return render(request, "users/profile_detail.html", {
+        **cached,
+        "hire_state": hire_state,
+    })
 
 from .models import Message
 
@@ -405,43 +412,40 @@ from bookings.models import Engagement
 from datetime import date
 
 @login_required
-@cache_page(60)
 def live_events(request):
-    """
-    Upcoming + past accepted engagements, optimized + paginated.
-    """
-    today = date.today()
+    """Upcoming + past accepted engagements, optimized + paginated."""
+    page_number = request.GET.get("page", "1")
+    cache_key = f"web:events:{page_number}"
+    cached = cache.get(cache_key)
 
-    # Upcoming events — paginated
-    events_qs = (
-        Engagement.objects.filter(
-            status=Engagement.STATUS_ACCEPTED,
-            date__gte=today,
+    if cached is None:
+        today = date.today()
+        events_qs = (
+            Engagement.objects.filter(
+                status=Engagement.STATUS_ACCEPTED,
+                date__gte=today,
+            )
+            .select_related("client", "performer", "performer__profile")
+            .order_by("date", "time")
         )
-        .select_related("client", "performer", "performer__profile")
-        .order_by("date", "time")
-    )
-
-    paginator = Paginator(events_qs, 10)
-    page_number = request.GET.get("page")
-    page_obj = paginator.get_page(page_number)
-
-    # Past events — most recent 20, no pagination
-    past_events = list(
-        Engagement.objects.filter(
-            status=Engagement.STATUS_ACCEPTED,
-            date__lt=today,
+        paginator = Paginator(events_qs, 10)
+        page_obj = paginator.get_page(page_number)
+        past_events = list(
+            Engagement.objects.filter(
+                status=Engagement.STATUS_ACCEPTED,
+                date__lt=today,
+            )
+            .select_related("client", "performer", "performer__profile")
+            .order_by("-date", "-time")[:20]
         )
-        .select_related("client", "performer", "performer__profile")
-        .order_by("-date", "-time")[:20]
-    )
+        cached = {
+            "events": page_obj.object_list,
+            "page_obj": page_obj,
+            "past_events": past_events,
+        }
+        cache.set(cache_key, cached, 60)
 
-    context = {
-        "events": page_obj.object_list,
-        "page_obj": page_obj,
-        "past_events": past_events,
-    }
-    return render(request, "users/live_events.html", context)
+    return render(request, "users/live_events.html", cached)
 
 
 # ---------------------------------------------------------------------------
@@ -474,6 +478,33 @@ def update_payment_details(request):
         if form.is_valid():
             profile = form.save()
 
+            if not settings.RAZORPAY_ROUTE_ENABLED:
+                # ── Payouts mode: no linked account / KYC wait. Bank details on
+                # file = payable. Pre-create the RazorpayX contact + fund account
+                # now so the first real payout is a single call and any bad bank
+                # detail surfaces here, not weeks later at release time.
+                complete = (
+                    profile.is_performer
+                    and profile.bank_account_holder_name
+                    and profile.bank_account_number
+                    and profile.bank_ifsc
+                )
+                if complete and not profile.razorpayx_fund_account_id:
+                    try:
+                        from bookings.services.payments import PaymentService
+                        PaymentService.ensure_payout_destination(profile)
+                    except Exception as e:
+                        # Non-fatal: details are saved; release_to_performer will
+                        # create the destination lazily and retry.
+                        messages.warning(
+                            request,
+                            f"Details saved; payout setup will finish "
+                            f"automatically (note: {e}).",
+                        )
+                messages.success(request, "Payment details updated.")
+                return redirect("profile")
+
+            # ── Route mode: existing linked-account onboarding (verbatim) ──
             # Razorpay linked-account creation only when:
             #   - User is actually a performer (clients never need KYC)
             #   - No linked account exists yet (idempotent on re-submit)

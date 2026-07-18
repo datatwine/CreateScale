@@ -57,7 +57,7 @@ def compress_upload_video(upload_id):
                     "ffmpeg", "-i", src.name,
                     "-vf",
                     "scale=w=1920:h=1080:force_original_aspect_ratio=decrease:force_divisible_by=2",
-                    "-c:v", "libx264", "-crf", "24", "-preset", "fast",
+                    "-c:v", "libx264", "-crf", "28", "-preset", "fast",
                     "-c:a", "aac", "-b:a", "128k",
                     "-movflags", "+faststart",   # streaming-friendly
                     "-y", dst,

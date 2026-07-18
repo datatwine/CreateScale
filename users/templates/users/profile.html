@@ -509,14 +509,12 @@
 
                 var presignData = await presignRes.json();
 
-                // Step 2: Upload directly to R2
-                var fd = new FormData();
-                Object.entries(presignData.fields).forEach(function(kv) {
-                    fd.append(kv[0], kv[1]);
+                // Step 2: PUT file directly to R2
+                var r2Res = await fetch(presignData.url, {
+                    method: "PUT",
+                    headers: { "Content-Type": presignData.content_type },
+                    body: file,
                 });
-                fd.append("file", file);
-
-                var r2Res = await fetch(presignData.url, { method: "POST", body: fd });
                 if (!r2Res.ok && r2Res.status !== 204) {
                     throw new Error("R2 upload failed: " + r2Res.status);
                 }
@@ -541,11 +539,17 @@
 
             } catch (err) {
                 console.error("Presigned upload failed:", err);
-                alert("Upload failed — please try again.");
+                // Fall back to normal multipart form POST through Django
                 if (submitBtn) {
                     submitBtn.disabled = false;
                     submitBtn.textContent = origText;
                 }
+                var hidden = document.createElement("input");
+                hidden.type = "hidden";
+                hidden.name = "upload_submit";
+                hidden.value = "1";
+                uploadForm.appendChild(hidden);
+                uploadForm.submit();
             }
         });
     })();

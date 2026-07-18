@@ -69,7 +69,15 @@
                                     </span>
                                 {% elif e.payment_status == 'paid' %}
                                     <span class="status-badge status-pending">
-                                        <span class="s-dot"></span>In escrow
+                                        <span class="s-dot"></span>Secured
+                                    </span>
+                                {% elif e.payment_status == 'payout_processing' %}
+                                    <span class="status-badge status-pending">
+                                        <span class="s-dot"></span>Payout on the way
+                                    </span>
+                                {% elif e.payment_status == 'payout_failed' %}
+                                    <span class="status-badge status-declined">
+                                        <span class="s-dot"></span>Payout delayed
                                     </span>
                                 {% elif e.payment_status == 'released' %}
                                     <span class="status-badge status-accepted">

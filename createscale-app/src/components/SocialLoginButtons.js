@@ -129,33 +129,27 @@ export default function SocialLoginButtons() {
             <Text style={styles.dividerText}>or continue with</Text>
             <View style={styles.row}>
                 <TouchableOpacity
-                    style={[styles.button, { backgroundColor: "#4285F4" }]}
+                    style={[styles.button, { backgroundColor: "#4285F4", opacity: !googleRequest || loading === "google" ? 0.5 : 1 }]}
                     onPress={() => googlePromptAsync()}
                     disabled={!googleRequest || loading === "google"}
                 >
-                    <Text style={styles.buttonText}>
-                        {loading === "google" ? "..." : "Google"}
-                    </Text>
+                    <Text style={styles.buttonText}>Google</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                    style={[styles.button, { backgroundColor: "#1DA1F2" }]}
+                    style={[styles.button, { backgroundColor: "#1DA1F2", opacity: !twitterRequest || loading === "twitter" ? 0.5 : 1 }]}
                     onPress={() => twitterPromptAsync()}
                     disabled={!twitterRequest || loading === "twitter"}
                 >
-                    <Text style={styles.buttonText}>
-                        {loading === "twitter" ? "..." : "Twitter"}
-                    </Text>
+                    <Text style={styles.buttonText}>Twitter</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                    style={[styles.button, { backgroundColor: "#0077B5" }]}
+                    style={[styles.button, { backgroundColor: "#0077B5", opacity: !linkedinRequest || loading === "linkedin" ? 0.5 : 1 }]}
                     onPress={() => linkedinPromptAsync()}
                     disabled={!linkedinRequest || loading === "linkedin"}
                 >
-                    <Text style={styles.buttonText}>
-                        {loading === "linkedin" ? "..." : "LinkedIn"}
-                    </Text>
+                    <Text style={styles.buttonText}>LinkedIn</Text>
                 </TouchableOpacity>
             </View>
         </View>

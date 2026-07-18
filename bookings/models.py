@@ -64,19 +64,23 @@ class Engagement(models.Model):
         help_text="Locked-in fee in rupees, snapshot from performer profile at hire time.",
     )
 
-    PAYMENT_UNPAID   = "unpaid"
-    PAYMENT_PAID     = "paid"       # captured + held in Razorpay Route escrow
-    PAYMENT_RELEASED = "released"   # transferred to performer's bank
-    PAYMENT_REFUNDED = "refunded"   # reversed back to client
+    PAYMENT_UNPAID            = "unpaid"
+    PAYMENT_PAID              = "paid"       # captured (escrow in Route; our balance in Payouts)
+    PAYMENT_PAYOUT_PROCESSING = "payout_processing"  # payouts mode: payout fired, awaiting webhook
+    PAYMENT_PAYOUT_FAILED     = "payout_failed"      # payouts mode: payout reversed/failed, needs retry
+    PAYMENT_RELEASED          = "released"   # money reached the performer (both modes)
+    PAYMENT_REFUNDED          = "refunded"   # reversed back to client
 
     PAYMENT_CHOICES = [
-        (PAYMENT_UNPAID,   "Unpaid"),
-        (PAYMENT_PAID,     "Paid (in escrow)"),
-        (PAYMENT_RELEASED, "Released to performer"),
-        (PAYMENT_REFUNDED, "Refunded to client"),
+        (PAYMENT_UNPAID,            "Unpaid"),
+        (PAYMENT_PAID,              "Paid (secured)"),
+        (PAYMENT_PAYOUT_PROCESSING, "Payout processing"),
+        (PAYMENT_PAYOUT_FAILED,     "Payout failed — needs attention"),
+        (PAYMENT_RELEASED,          "Released to performer"),
+        (PAYMENT_REFUNDED,          "Refunded to client"),
     ]
     payment_status = models.CharField(
-        max_length=16, choices=PAYMENT_CHOICES,
+        max_length=20, choices=PAYMENT_CHOICES,   # widened 16→20 for "payout_processing"
         default=PAYMENT_UNPAID, db_index=True,
     )
 
@@ -85,6 +89,8 @@ class Engagement(models.Model):
     paid_at     = models.DateTimeField(null=True, blank=True, db_index=True)
     released_at = models.DateTimeField(null=True, blank=True)
     refunded_at = models.DateTimeField(null=True, blank=True)
+    # Stamped when the RazorpayX payout is fired (payouts mode only).
+    payout_initiated_at = models.DateTimeField(null=True, blank=True)
 
     # Cancellation (mandatory reason after Phase 3 rewrite)
     cancellation_reason = models.TextField(blank=True)
@@ -368,15 +374,27 @@ class Payment(models.Model):
     razorpay_transfer_id = models.CharField(max_length=64, blank=True, db_index=True)
     razorpay_refund_id   = models.CharField(max_length=64, blank=True, db_index=True)
 
+    # RazorpayX payout references (payouts mode). razorpayx_payout_id is the
+    # pout_... handle; payout_reference stores the bank UTR once the payout is
+    # processed (arrives via payout.updated/processed webhook). Empty in Route
+    # mode (Route uses razorpay_transfer_id). payout_idempotency_key is the UUID
+    # sent as X-Payout-Idempotency for the current attempt — rotated on each
+    # retry so a retry after a genuine failure isn't deduped to the old payout.
+    razorpayx_payout_id    = models.CharField(max_length=64, blank=True, db_index=True)
+    payout_reference       = models.CharField(max_length=64, blank=True)
+    payout_idempotency_key = models.CharField(max_length=64, blank=True)
+
     STATUS_CHOICES = [
-        ("created",  "Order created"),
-        ("captured", "Payment captured (in escrow)"),
-        ("released", "Transferred to performer"),
-        ("refunded", "Refunded to client"),
-        ("failed",   "Failed"),
+        ("created",           "Order created"),
+        ("captured",          "Payment captured"),
+        ("payout_processing", "Payout processing"),
+        ("payout_failed",     "Payout failed"),
+        ("released",          "Released to performer"),
+        ("refunded",          "Refunded to client"),
+        ("failed",            "Failed"),
     ]
     status = models.CharField(
-        max_length=16, choices=STATUS_CHOICES, default="created", db_index=True,
+        max_length=20, choices=STATUS_CHOICES, default="created", db_index=True,  # 16→20
     )
 
     # Append-only audit trail of webhook payloads we received for this payment.
