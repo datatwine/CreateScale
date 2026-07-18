@@ -73,13 +73,13 @@ export default function SignupScreen({ navigation }) {
   }, []);
 
   // Auto-scroll to form section on component mount
-  useEffect(() => {
-    // Wait a moment for layout, then scroll to form (approximately 400px down)
-    const timer = setTimeout(() => {
-      scrollViewRef.current?.scrollTo({ y: 400, animated: true });
-    }, 300);
-    return () => clearTimeout(timer);
-  }, []);
+  // useEffect(() => {
+  //   // Wait a moment for layout, then scroll to form (approximately 400px down)
+  //   const timer = setTimeout(() => {
+  //     scrollViewRef.current?.scrollTo({ y: 400, animated: true });
+  //   }, 300);
+  //   return () => clearTimeout(timer);
+  // }, []);
 
   // Called the first time the user scrolls a little bit.
   // Runs a staggered animation for each word, then the trampoline for line 2.

@@ -18,8 +18,6 @@ import * as ImageManipulator from "expo-image-manipulator";
 import * as ImagePicker from "expo-image-picker";
 import { COLORS } from "../config/theme";
 import { Ionicons } from "@expo/vector-icons"; // only once
-
-
 import { AuthContext } from "../context/AuthContext";
 import { API_BASE_URL } from "../config/api";
 import { uploadMedia } from "../api/upload";

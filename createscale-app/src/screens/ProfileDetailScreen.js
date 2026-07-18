@@ -202,8 +202,9 @@ function HireSection({ targetProfile, myProfile, token, onHireSuccess }) {
 
     if (!showForm) {
         return (
+            <View style={{ marginBottom: 12 }}>
             <PressableStamp
-                stampOffset={3} borderRadius={999} borderColor={COLORS.ink} borderWidth={2}
+                stampOffset={3} stampOffsetY={5} borderRadius={999} borderColor={COLORS.ink}
                 onPress={() => setShowForm(true)}
                 style={styles.hireButton}
             >
@@ -212,12 +213,13 @@ function HireSection({ targetProfile, myProfile, token, onHireSuccess }) {
                     Hire {targetProfile.username}
                 </Text>
             </PressableStamp>
+            </View>
         );
     }
 
     // Inline hire form (mirrors hire_form.html fields)
     return (
-        <PressableStamp stampOffset={4} borderRadius={16} borderColor={COLORS.ink} borderWidth={2}>
+        <View style={{ borderRadius: 16, borderWidth: 2, borderColor: COLORS.ink, backgroundColor: COLORS.card, overflow: "hidden", marginBottom: 12 }}>
         <View style={styles.hireForm}>
             <Text style={styles.hireFormTitle}>
                 Hire {targetProfile.username}
@@ -269,15 +271,18 @@ function HireSection({ targetProfile, myProfile, token, onHireSuccess }) {
 
             {/* Action buttons */}
             <View style={styles.hireFormActions}>
-                <TouchableOpacity
-                    style={styles.hireSendButton}
+                <View style={{ flex: 1 }}>
+                <PressableStamp
+                    stampOffset={3} stampOffsetY={5} borderRadius={999} borderColor={COLORS.ink}
                     onPress={handleSubmitHire}
                     disabled={submitting}
+                    style={styles.hireSendButton}
                 >
                     <Text style={styles.hireSendButtonText}>
                         {submitting ? "Sending…" : "Send hire request"}
                     </Text>
-                </TouchableOpacity>
+                </PressableStamp>
+                </View>
 
                 <TouchableOpacity
                     style={styles.hireCancelButton}
@@ -287,7 +292,7 @@ function HireSection({ targetProfile, myProfile, token, onHireSuccess }) {
                 </TouchableOpacity>
             </View>
         </View>
-        </PressableStamp>
+        </View>
     );
 }
 
@@ -506,7 +511,7 @@ export default function ProfileDetailScreen({ route, navigation }) {
 const styles = StyleSheet.create({
     safeArea: {
         flex: 1,
-        backgroundColor: COLORS.background,
+        backgroundColor: "#000",
     },
     scrollContent: {
         paddingHorizontal: 16,
@@ -645,7 +650,7 @@ const styles = StyleSheet.create({
         gap: 8,
         paddingVertical: 12,
         paddingHorizontal: 20,
-        marginBottom: 12,
+        backgroundColor: COLORS.accent,
     },
     hireButtonText: {
         fontSize: 15,
@@ -692,11 +697,9 @@ const styles = StyleSheet.create({
         marginTop: 16,
     },
     hireSendButton: {
-        flex: 1,
-        backgroundColor: COLORS.accent,
-        borderRadius: 999,
         paddingVertical: 11,
         alignItems: "center",
+        backgroundColor: COLORS.accent,
     },
     hireSendButtonText: {
         color: COLORS.textPrimary,
@@ -779,6 +782,7 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: "center",
         alignItems: "center",
+        backgroundColor: COLORS.background,
     },
     loadingText: {
         marginTop: 8,
