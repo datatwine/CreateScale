@@ -19,7 +19,8 @@ export async function fetchPerformerPayouts(token) {
         headers: { Authorization: `Token ${token}` },
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    return res.json();
+    const data = await res.json();
+    return data.results;
 }
 
 export async function fetchClientPayments(token) {
@@ -27,5 +28,6 @@ export async function fetchClientPayments(token) {
         headers: { Authorization: `Token ${token}` },
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    return res.json();
+    const data = await res.json();
+    return data.results;
 }

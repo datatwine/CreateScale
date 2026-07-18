@@ -112,7 +112,7 @@ describe("PerformerPayoutsScreen fetch URL", () => {
     test("calls /api/bookings/payouts/performer/ with auth token", async () => {
         global.fetch.mockResolvedValueOnce({
             ok: true,
-            json: async () => [],
+            json: async () => ({ count: 0, num_pages: 1, page: 1, has_next: false, has_previous: false, results: [] }),
         });
 
         // Import the fetch-wrapper util directly
@@ -126,6 +126,21 @@ describe("PerformerPayoutsScreen fetch URL", () => {
             }),
         );
     });
+
+    test("unwraps the paginated response's results array", async () => {
+        global.fetch.mockResolvedValueOnce({
+            ok: true,
+            json: async () => ({
+                count: 1, num_pages: 1, page: 1, has_next: false, has_previous: false,
+                results: [{ id: 1, fee: 5000 }],
+            }),
+        });
+
+        const { fetchPerformerPayouts } = require("../utils/paymentHistory");
+        const data = await fetchPerformerPayouts("test-token");
+
+        expect(data).toEqual([{ id: 1, fee: 5000 }]);
+    });
 });
 
 describe("ClientPaymentsScreen fetch URL", () => {
@@ -134,7 +149,7 @@ describe("ClientPaymentsScreen fetch URL", () => {
     test("calls /api/bookings/payments/client/ with auth token", async () => {
         global.fetch.mockResolvedValueOnce({
             ok: true,
-            json: async () => [],
+            json: async () => ({ count: 0, num_pages: 1, page: 1, has_next: false, has_previous: false, results: [] }),
         });
 
         const { fetchClientPayments } = require("../utils/paymentHistory");
@@ -146,5 +161,20 @@ describe("ClientPaymentsScreen fetch URL", () => {
                 headers: expect.objectContaining({ Authorization: "Token test-token" }),
             }),
         );
+    });
+
+    test("unwraps the paginated response's results array", async () => {
+        global.fetch.mockResolvedValueOnce({
+            ok: true,
+            json: async () => ({
+                count: 1, num_pages: 1, page: 1, has_next: false, has_previous: false,
+                results: [{ id: 2, fee: 3000 }],
+            }),
+        });
+
+        const { fetchClientPayments } = require("../utils/paymentHistory");
+        const data = await fetchClientPayments("test-token");
+
+        expect(data).toEqual([{ id: 2, fee: 3000 }]);
     });
 });
