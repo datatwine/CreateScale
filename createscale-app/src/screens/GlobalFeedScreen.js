@@ -20,16 +20,16 @@ import {
     Alert,
     FlatList,
     Image,
-    SafeAreaView,
     StyleSheet,
     Text,
     TouchableOpacity,
     View,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-
+import { SafeAreaView } from "react-native-safe-area-context";
 import { AuthContext } from "../context/AuthContext";
 import { API_BASE_URL } from "../config/api";
+import { COLORS } from "../config/theme";
+import PressableStamp from "../components/PressableStamp";
 
 // ---------------------------------------------------------------------------
 // Shared helpers (same logic as ProfileScreen — tiny, so duplicated here
@@ -59,70 +59,47 @@ function makeMediaUrl(pathOrUrl) {
 }
 
 // ---------------------------------------------------------------------------
-// Color palette — mirrors ProfileScreen so the app feels cohesive
-// ---------------------------------------------------------------------------
-
-const COLORS = {
-    background: "#0B0F1A",       // deep navy, close to the mockup
-    card: "#141A2E",             // slightly lighter navy for cards
-    cardOverlay: "rgba(0,0,0,0.55)",
-    accent: "#E68A00",           // orange, consistent with ProfileScreen
-    textPrimary: "#FFFFFF",
-    textSecondary: "#CFCFCF",
-    textMuted: "#8A8FA0",
-    pillBg: "#1E2438",           // inactive filter pill
-    pillActiveBg: "#E68A00",     // active filter pill
-    divider: "#2B2B2B",
-};
-
-// ---------------------------------------------------------------------------
-// FeedCard — one performer card matching the dark-photo-overlay design
+// FeedCard — one performer card with stamp effect
 // ---------------------------------------------------------------------------
 
 function FeedCard({ profile, onPress }) {
     const imageUri = makeMediaUrl(profile.profile_picture_url);
 
     return (
-        <TouchableOpacity
-            style={styles.card}
-            activeOpacity={0.85}
+        <PressableStamp
             onPress={onPress}
+            stampOffset={4}
+            stampOffsetY={5}
+            borderRadius={14}
+            borderColor={COLORS.ink}
+            borderWidth={2}
+            style={styles.card}
         >
-            {/* Large profile photo — fills most of the card */}
             {imageUri ? (
                 <Image
                     source={{ uri: imageUri }}
-                    style={styles.cardImage}
-                    resizeMode="cover"
+                    style={styles.cardAvatar}
                 />
             ) : (
-                // Fallback: initial letter on a dark background
-                <View style={[styles.cardImage, styles.cardImagePlaceholder]}>
+                <View style={[styles.cardAvatar, styles.cardAvatarPlaceholder]}>
                     <Text style={styles.cardInitial}>
                         {(profile.username || "?").charAt(0).toUpperCase()}
                     </Text>
                 </View>
             )}
 
-            {/* Semi-transparent overlay with text at the bottom */}
-            <View style={styles.cardOverlay}>
-                <Text style={styles.cardName} numberOfLines={1}>
-                    {profile.username}
-                </Text>
+            <Text style={styles.cardName} numberOfLines={1}>
+                {profile.username}
+            </Text>
 
-                {profile.profession ? (
-                    <Text style={styles.cardProfession} numberOfLines={1}>
+            {profile.profession ? (
+                <View style={styles.professionPill}>
+                    <Text style={styles.professionText} numberOfLines={1}>
                         {profile.profession}
                     </Text>
-                ) : null}
-
-                {profile.bio ? (
-                    <Text style={styles.cardBio} numberOfLines={2}>
-                        {profile.bio}
-                    </Text>
-                ) : null}
-            </View>
-        </TouchableOpacity>
+                </View>
+            ) : null}
+        </PressableStamp>
     );
 }
 
@@ -281,18 +258,12 @@ export default function GlobalFeedScreen({ navigation }) {
     };
 
     return (
-        <SafeAreaView style={styles.safeArea}>
+        <SafeAreaView style={styles.safeArea} edges={["top"]}>
+            <View style={{ flex: 1, backgroundColor: COLORS.background }}>
             {/* Header */}
             <View style={styles.header}>
-                {/* Back arrow to ProfileScreen */}
-                <TouchableOpacity
-                    onPress={() => navigation.goBack()}
-                    style={styles.backButton}
-                >
-                    <Ionicons name="arrow-back" size={24} color={COLORS.textPrimary} />
-                </TouchableOpacity>
 
-                <View>
+                <View style={styles.headerTextBlock}>
                     <Text style={styles.headerTitle}>Performing Artists</Text>
                     <Text style={styles.headerSubtitle}>
                         Discover talented performers from around the world
@@ -327,11 +298,15 @@ export default function GlobalFeedScreen({ navigation }) {
                 <FlatList
                     data={profiles}
                     keyExtractor={(item) => String(item.user_id)}
+                    numColumns={2}
+                    columnWrapperStyle={{ gap: 12 }}
                     renderItem={({ item }) => (
-                        <FeedCard
-                            profile={item}
-                            onPress={() => handleCardPress(item)}
-                        />
+                        <View style={{ flex: 1, marginBottom: 12 }}>
+                            <FeedCard
+                                profile={item}
+                                onPress={() => handleCardPress(item)}
+                            />
+                        </View>
                     )}
                     contentContainerStyle={styles.listContent}
                     showsVerticalScrollIndicator={false}
@@ -352,6 +327,7 @@ export default function GlobalFeedScreen({ navigation }) {
                     }
                 />
             )}
+            </View>
         </SafeAreaView>
     );
 }
@@ -363,7 +339,7 @@ export default function GlobalFeedScreen({ navigation }) {
 const styles = StyleSheet.create({
     safeArea: {
         flex: 1,
-        backgroundColor: COLORS.background,
+        backgroundColor: "#000",
     },
 
     // --- Header ---
@@ -373,6 +349,9 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         paddingTop: 8,
         paddingBottom: 12,
+    },
+    headerTextBlock: {
+        flexShrink: 1,
     },
     backButton: {
         marginRight: 12,
@@ -418,10 +397,10 @@ const styles = StyleSheet.create({
         paddingHorizontal: 14,
         paddingVertical: 6,
         borderRadius: 999,
-        backgroundColor: COLORS.pillBg,
+        backgroundColor: COLORS.cream,
     },
     pillActive: {
-        backgroundColor: COLORS.pillActiveBg,
+        backgroundColor: COLORS.accent,
     },
     pillText: {
         fontSize: 13,
@@ -429,7 +408,7 @@ const styles = StyleSheet.create({
         color: COLORS.textSecondary,
     },
     pillTextActive: {
-        color: COLORS.textPrimary,
+        color: COLORS.card,
     },
 
     // --- Feed list ---
@@ -440,53 +419,49 @@ const styles = StyleSheet.create({
 
     // --- Card ---
     card: {
-        borderRadius: 16,
-        overflow: "hidden",
+        borderRadius: 14,
         backgroundColor: COLORS.card,
-        marginBottom: 16,
-
-        // Subtle shadow for depth
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
-        elevation: 5,
+        alignItems: "center",
+        padding: 16,
+        height: 150,
     },
-    cardImage: {
-        width: "100%",
-        height: 220,
+    cardAvatar: {
+        width: 60,
+        height: 60,
+        borderRadius: 30,
+        borderWidth: 2.5,
+        borderColor: COLORS.accent,
+        marginBottom: 10,
     },
-    cardImagePlaceholder: {
-        backgroundColor: "#1A2040",
+    cardAvatarPlaceholder: {
+        backgroundColor: COLORS.cream,
         alignItems: "center",
         justifyContent: "center",
     },
     cardInitial: {
-        fontSize: 48,
+        fontSize: 24,
         fontWeight: "700",
         color: COLORS.accent,
-    },
-
-    // Text overlay at the bottom of each card
-    cardOverlay: {
-        padding: 14,
-        backgroundColor: COLORS.cardOverlay,
     },
     cardName: {
-        fontSize: 18,
+        fontSize: 15,
         fontWeight: "700",
         color: COLORS.textPrimary,
+        textAlign: "center",
+        marginBottom: 6,
     },
-    cardProfession: {
-        fontSize: 14,
+    professionPill: {
+        backgroundColor: COLORS.cream,
+        paddingHorizontal: 10,
+        paddingVertical: 3,
+        borderRadius: 999,
+        borderWidth: 1,
+        borderColor: COLORS.divider,
+    },
+    professionText: {
+        fontSize: 11,
+        fontWeight: "600",
         color: COLORS.accent,
-        marginTop: 2,
-    },
-    cardBio: {
-        fontSize: 13,
-        color: COLORS.textMuted,
-        marginTop: 6,
-        lineHeight: 18,
     },
 
     // --- Loaders & empty state ---

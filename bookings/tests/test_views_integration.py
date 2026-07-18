@@ -216,7 +216,7 @@ class TestDisputeView:
         engagement.save()
 
         client.force_login(client_user)
-        r = client.post(
+        client.post(
             reverse("bookings:raise-dispute", args=[engagement.pk]),
             {"dispute_reason": "Too late but trying anyway"},
         )
