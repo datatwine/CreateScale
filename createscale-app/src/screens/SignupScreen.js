@@ -9,7 +9,7 @@
 // `navigation.navigate("Login")` goes to your login screen.
 // ---------------------------
 
-import React, { useContext, useRef, useState } from "react";
+import React, { useContext, useRef, useState, useEffect } from "react";
 import {
   Animated,          // React Native's animation primitive
   Dimensions,        // Used to get screen height, so we can force scrolling
@@ -49,6 +49,9 @@ export default function SignupScreen({ navigation }) {
   // Auth context — we call login() after signup so the user is auto-logged-in
   const { login } = useContext(AuthContext);
 
+  // ScrollView ref for auto-scrolling to form on mount
+  const scrollViewRef = useRef(null);
+
   // This Animated value tracks vertical scroll position.
   // We mostly use it to detect "user has started scrolling" rather than
   // for fancy parallax.
@@ -78,6 +81,15 @@ export default function SignupScreen({ navigation }) {
   const [password2, setPassword2] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");   // <-- shows backend validation errors
+
+  // Auto-scroll to form section on component mount
+  useEffect(() => {
+    // Wait a moment for layout, then scroll to form (approximately 400px down)
+    const timer = setTimeout(() => {
+      scrollViewRef.current?.scrollTo({ y: 400, animated: true });
+    }, 300);
+    return () => clearTimeout(timer);
+  }, []);
 
   // Called the first time the user scrolls a little bit.
   // Runs a staggered animation for each word, then the trampoline for line 2.
@@ -168,6 +180,7 @@ export default function SignupScreen({ navigation }) {
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={keyboardBehavior}>
         {/* Animated.ScrollView so we can react to scroll */}
         <Animated.ScrollView
+          ref={scrollViewRef}
           style={styles.scroll}
           contentContainerStyle={styles.scrollContent}
           scrollEventThrottle={16}        // ~60fps scroll events

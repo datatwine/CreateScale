@@ -39,8 +39,7 @@
           }
         }
       ],
-      "expo-web-browser",
-      "react-native-compressor"
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true,

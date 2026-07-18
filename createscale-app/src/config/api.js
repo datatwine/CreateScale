@@ -1,11 +1,19 @@
 // src/config/api.js
 
 import { Platform } from "react-native";
+import Constants from "expo-constants";
 
-// ⚠️ CHANGE THIS to your Windows machine's LAN IP.
-// Example: run `ipconfig` and look for something like 192.168.1.42
-// Then use: `http://192.168.1.42/api`
-const DEV_NATIVE_API_URL = "http://192.168.1.6/api";
+// 🔧 LOCAL DEVELOPMENT SETUP
+// Auto-detects the dev machine's LAN IP from Expo's own dev server host —
+// the same address your phone already uses to fetch the JS bundle. No more
+// hardcoding/updating an IP by hand every time it changes or a new
+// developer joins.
+export function resolveDevApiHost(hostUri) {
+  if (!hostUri) return "localhost";
+  return hostUri.split(":")[0];
+}
+
+const DEV_NATIVE_API_URL = `http://${resolveDevApiHost(Constants.expoConfig?.hostUri)}/api`;
 
 // For Expo Web dev in a browser on the same machine, "localhost" is okay.
 const DEV_WEB_API_URL = "http://localhost/api";
@@ -20,6 +28,4 @@ const DEV_API_URL =
 
 // __DEV__ is true in Expo dev builds, false in production builds.
 export const API_BASE_URL = __DEV__ ? DEV_API_URL : PROD_API_URL;
-
-
 
