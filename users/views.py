@@ -137,8 +137,6 @@ def profile(request):
 from django.db.models import Q
 from .forms import ProfessionFilterForm
 from django.core.paginator import Paginator
-from django.views.decorators.cache import cache_page
-from django.views.decorators.vary import vary_on_cookie
 from django.core.cache import cache
 
 
