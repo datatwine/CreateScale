@@ -171,6 +171,10 @@ from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
 
 
+class ForgotPasswordSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+
+
 class SignupSerializer(serializers.Serializer):
     """
     POST /api/auth/signup/

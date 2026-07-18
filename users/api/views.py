@@ -1,10 +1,16 @@
 from datetime import date
 
 from django.contrib.auth import authenticate
+from django.contrib.auth.tokens import default_token_generator
+from django.contrib.auth.models import User
 from django.core.cache import cache
+from django.core.mail import send_mail
 from django.core.paginator import Paginator
 from django.shortcuts import get_object_or_404
+from django.urls import reverse
 from django.utils.decorators import method_decorator
+from django.utils.encoding import force_bytes
+from django.utils.http import urlsafe_base64_encode
 from django.views.decorators.cache import cache_control
 
 from django.conf import settings as django_settings
@@ -27,6 +33,7 @@ from .serializers import (
     PresignedUploadSerializer,
     UploadSerializer,
     SignupSerializer,
+    ForgotPasswordSerializer,
 )
 
 
@@ -123,6 +130,65 @@ class SignupAPIView(APIView):
             {"token": token.key, "user_id": user.id, "username": user.username},
             status=status.HTTP_201_CREATED,
         )
+
+class ForgotPasswordAPIView(APIView):
+    """
+    POST /api/auth/forgot-password/
+    Body: {"email": "user@example.com"}
+    Returns: 200 {"detail": "Password reset link sent to your email."}
+            400 {"detail": "No account found with this email address."}
+    """
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = ForgotPasswordSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        email = serializer.validated_data["email"].strip().lower()
+        try:
+            user = User.objects.get(email__iexact=email)
+        except User.DoesNotExist:
+            return Response(
+                {"detail": "No account found with this email address."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        uid = urlsafe_base64_encode(force_bytes(user.pk))
+        token = default_token_generator.make_token(user)
+        path = reverse("password_reset_confirm", kwargs={"uidb64": uid, "token": token})
+        reset_url = request.build_absolute_uri(path)
+
+        send_mail(
+            subject="Reset your ArtKhoj password",
+            message=(
+                f"Hi,\n\n"
+                f"You requested a password reset for your ArtKhoj account.\n\n"
+                f"Click the link below to set a new password:\n"
+                f"{reset_url}\n\n"
+                f"This link expires in 1 hour.\n\n"
+                f"If you did not request this reset, ignore this email.\n\n"
+                f"Thanks,\nThe ArtKhoj team"
+            ),
+            html_message=(
+                f"<!DOCTYPE html><html><body style='font-family:sans-serif;padding:24px;'>"
+                f"<h2>Reset your ArtKhoj password</h2>"
+                f"<p>Click the button below to set a new password. This link expires in <strong>1 hour</strong>.</p>"
+                f"<a href='{reset_url}' "
+                f"style='display:inline-block;background:#e68a00;color:#1F1A17;font-weight:700;"
+                f"padding:14px 28px;border-radius:18px;text-decoration:none;margin:16px 0;'>"
+                f"Set new password</a>"
+                f"<p style='color:#8C8077;font-size:13px;'>If you did not request this, ignore this email.</p>"
+                f"</body></html>"
+            ),
+            from_email=django_settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[email],
+            fail_silently=False,
+        )
+
+        return Response(
+            {"detail": "Password reset link sent to your email."}
+        )
+
 
 # -------------------------------------------------------------------
 # USERS API

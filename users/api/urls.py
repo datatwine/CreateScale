@@ -8,6 +8,7 @@ from .views import (
     TokenLogoutAPIView,
     TokenMeAPIView,
     SignupAPIView,
+    ForgotPasswordAPIView,
     MeProfileAPIView,
     MyUploadsAPIView,
     MyUploadDeleteAPIView,
@@ -31,6 +32,7 @@ urlpatterns = [
     path("auth/signup/", SignupAPIView.as_view(), name="api-auth-signup"),
     path("auth/logout/", TokenLogoutAPIView.as_view(), name="api-auth-logout"),
     path("auth/me/", TokenMeAPIView.as_view(), name="api-auth-me"),
+    path("auth/forgot-password/", ForgotPasswordAPIView.as_view(), name="api-auth-forgot-password"),
     path("auth/oauth/", SocialLoginAPIView.as_view(), name="api-auth-oauth"),
 
     # -------------------------
