@@ -1,11 +1,15 @@
 """
-TDD — written BEFORE implementation (issue #22).
+TDD — written BEFORE implementation (issue #22, pagination added per PR #37
+review — see PerformerPayoutsAPIView / ClientPaymentsAPIView).
 
 Tests for:
   GET /api/bookings/payouts/performer/
   GET /api/bookings/payments/client/
 
-These mirror the web views performer_payouts and client_payments in bookings/views.py.
+These mirror the web views performer_payouts and client_payments in
+bookings/views.py. Both endpoints use _LenientPaginatorMixin (same
+pattern as GlobalFeedAPIView / LiveEventsAPIView) so response shape is
+{count, num_pages, page, has_next, has_previous, results}.
 """
 from datetime import date, time, timedelta
 
@@ -78,8 +82,8 @@ class TestPerformerPayoutsAPI:
         r = self.api.get(PERFORMER_PAYOUTS_URL)
 
         assert r.status_code == 200
-        assert len(r.data) == 1
-        assert r.data[0]["performer"]["username"] == "perf_a"
+        assert len(r.data["results"]) == 1
+        assert r.data["results"][0]["performer"]["username"] == "perf_a"
 
     def test_filters_paid_released_refunded_only(self):
         performer = _make_user("perf_c", is_performer=True)
@@ -94,7 +98,8 @@ class TestPerformerPayoutsAPI:
         r = self.api.get(PERFORMER_PAYOUTS_URL)
 
         assert r.status_code == 200
-        assert len(r.data) == 3
+        assert len(r.data["results"]) == 3
+        assert r.data["count"] == 3
 
     def test_response_shape_includes_payment_fields(self):
         performer = _make_user("perf_d", is_performer=True)
@@ -104,7 +109,7 @@ class TestPerformerPayoutsAPI:
         self.api.force_authenticate(user=performer)
         r = self.api.get(PERFORMER_PAYOUTS_URL)
 
-        item = r.data[0]
+        item = r.data["results"][0]
         assert "id" in item
         assert "fee" in item
         assert "payment_status" in item
@@ -123,7 +128,49 @@ class TestPerformerPayoutsAPI:
         self.api.force_authenticate(user=client_u)
         r = self.api.get(PERFORMER_PAYOUTS_URL)
         assert r.status_code == 200
-        assert len(r.data) == 0
+        assert len(r.data["results"]) == 0
+
+    def test_paginates_at_page_size(self):
+        performer = _make_user("perf_pag", is_performer=True)
+        client_u = _make_user("cli_pag", is_client=True)
+        for _ in range(25):
+            _make_engagement(client_u, performer, Engagement.PAYMENT_PAID)
+
+        self.api.force_authenticate(user=performer)
+        r = self.api.get(PERFORMER_PAYOUTS_URL)
+
+        assert r.status_code == 200
+        assert r.data["count"] == 25
+        assert r.data["num_pages"] == 2
+        assert r.data["page"] == 1
+        assert r.data["has_next"] is True
+        assert r.data["has_previous"] is False
+        assert len(r.data["results"]) == 20
+
+    def test_second_page_returns_remainder(self):
+        performer = _make_user("perf_pag2", is_performer=True)
+        client_u = _make_user("cli_pag2", is_client=True)
+        for _ in range(25):
+            _make_engagement(client_u, performer, Engagement.PAYMENT_PAID)
+
+        self.api.force_authenticate(user=performer)
+        r = self.api.get(PERFORMER_PAYOUTS_URL, {"page": 2})
+
+        assert r.status_code == 200
+        assert r.data["page"] == 2
+        assert r.data["has_next"] is False
+        assert r.data["has_previous"] is True
+        assert len(r.data["results"]) == 5
+
+    def test_invalid_page_does_not_404(self):
+        """Mirrors users.views.global_feed's Paginator.get_page() lenience."""
+        performer = _make_user("perf_pag3", is_performer=True)
+        client_u = _make_user("cli_pag3", is_client=True)
+        _make_engagement(client_u, performer, Engagement.PAYMENT_PAID)
+
+        self.api.force_authenticate(user=performer)
+        r = self.api.get(PERFORMER_PAYOUTS_URL, {"page": "not-a-number"})
+        assert r.status_code == 200
 
 
 # ---------------------------------------------------------------------------
@@ -155,8 +202,8 @@ class TestClientPaymentsAPI:
         r = self.api.get(CLIENT_PAYMENTS_URL)
 
         assert r.status_code == 200
-        assert len(r.data) == 1
-        assert r.data[0]["client"]["username"] == "cli_e"
+        assert len(r.data["results"]) == 1
+        assert r.data["results"][0]["client"]["username"] == "cli_e"
 
     def test_filters_paid_released_refunded_only(self):
         performer = _make_user("perf_g", is_performer=True)
@@ -171,7 +218,8 @@ class TestClientPaymentsAPI:
         r = self.api.get(CLIENT_PAYMENTS_URL)
 
         assert r.status_code == 200
-        assert len(r.data) == 3
+        assert len(r.data["results"]) == 3
+        assert r.data["count"] == 3
 
     def test_response_shape_includes_payment_fields(self):
         performer = _make_user("perf_h", is_performer=True)
@@ -181,7 +229,7 @@ class TestClientPaymentsAPI:
         self.api.force_authenticate(user=client_u)
         r = self.api.get(CLIENT_PAYMENTS_URL)
 
-        item = r.data[0]
+        item = r.data["results"][0]
         assert "id" in item
         assert "fee" in item
         assert "payment_status" in item
@@ -200,4 +248,45 @@ class TestClientPaymentsAPI:
         self.api.force_authenticate(user=performer)
         r = self.api.get(CLIENT_PAYMENTS_URL)
         assert r.status_code == 200
-        assert len(r.data) == 0
+        assert len(r.data["results"]) == 0
+
+    def test_paginates_at_page_size(self):
+        performer = _make_user("perf_pag4", is_performer=True)
+        client_u = _make_user("cli_pag4", is_client=True)
+        for _ in range(25):
+            _make_engagement(client_u, performer, Engagement.PAYMENT_PAID)
+
+        self.api.force_authenticate(user=client_u)
+        r = self.api.get(CLIENT_PAYMENTS_URL)
+
+        assert r.status_code == 200
+        assert r.data["count"] == 25
+        assert r.data["num_pages"] == 2
+        assert r.data["page"] == 1
+        assert r.data["has_next"] is True
+        assert r.data["has_previous"] is False
+        assert len(r.data["results"]) == 20
+
+    def test_second_page_returns_remainder(self):
+        performer = _make_user("perf_pag5", is_performer=True)
+        client_u = _make_user("cli_pag5", is_client=True)
+        for _ in range(25):
+            _make_engagement(client_u, performer, Engagement.PAYMENT_PAID)
+
+        self.api.force_authenticate(user=client_u)
+        r = self.api.get(CLIENT_PAYMENTS_URL, {"page": 2})
+
+        assert r.status_code == 200
+        assert r.data["page"] == 2
+        assert r.data["has_next"] is False
+        assert r.data["has_previous"] is True
+        assert len(r.data["results"]) == 5
+
+    def test_invalid_page_does_not_404(self):
+        performer = _make_user("perf_pag6", is_performer=True)
+        client_u = _make_user("cli_pag6", is_client=True)
+        _make_engagement(client_u, performer, Engagement.PAYMENT_PAID)
+
+        self.api.force_authenticate(user=client_u)
+        r = self.api.get(CLIENT_PAYMENTS_URL, {"page": "not-a-number"})
+        assert r.status_code == 200

@@ -9,6 +9,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from users.models import Profile
+from users.api.views import _LenientPaginatorMixin
 from bookings.models import Engagement
 from bookings.services.payments import PaymentService
 from .serializers import EngagementSerializer, EngagementCreateSerializer, EngagementActionSerializer, PaymentHistorySerializer
@@ -80,11 +81,14 @@ _PAID_STATUSES = [
 ]
 
 
-class PerformerPayoutsAPIView(APIView):
+class PerformerPayoutsAPIView(_LenientPaginatorMixin, APIView):
     """
-    GET /api/bookings/payouts/performer/
+    GET /api/bookings/payouts/performer/?page=1
     Returns the authenticated performer's paid/released/refunded engagements,
     mirroring the web performer_payouts view in bookings/views.py.
+    Paginated the same way as GlobalFeedAPIView/LiveEventsAPIView so a
+    performer with hundreds of paid gigs doesn't serialize/transfer them
+    all in one response.
     """
     permission_classes = [IsAuthenticated]
 
@@ -93,14 +97,23 @@ class PerformerPayoutsAPIView(APIView):
               .filter(performer=request.user, payment_status__in=_PAID_STATUSES)
               .select_related("client", "performer")
               .order_by("-date", "-time"))
-        return Response(PaymentHistorySerializer(qs, many=True).data)
+        paginator, page_obj = self.paginate_lenient(qs, request)
+        return Response({
+            "count": paginator.count,
+            "num_pages": paginator.num_pages,
+            "page": page_obj.number,
+            "has_next": page_obj.has_next(),
+            "has_previous": page_obj.has_previous(),
+            "results": PaymentHistorySerializer(page_obj.object_list, many=True).data,
+        })
 
 
-class ClientPaymentsAPIView(APIView):
+class ClientPaymentsAPIView(_LenientPaginatorMixin, APIView):
     """
-    GET /api/bookings/payments/client/
+    GET /api/bookings/payments/client/?page=1
     Returns the authenticated client's paid/released/refunded engagements,
-    mirroring the web client_payments view in bookings/views.py.
+    mirroring the web client_payments view in bookings/views.py. Paginated
+    for the same reason as PerformerPayoutsAPIView above.
     """
     permission_classes = [IsAuthenticated]
 
@@ -109,7 +122,15 @@ class ClientPaymentsAPIView(APIView):
               .filter(client=request.user, payment_status__in=_PAID_STATUSES)
               .select_related("client", "performer")
               .order_by("-paid_at"))
-        return Response(PaymentHistorySerializer(qs, many=True).data)
+        paginator, page_obj = self.paginate_lenient(qs, request)
+        return Response({
+            "count": paginator.count,
+            "num_pages": paginator.num_pages,
+            "page": page_obj.number,
+            "has_next": page_obj.has_next(),
+            "has_previous": page_obj.has_previous(),
+            "results": PaymentHistorySerializer(page_obj.object_list, many=True).data,
+        })
 
 
 class EngagementViewSet(viewsets.ViewSet):
