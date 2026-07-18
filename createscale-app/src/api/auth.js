@@ -5,6 +5,7 @@
 // swap URLs or payload shapes later if your backend changes.
 
 import { API_BASE_URL } from "../config/api";
+import { fetchWithTimeout } from "../utils/session";
 
 /**
  * Log in with username + password.
@@ -57,20 +58,22 @@ export async function loginWithUsernamePassword(username, password) {
  * You already have /api/auth/me/ and /api/users/me/ on backend.
  * Here is a helper for /api/auth/me/.
  */
-export async function fetchAuthMe(token) {
+export async function fetchAuthMe(token, timeoutMs = 8000) {
   const url = `${API_BASE_URL}/auth/me/`;
 
-  const response = await fetch(url, {
+  const response = await fetchWithTimeout(url, {
     method: "GET",
     headers: {
       "Authorization": `Token ${token}`,
     },
-  });
+  }, timeoutMs);
 
   const data = await response.json();
 
   if (!response.ok) {
-    throw new Error(data.detail || "Failed to load current user.");
+    const err = new Error(data.detail || "Failed to load current user.");
+    err.status = response.status;
+    throw err;
   }
 
   return data; // { user_id, username, profile: {...} }
