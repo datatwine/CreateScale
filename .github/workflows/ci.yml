@@ -1,0 +1,474 @@
+# =============================================================================
+# CI/CD Pipeline — single workflow for PR checks and main deployment
+# =============================================================================
+# On PR:    lint (ruff + eslint) + tests
+# On push:  lint + tests → push image → deploy to k3s
+# =============================================================================
+
+name: CI/CD
+
+on:
+  workflow_dispatch:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  push:
+    branches: [main]
+
+jobs:
+
+  # ===========================================================================
+  # Python — Ruff lint + format check + Bandit security
+  # ===========================================================================
+  lint-python:
+    name: "Python — Ruff + Bandit"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: pip install ruff bandit
+
+      - run: ruff check .
+
+      - run: ruff format --check .
+
+      - run: bandit -r . -x ./tests -ll
+
+  # ===========================================================================
+  # JavaScript — ESLint (Expo)
+  # ===========================================================================
+  lint-js:
+    name: "JS — ESLint"
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: createscale-app
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: createscale-app/package-lock.json
+
+      - run: npm ci
+
+      - run: npm run lint
+
+  # ===========================================================================
+  # Build — Docker Compose (all custom images)
+  # ===========================================================================
+  build:
+    name: "Docker build"
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - run: docker compose build
+
+  # ===========================================================================
+  # Tests — django all test cases
+  # ===========================================================================
+  test:
+    name: "All tests"
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: testdb
+          POSTGRES_USER: testuser
+          POSTGRES_PASSWORD: testpass
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: pip install -r requirements.txt pytest pytest-django
+
+      - name: "Migrations up to date?"
+        env:
+          DB_NAME: testdb
+          DB_USER: testuser
+          DB_PASSWORD: testpass
+          DB_HOST: localhost
+          DB_PORT: "5432"
+          DJANGO_SECRET_KEY: "ci-test-secret-not-for-production-x7k2m9p"
+          DJANGO_DEBUG: "0"
+          DJANGO_ALLOWED_HOSTS: "localhost"
+          USE_S3: "0"
+        run: python manage.py makemigrations --check --dry-run
+
+      - name: "Run all tests"
+        env:
+          DB_NAME: testdb
+          DB_USER: testuser
+          DB_PASSWORD: testpass
+          DB_HOST: localhost
+          DB_PORT: "5432"
+          DJANGO_SECRET_KEY: "ci-test-secret-not-for-production-x7k2m9p"
+          DJANGO_DEBUG: "0"
+          DJANGO_ALLOWED_HOSTS: "localhost"
+          USE_S3: "0"
+          REDIS_URL: redis://localhost:6379/0
+          DJANGO_SETTINGS_MODULE: myproject.settings
+        run: pytest -v
+
+  # ===========================================================================
+  # BUILD IMAGE + PUSH TO GHCR (push to main only)
+  # ===========================================================================
+  push-image:
+    name: "Build + Push to GHCR"
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    needs: [build, test, lint-python, lint-js]
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      - run: |
+          IMAGE=ghcr.io/${{ github.repository_owner }}/createscale
+          docker build -t $IMAGE:latest -t $IMAGE:${{ github.sha }} .
+          docker push $IMAGE:latest
+          docker push $IMAGE:${{ github.sha }}
+
+  # ===========================================================================
+  # DEPLOY TO K3S CLUSTER (push to main only)
+  # ===========================================================================
+  deploy-web:
+    name: "Deploy to k3s"
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    needs: push-image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: azure/setup-kubectl@v4
+
+      - name: Configure kubeconfig
+        run: echo "${{ secrets.KUBECONFIG_B64 }}" | base64 -d > kubeconfig
+
+      - name: "Open firewall for deploy"
+        env:
+          HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
+        run: |
+          RUNNER_IP=$(curl -s ifconfig.me)/32
+          echo "RUNNER_IP=$RUNNER_IP" >> $GITHUB_ENV
+
+          FW_ID=$(curl -s -H "Authorization: Bearer $HCLOUD_TOKEN" \
+            "https://api.hetzner.cloud/v1/firewalls?name=artkhoj-fw" | jq -r '.firewalls[0].id')
+          echo "FW_ID=$FW_ID" >> $GITHUB_ENV
+
+          RULES=$(curl -s -H "Authorization: Bearer $HCLOUD_TOKEN" \
+            "https://api.hetzner.cloud/v1/firewalls/$FW_ID" \
+            | jq --arg ip "$RUNNER_IP" \
+            '[.firewall.rules[] | {direction, protocol, port, source_ips, destination_ips, description}]
+             + [{"direction":"in","protocol":"tcp","port":"6443","source_ips":[$ip],"destination_ips":[],"description":"ci-deploy-web"}]')
+
+          curl -s -X POST \
+            -H "Authorization: Bearer $HCLOUD_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "{\"rules\": $RULES}" \
+            "https://api.hetzner.cloud/v1/firewalls/$FW_ID/actions/set_rules"
+
+      - name: "Ensure sweeper secret exists"
+        env:
+          HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
+        run: |
+          export KUBECONFIG=./kubeconfig
+          kubectl create secret generic hcloud-sweeper-token \
+            -n kube-system \
+            --from-literal=token="${HCLOUD_TOKEN}" \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: "Step 1 — Apply manifests"
+        run: |
+          export KUBECONFIG=./kubeconfig
+          MANIFESTS=(
+            00-namespace.yaml
+            11-deployment-web.yaml
+            11b-deployment-web-resident.yaml
+            12-deployment-worker.yaml
+            13-deployment-beat.yaml
+            20-service-web.yaml
+            21-ingress-web.yaml
+            22-middlewares.yaml
+            30-hpa-web.yaml
+            40-daemonset-promtail.yaml
+            41-daemonset-node-exporter.yaml
+            50-rbac-prometheus.yaml
+            60-prometheus-agent.yaml
+            promtail-config.yaml
+            70-cronjob-ghost-sweeper.yaml
+          )
+          kubectl -n artkhoj delete deployment django --ignore-not-found
+
+          for f in "${MANIFESTS[@]}"; do
+            echo "--- Applying $f ---"
+            kubectl apply -f deploy/k8s/"$f"
+          done
+
+          echo "--- Applying traefik-helmchartconfig.yaml ---"
+          kubectl apply -f deploy/k8s/hetzner/traefik-helmchartconfig.yaml
+
+      - name: "Step 2 — Run database migration"
+        run: |
+          export KUBECONFIG=./kubeconfig
+          IMAGE=ghcr.io/${{ github.repository_owner }}/createscale:${{ github.sha }}
+
+          kubectl -n artkhoj delete job django-migrate --ignore-not-found
+
+          sed "s|ghcr.io/datatwine/createscale:latest|${IMAGE}|" \
+            deploy/k8s/10-job-migrate.yaml | kubectl apply -f -
+
+          kubectl -n artkhoj wait --for=condition=complete job/django-migrate --timeout=180s
+
+      - name: "Step 3 — Roll new image to deployments"
+        run: |
+          export KUBECONFIG=./kubeconfig
+          IMAGE=ghcr.io/${{ github.repository_owner }}/createscale:${{ github.sha }}
+
+          kubectl -n artkhoj set image deployment/django django=${IMAGE}
+          kubectl -n artkhoj set image deployment/django-resident django=${IMAGE}
+          kubectl -n artkhoj set image deployment/celery-worker worker=${IMAGE}
+          kubectl -n artkhoj set image deployment/celery-beat beat=${IMAGE}
+
+          kubectl -n artkhoj rollout status deployment/django --timeout=180s
+          kubectl -n artkhoj rollout status deployment/django-resident --timeout=180s
+          kubectl -n artkhoj rollout status deployment/celery-worker --timeout=60s
+          kubectl -n artkhoj rollout status deployment/celery-beat --timeout=60s
+
+      - name: "Step 4 — Smoke test"
+        run: |
+          export KUBECONFIG=./kubeconfig
+          STATUS=$(kubectl -n artkhoj exec deployment/django -- \
+            python -c "
+          import urllib.request
+          r = urllib.request.urlopen('http://127.0.0.1:8000/metrics')
+          print(r.status)
+          ")
+          echo "Health check returned: ${STATUS}"
+          if [ "${STATUS}" != "200" ]; then
+            echo "Smoke test FAILED"
+            exit 1
+          fi
+          echo "Smoke test passed"
+
+      - name: "Trigger mirror pull"
+        continue-on-error: true
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.MASTER_SSH_KEY }}" > ~/.ssh/master_key
+          chmod 600 ~/.ssh/master_key
+          IMAGE="ghcr.io/${{ github.repository_owner }}/createscale:${{ github.sha }}"
+          ssh -o StrictHostKeyChecking=no -i ~/.ssh/master_key root@${{ secrets.MASTER_HOST }} \
+            "nohup /usr/local/bin/mirror-pull.sh $IMAGE > /dev/null 2>&1 &"
+          echo "Mirror pull triggered for $IMAGE"
+
+      - name: "Close firewall"
+        if: always()
+        env:
+          HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
+        run: |
+          RULES=$(curl -s -H "Authorization: Bearer $HCLOUD_TOKEN" \
+            "https://api.hetzner.cloud/v1/firewalls/${{ env.FW_ID }}" \
+            | jq '[.firewall.rules[] | select(.description != "ci-deploy-web") | {direction, protocol, port, source_ips, destination_ips, description}]')
+
+          curl -s -X POST \
+            -H "Authorization: Bearer $HCLOUD_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "{\"rules\": $RULES}" \
+            "https://api.hetzner.cloud/v1/firewalls/${{ env.FW_ID }}/actions/set_rules"
+
+  # ===========================================================================
+  # DEPLOY DB BOX (push to main only)
+  # ===========================================================================
+  deploy-db:
+    name: "Deploy DB Box"
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    needs: [build, test, lint-python, lint-js]
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Open firewall for deploy"
+        env:
+          HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
+        run: |
+          RUNNER_IP=$(curl -s ifconfig.me)/32
+          echo "RUNNER_IP=$RUNNER_IP" >> $GITHUB_ENV
+
+          FW_ID=$(curl -s -H "Authorization: Bearer $HCLOUD_TOKEN" \
+            "https://api.hetzner.cloud/v1/firewalls?name=artkhoj-fw" | jq -r '.firewalls[0].id')
+          echo "FW_ID=$FW_ID" >> $GITHUB_ENV
+
+          RULES=$(curl -s -H "Authorization: Bearer $HCLOUD_TOKEN" \
+            "https://api.hetzner.cloud/v1/firewalls/$FW_ID" \
+            | jq --arg ip "$RUNNER_IP" \
+            '[.firewall.rules[] | {direction, protocol, port, source_ips, destination_ips, description}]
+             + [{"direction":"in","protocol":"tcp","port":"22","source_ips":[$ip],"destination_ips":[],"description":"ci-deploy-db"}]')
+
+          curl -s -X POST \
+            -H "Authorization: Bearer $HCLOUD_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "{\"rules\": $RULES}" \
+            "https://api.hetzner.cloud/v1/firewalls/$FW_ID/actions/set_rules"
+
+      - name: "Deploy to DB Box via SSH"
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.DB_SSH_KEY }}" > ~/.ssh/db_key
+          chmod 600 ~/.ssh/db_key
+          ssh -o StrictHostKeyChecking=no -i ~/.ssh/db_key root@${{ secrets.DB_HOST }} << 'EOF'
+            set -eu
+            cd /root/AK && git fetch origin main && git reset --hard origin/main
+            cd /root/AK/deploy/db
+            docker compose -f docker-compose.data.yml build docker_stats_exporter
+            docker compose -f docker-compose.data.yml up -d --remove-orphans
+            echo "DB_DEPLOY_COMPLETE"
+          EOF
+
+      - name: "Close firewall"
+        if: always()
+        env:
+          HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
+        run: |
+          RULES=$(curl -s -H "Authorization: Bearer $HCLOUD_TOKEN" \
+            "https://api.hetzner.cloud/v1/firewalls/${{ env.FW_ID }}" \
+            | jq '[.firewall.rules[] | select(.description != "ci-deploy-db") | {direction, protocol, port, source_ips, destination_ips, description}]')
+
+          curl -s -X POST \
+            -H "Authorization: Bearer $HCLOUD_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "{\"rules\": $RULES}" \
+            "https://api.hetzner.cloud/v1/firewalls/${{ env.FW_ID }}/actions/set_rules"
+
+  # ===========================================================================
+  # DEPLOY AUTOSCALER CONFIG (push to main only)
+  # ===========================================================================
+  deploy-autoscaler:
+    name: "Deploy Autoscaler Config"
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    needs: [build, test, lint-python, lint-js]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: "Check if autoscaler values changed"
+        id: check
+        run: |
+          CHANGED=$(git diff HEAD~1 --name-only -- deploy/k8s/hetzner/cluster-autoscaler-values.yaml deploy/cloud-init/ || echo "first-run")
+          if [ -n "$CHANGED" ]; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+          else
+            echo "changed=false" >> $GITHUB_OUTPUT
+          fi
+
+      - uses: azure/setup-kubectl@v4
+        if: steps.check.outputs.changed == 'true'
+
+      - uses: azure/setup-helm@v4
+        if: steps.check.outputs.changed == 'true'
+
+      - name: Configure kubeconfig
+        if: steps.check.outputs.changed == 'true'
+        run: echo "${{ secrets.KUBECONFIG_B64 }}" | base64 -d > kubeconfig
+
+      - name: "Open firewall for deploy"
+        if: steps.check.outputs.changed == 'true'
+        env:
+          HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
+        run: |
+          RUNNER_IP=$(curl -s ifconfig.me)/32
+          echo "RUNNER_IP=$RUNNER_IP" >> $GITHUB_ENV
+
+          FW_ID=$(curl -s -H "Authorization: Bearer $HCLOUD_TOKEN" \
+            "https://api.hetzner.cloud/v1/firewalls?name=artkhoj-fw" | jq -r '.firewalls[0].id')
+          echo "FW_ID=$FW_ID" >> $GITHUB_ENV
+
+          RULES=$(curl -s -H "Authorization: Bearer $HCLOUD_TOKEN" \
+            "https://api.hetzner.cloud/v1/firewalls/$FW_ID" \
+            | jq --arg ip "$RUNNER_IP" \
+            '[.firewall.rules[] | {direction, protocol, port, source_ips, destination_ips, description}]
+             + [{"direction":"in","protocol":"tcp","port":"6443","source_ips":[$ip],"destination_ips":[],"description":"ci-deploy-autoscaler"}]')
+
+          curl -s -X POST \
+            -H "Authorization: Bearer $HCLOUD_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "{\"rules\": $RULES}" \
+            "https://api.hetzner.cloud/v1/firewalls/$FW_ID/actions/set_rules"
+
+      - name: "Add Helm repo"
+        if: steps.check.outputs.changed == 'true'
+        run: |
+          helm repo add autoscaler https://kubernetes.github.io/autoscaler
+          helm repo update
+
+      - name: "Build cluster config + Helm upgrade"
+        if: steps.check.outputs.changed == 'true'
+        env:
+          HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
+        run: |
+          export KUBECONFIG=./kubeconfig
+
+          sed "s#__HCLOUD_TOKEN__#${HCLOUD_TOKEN}#" \
+            deploy/cloud-init/worker-init.sh > /tmp/worker-init-rendered.sh
+
+          CLOUD_INIT_B64=$(base64 -w0 /tmp/worker-init-rendered.sh)
+
+          sed "s#__CLOUD_INIT_B64__#${CLOUD_INIT_B64}#" \
+            deploy/cloud-init/cluster-config.json > /tmp/cluster-config-rendered.json
+
+          HCLOUD_CLUSTER_CONFIG=$(base64 -w0 /tmp/cluster-config-rendered.json)
+
+          cat > /tmp/autoscaler-secrets.yaml << EOF
+          extraEnv:
+            HCLOUD_TOKEN: "${HCLOUD_TOKEN}"
+            HCLOUD_CLUSTER_CONFIG: "${HCLOUD_CLUSTER_CONFIG}"
+          EOF
+
+          helm upgrade --install cluster-autoscaler autoscaler/cluster-autoscaler \
+            -n kube-system \
+            -f deploy/k8s/hetzner/cluster-autoscaler-values.yaml \
+            -f /tmp/autoscaler-secrets.yaml
+
+          rm -f /tmp/worker-init-rendered.sh /tmp/cluster-config-rendered.json /tmp/autoscaler-secrets.yaml
+
+          echo "AUTOSCALER_DEPLOY_COMPLETE"
+
+      - name: "Close firewall"
+        if: always() && steps.check.outputs.changed == 'true'
+        env:
+          HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
+        run: |
+          RULES=$(curl -s -H "Authorization: Bearer $HCLOUD_TOKEN" \
+            "https://api.hetzner.cloud/v1/firewalls/${{ env.FW_ID }}" \
+            | jq '[.firewall.rules[] | select(.description != "ci-deploy-autoscaler") | {direction, protocol, port, source_ips, destination_ips, description}]')
+
+          curl -s -X POST \
+            -H "Authorization: Bearer $HCLOUD_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "{\"rules\": $RULES}" \
+            "https://api.hetzner.cloud/v1/firewalls/${{ env.FW_ID }}/actions/set_rules"
