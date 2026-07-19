@@ -4,6 +4,7 @@ from django.contrib.auth.forms import UserCreationForm
 from .models import Upload, Profile, Message
 import re
 from django.core.exceptions import ValidationError
+from .validators import validate_no_profanity
 
 class UserRegisterForm(UserCreationForm):
     email = forms.EmailField()
@@ -14,7 +15,11 @@ class UserRegisterForm(UserCreationForm):
         model = User
         fields = ['username', 'email', 'password1', 'password2', 'profession', 'location']
 
-    
+    def clean_profession(self):
+        value = self.cleaned_data.get("profession", "")
+        validate_no_profanity(value)
+        return value
+
     def clean_email(self):
         email = self.cleaned_data.get('email')
         # Define a regex for valid email (example: no spam keywords)
@@ -77,6 +82,10 @@ class ProfileUpdateForm(forms.ModelForm):
             "bio": forms.Textarea(attrs={"rows": 3}),
         }
 
+    def clean_profession(self):
+        value = self.cleaned_data.get("profession", "")
+        validate_no_profanity(value)
+        return value
 
 
 class ProfessionFilterForm(forms.Form):

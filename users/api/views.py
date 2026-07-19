@@ -21,6 +21,7 @@ from users.models import Profile, Upload
 from bookings.models import Engagement
 
 from .presign import generate_upload_presign
+from .throttles import AuthRateThrottle
 from .serializers import (
     MeProfileSerializer,
     GlobalFeedProfileSerializer,
@@ -46,6 +47,7 @@ def _cached(key, timeout, compute_fn):
 
 class TokenLoginAPIView(APIView):
     permission_classes = [AllowAny]
+    throttle_classes = [AuthRateThrottle]
 
     @method_decorator(cache_control(no_store=True))
     def post(self, request):
@@ -108,6 +110,7 @@ class SignupAPIView(APIView):
     so the Expo app can auto-login immediately after registration.
     """
     permission_classes = [AllowAny]
+    throttle_classes = [AuthRateThrottle]
 
     @method_decorator(cache_control(no_store=True))
     def post(self, request):

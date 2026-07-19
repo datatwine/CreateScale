@@ -43,3 +43,6 @@ razorpay==1.4.2
 # razorpay-python switches to importlib.metadata, this line can come out.
 setuptools>=68,<70
 orjson>=3.10
+better-profanity>=0.7
+django-csp>=4.0
+sorl-thumbnail>=12.10

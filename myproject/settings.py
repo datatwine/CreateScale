@@ -82,6 +82,7 @@ INSTALLED_APPS = [
     "bookings",
     "rest_framework",
     "rest_framework.authtoken",
+    "sorl.thumbnail",
 ]
 
 
@@ -165,6 +166,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'csp.middleware.CSPMiddleware',
     'allauth.account.middleware.AccountMiddleware',
     'myproject.middleware.audit.AuditMiddleware',
     'django_prometheus.middleware.PrometheusAfterMiddleware',
@@ -481,6 +483,14 @@ REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticated",
     ],
+    "DEFAULT_THROTTLE_CLASSES": [
+        "rest_framework.throttling.AnonRateThrottle",
+        "rest_framework.throttling.UserRateThrottle",
+    ],
+    "DEFAULT_THROTTLE_RATES": {
+        "anon": "100/hour",
+        "user": "1000/hour",
+    },
 }
 
 # ------------------------------------------------------------------------------
@@ -513,4 +523,49 @@ RAZORPAYX_ACCOUNT_NUMBER = os.environ.get("RAZORPAYX_ACCOUNT_NUMBER", "")
 RAZORPAYX_WEBHOOK_SECRET = os.environ.get("RAZORPAYX_WEBHOOK_SECRET", "")
 # Payout rail. IMPS = near-instant (≤₹5L); NEFT/RTGS also valid. Case-sensitive.
 RAZORPAYX_PAYOUT_MODE    = os.environ.get("RAZORPAYX_PAYOUT_MODE", "IMPS")
+
+# ------------------------------------------------------------------------------
+# Security hardening (production only)
+# ------------------------------------------------------------------------------
+if not DEBUG:
+    SESSION_COOKIE_SECURE = True
+    SESSION_COOKIE_HTTPONLY = True
+    CSRF_COOKIE_SECURE = True
+    CSRF_COOKIE_HTTPONLY = True
+    SECURE_HSTS_SECONDS = 31536000
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    SECURE_REFERRER_POLICY = "strict-origin-when-cross-origin"
+    X_FRAME_OPTIONS = "DENY"
+
+# ------------------------------------------------------------------------------
+# Content Security Policy (django-csp)
+# ------------------------------------------------------------------------------
+_csp_img_src = ["'self'", "data:", "https://*.r2.cloudflarestorage.com"]
+_csp_connect_src = ["'self'", "https://checkout.razorpay.com", "https://*.r2.cloudflarestorage.com"]
+
+_r2_domain = os.getenv("AWS_S3_CUSTOM_DOMAIN", "")
+if _r2_domain:
+    _csp_img_src.append(f"https://{_r2_domain}")
+    _csp_connect_src.append(f"https://{_r2_domain}")
+
+CONTENT_SECURITY_POLICY = {
+    "DIRECTIVES": {
+        "default-src": ["'self'"],
+        "script-src": ["'self'", "'unsafe-inline'", "https://checkout.razorpay.com"],
+        "style-src": ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+        "font-src": ["'self'", "https://fonts.gstatic.com"],
+        "img-src": _csp_img_src,
+        "connect-src": _csp_connect_src,
+        "frame-src": ["https://checkout.razorpay.com"],
+    }
+}
+
+# ------------------------------------------------------------------------------
+# sorl-thumbnail — on-demand image thumbnails (backed by Redis)
+# ------------------------------------------------------------------------------
+THUMBNAIL_KVSTORE = "sorl.thumbnail.kvstores.redis_kvstore.KVStore"
+THUMBNAIL_REDIS_URL = REDIS_URL
+THUMBNAIL_FORMAT = "JPEG"
+THUMBNAIL_QUALITY = 80
 

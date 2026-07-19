@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from users.models import Profile, Upload
+from users.validators import validate_no_profanity
 
 
 def _abs_url(request, file_field) -> str:
@@ -139,6 +140,10 @@ class MeProfileSerializer(serializers.ModelSerializer):
             return ""
         return obj.bank_account_number[-4:]
 
+    def validate_profession(self, value):
+        validate_no_profanity(value)
+        return value
+
 
 class PublicProfileDetailSerializer(serializers.ModelSerializer):
     """
@@ -223,6 +228,10 @@ class SignupSerializer(serializers.Serializer):
             raise serializers.ValidationError("Spam emails are not allowed.")
         if User.objects.filter(email__iexact=value).exists():
             raise serializers.ValidationError("An account with this email already exists.")
+        return value
+
+    def validate_profession(self, value):
+        validate_no_profanity(value)
         return value
 
     # -- Object-level validators --
