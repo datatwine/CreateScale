@@ -11,6 +11,12 @@
 
 // ---- module mocks (must be before any imports) ----------------------------
 
+// ---------------------------------------------------------------------------
+// Helpers imported by the screens (payment status → display color)
+// ---------------------------------------------------------------------------
+
+import { paymentStatusColor, paymentStatusLabel } from "../utils/paymentHistory";
+
 jest.mock("@react-native-async-storage/async-storage", () => ({
     getItem: jest.fn().mockResolvedValue("mock-token"),
 }));
@@ -28,12 +34,6 @@ jest.mock("react-native-safe-area-context", () => ({
 jest.mock("../config/api", () => ({ API_BASE_URL: "http://localhost:8000/api" }));
 
 global.fetch = jest.fn();
-
-// ---------------------------------------------------------------------------
-// Helpers imported by the screens (payment status → display color)
-// ---------------------------------------------------------------------------
-
-import { paymentStatusColor, paymentStatusLabel } from "../utils/paymentHistory";
 
 describe("paymentStatusColor", () => {
     test("paid returns orange", () => {

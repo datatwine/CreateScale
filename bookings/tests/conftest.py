@@ -6,6 +6,7 @@ test file can focus on its specific behavior rather than re-creating
 boilerplate. All fixtures use pytest-django's `db` fixture transitively, so
 test data is rolled back after each test.
 """
+
 from datetime import date, time, timedelta
 from unittest.mock import MagicMock
 
@@ -111,6 +112,7 @@ def mock_razorpayx(monkeypatch):
     create_payout/new_idempotency_key to return canned ids.
     """
     import bookings.services.razorpayx as rx
+
     monkeypatch.setattr(rx, "create_contact", lambda **k: {"id": "cont_test"})
     monkeypatch.setattr(rx, "create_fund_account", lambda **k: {"id": "fa_test"})
     monkeypatch.setattr(

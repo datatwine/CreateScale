@@ -10,12 +10,12 @@
  * Run: npm test -- session
  */
 
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { isUnauthorized, fetchWithTimeout, getStoredToken, AUTH_TOKEN_KEY } from "../utils/session";
+
 jest.mock("@react-native-async-storage/async-storage", () => ({
     getItem: jest.fn(),
 }));
-
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { isUnauthorized, fetchWithTimeout, getStoredToken, AUTH_TOKEN_KEY } from "../utils/session";
 
 // ---------------------------------------------------------------------------
 // isUnauthorized

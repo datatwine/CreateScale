@@ -54,13 +54,25 @@ def compress_upload_video(upload_id):
         try:
             subprocess.run(
                 [
-                    "ffmpeg", "-i", src.name,
+                    "ffmpeg",
+                    "-i",
+                    src.name,
                     "-vf",
                     "scale=w=1920:h=1080:force_original_aspect_ratio=decrease:force_divisible_by=2",
-                    "-c:v", "libx264", "-crf", "28", "-preset", "fast",
-                    "-c:a", "aac", "-b:a", "128k",
-                    "-movflags", "+faststart",   # streaming-friendly
-                    "-y", dst,
+                    "-c:v",
+                    "libx264",
+                    "-crf",
+                    "28",
+                    "-preset",
+                    "fast",
+                    "-c:a",
+                    "aac",
+                    "-b:a",
+                    "128k",
+                    "-movflags",
+                    "+faststart",  # streaming-friendly
+                    "-y",
+                    dst,
                 ],
                 check=True,
                 capture_output=True,
@@ -150,5 +162,7 @@ def process_uploaded_image(upload_id):
         return f"processed — {size} → {upload.image.size} bytes"
 
     except Exception as e:
-        log.warning("process_uploaded_image(%s) failed: %s — original untouched", upload_id, e)
+        log.warning(
+            "process_uploaded_image(%s) failed: %s — original untouched", upload_id, e
+        )
         return f"error: {e}"

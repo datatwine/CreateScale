@@ -20,16 +20,21 @@ def _abs_url(request, file_field) -> str:
 
 
 class UploadSerializer(serializers.ModelSerializer):
-    image_url           = serializers.SerializerMethodField()
+    image_url = serializers.SerializerMethodField()
     image_thumbnail_url = serializers.SerializerMethodField()
-    video_url           = serializers.SerializerMethodField()
+    video_url = serializers.SerializerMethodField()
 
     class Meta:
         model = Upload
         fields = [
-            "id", "caption", "upload_date",
-            "image", "video",
-            "image_url", "image_thumbnail_url", "video_url",
+            "id",
+            "caption",
+            "upload_date",
+            "image",
+            "video",
+            "image_url",
+            "image_thumbnail_url",
+            "video_url",
         ]
         extra_kwargs = {
             "image": {"write_only": True, "required": False},
@@ -57,11 +62,14 @@ class UploadSerializer(serializers.ModelSerializer):
 
 class PresignedUploadSerializer(serializers.Serializer):
     """Accepts an R2 key (from presigned flow) instead of file bytes."""
+
     key = serializers.CharField(max_length=500)
     caption = serializers.CharField(max_length=2000, required=False, default="")
 
     def validate_key(self, value):
-        if not value.startswith("profile_pics/") and not value.startswith("profile_videos/"):
+        if not value.startswith("profile_pics/") and not value.startswith(
+            "profile_videos/"
+        ):
             raise serializers.ValidationError("Invalid storage key.")
         return value
 
@@ -71,6 +79,7 @@ class GlobalFeedProfileSerializer(serializers.ModelSerializer):
     GLOBAL FEED serializer (other users). Mirrors users.views.global_feed:
     minimal fields for listing other profiles.
     """
+
     user_id = serializers.IntegerField(source="user.id", read_only=True)
     username = serializers.CharField(source="user.username", read_only=True)
     profile_picture_url = serializers.SerializerMethodField()
@@ -78,7 +87,14 @@ class GlobalFeedProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = Profile
         # bio included so mobile feed cards can show the blurb
-        fields = ["user_id", "username", "profession", "profile_picture_url", "is_performer", "bio"]
+        fields = [
+            "user_id",
+            "username",
+            "profession",
+            "profile_picture_url",
+            "is_performer",
+            "bio",
+        ]
 
     def get_profile_picture_url(self, obj):
         return _abs_url(self.context.get("request"), obj.profile_picture)
@@ -89,6 +105,7 @@ class MeProfileSerializer(serializers.ModelSerializer):
     MY PROFILE serializer (logged-in user). Mirrors fields your ProfileUpdateForm edits
     + returns admin flags read-only (client_approved / blacklists).
     """
+
     user_id = serializers.IntegerField(source="user.id", read_only=True)
     username = serializers.CharField(source="user.username", read_only=True)
     profile_picture_url = serializers.SerializerMethodField()
@@ -103,10 +120,10 @@ class MeProfileSerializer(serializers.ModelSerializer):
             "profession",
             "location",
             "bio",
-            "profile_picture",       # write (multipart)
-            "profile_picture_url",   # read
-            "cover_photo",           # write (multipart)
-            "cover_photo_url",       # read
+            "profile_picture",  # write (multipart)
+            "profile_picture_url",  # read
+            "cover_photo",  # write (multipart)
+            "cover_photo_url",  # read
             "is_performer",
             "is_potential_client",
             "client_approved",
@@ -120,15 +137,15 @@ class MeProfileSerializer(serializers.ModelSerializer):
             "razorpay_account_id",
         ]
         extra_kwargs = {
-            "profile_picture":      {"write_only": True, "required": False},
-            "cover_photo":          {"write_only": True, "required": False},
-            "client_approved":      {"read_only": True},
+            "profile_picture": {"write_only": True, "required": False},
+            "cover_photo": {"write_only": True, "required": False},
+            "client_approved": {"read_only": True},
             "performer_blacklisted": {"read_only": True},
-            "client_blacklisted":   {"read_only": True},
-            "razorpay_kyc_status":  {"read_only": True},
-            "performer_fee":        {"read_only": True},
-            "bank_ifsc":            {"read_only": True},
-            "razorpay_account_id":  {"read_only": True},
+            "client_blacklisted": {"read_only": True},
+            "razorpay_kyc_status": {"read_only": True},
+            "performer_fee": {"read_only": True},
+            "bank_ifsc": {"read_only": True},
+            "razorpay_account_id": {"read_only": True},
         }
 
     def get_profile_picture_url(self, obj):
@@ -148,6 +165,7 @@ class PublicProfileDetailSerializer(serializers.ModelSerializer):
     OTHER USER profile detail (users.views.profile_detail equivalent):
     includes their uploads newest-first, gigs count, and last engagement info.
     """
+
     user_id = serializers.IntegerField(source="user.id", read_only=True)
     username = serializers.CharField(source="user.username", read_only=True)
     profile_picture_url = serializers.SerializerMethodField()
@@ -198,7 +216,9 @@ class PublicProfileDetailSerializer(serializers.ModelSerializer):
                 "last_engagement": {
                     "venue": last_eng.venue,
                     "date": last_eng.date.isoformat(),
-                } if last_eng else None
+                }
+                if last_eng
+                else None,
             }
         return obj._gig_data
 
@@ -234,6 +254,7 @@ class SignupSerializer(serializers.Serializer):
     Fields mirror UserRegisterForm: username, email, password1, password2.
     Optional: profession, location (written to the auto-created Profile).
     """
+
     username = serializers.CharField(max_length=150)
     email = serializers.EmailField()
     password1 = serializers.CharField(write_only=True, min_length=8)
@@ -247,7 +268,9 @@ class SignupSerializer(serializers.Serializer):
     def validate_username(self, value):
         """Reject duplicate usernames (case-insensitive)."""
         if User.objects.filter(username__iexact=value).exists():
-            raise serializers.ValidationError("A user with that username already exists.")
+            raise serializers.ValidationError(
+                "A user with that username already exists."
+            )
         return value
 
     def validate_email(self, value):
@@ -257,13 +280,15 @@ class SignupSerializer(serializers.Serializer):
         2. No 'spam' in the address
         3. Reject duplicate emails
         """
-        regex = r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$'
+        regex = r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$"
         if not re.match(regex, value):
             raise serializers.ValidationError("Enter a valid email address.")
         if "spam" in value.lower():
             raise serializers.ValidationError("Spam emails are not allowed.")
         if User.objects.filter(email__iexact=value).exists():
-            raise serializers.ValidationError("An account with this email already exists.")
+            raise serializers.ValidationError(
+                "An account with this email already exists."
+            )
         return value
 
     # -- Object-level validators --

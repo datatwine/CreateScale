@@ -10,6 +10,13 @@
  * Run: npm test -- authContext-startup
  */
 
+import React, { useContext } from "react";
+import { Text } from "react-native";
+import { render, screen, act, waitFor } from "@testing-library/react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { loginWithUsernamePassword, fetchAuthMe } from "../api/auth";
+import { AuthProvider, AuthContext } from "../context/AuthContext";
+
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
 jest.mock("@react-native-async-storage/async-storage", () => ({
@@ -24,13 +31,6 @@ jest.mock("../api/auth", () => ({
 }));
 
 jest.mock("../config/api", () => ({ API_BASE_URL: "http://localhost:8000/api" }));
-
-import React, { useContext } from "react";
-import { Text } from "react-native";
-import { render, screen, act, waitFor } from "@testing-library/react-native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { loginWithUsernamePassword, fetchAuthMe } from "../api/auth";
-import { AuthProvider, AuthContext } from "../context/AuthContext";
 
 let capturedCtx = null;
 

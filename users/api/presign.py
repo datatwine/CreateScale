@@ -12,7 +12,9 @@ import boto3
 from django.conf import settings
 
 
-def generate_upload_presign(user_id, content_type="image/jpeg", max_bytes=25 * 1024 * 1024):
+def generate_upload_presign(
+    user_id, content_type="image/jpeg", max_bytes=25 * 1024 * 1024
+):
     """Generate a presigned PUT URL for direct-to-R2 upload.
 
     Returns { url, key, content_type } — the client PUTs raw file bytes
@@ -21,7 +23,9 @@ def generate_upload_presign(user_id, content_type="image/jpeg", max_bytes=25 * 1
     ext = "mp4" if "video" in content_type else "jpg"
     key = f"profile_pics/user_{user_id}/{uuid.uuid4()}.{ext}"
 
-    presign_endpoint = getattr(settings, "PRESIGN_ENDPOINT_URL", None) or settings.AWS_S3_ENDPOINT_URL
+    presign_endpoint = (
+        getattr(settings, "PRESIGN_ENDPOINT_URL", None) or settings.AWS_S3_ENDPOINT_URL
+    )
 
     s3 = boto3.client(
         "s3",

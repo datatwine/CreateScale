@@ -10,8 +10,14 @@ class TestDeclineAPIIntegration(TestCase):
     def setUp(self):
         self.client = APIClient()
 
-    def _create_user(self, username, role="performer", profession="Saxophonist",
-                     location="Mumbai", performer_fee=5000.00):
+    def _create_user(
+        self,
+        username,
+        role="performer",
+        profession="Saxophonist",
+        location="Mumbai",
+        performer_fee=5000.00,
+    ):
         user = User.objects.create_user(
             username=username, email=f"{username}@example.com", password="pass123"
         )
@@ -30,12 +36,16 @@ class TestDeclineAPIIntegration(TestCase):
 
     def _hire(self, performer, performer_token, client_token):
         self.client.credentials(HTTP_AUTHORIZATION=f"Token {client_token.key}")
-        resp = self.client.post(f"/api/bookings/hire/{performer.id}/", {
-            "occasion": "Jazz gig",
-            "date": str(date.today() + timedelta(days=30)),
-            "time": "18:00",
-            "venue": "Mumbai",
-        }, format="json")
+        resp = self.client.post(
+            f"/api/bookings/hire/{performer.id}/",
+            {
+                "occasion": "Jazz gig",
+                "date": str(date.today() + timedelta(days=30)),
+                "time": "18:00",
+                "venue": "Mumbai",
+            },
+            format="json",
+        )
         self.assertEqual(resp.status_code, 201)
         return resp.data["id"]
 

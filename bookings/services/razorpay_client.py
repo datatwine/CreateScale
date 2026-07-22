@@ -12,6 +12,7 @@ setuptools 70+). By importing inside the function we keep the booking
 views, dashboards, and admin functional even if Razorpay isn't usable —
 only the actual payment paths break, with a clean error message.
 """
+
 from django.conf import settings
 
 
@@ -23,6 +24,7 @@ def get_client():
             "RAZORPAY_KEY_SECRET in the environment."
         )
     import razorpay  # lazy — see module docstring
+
     return razorpay.Client(
         auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET)
     )

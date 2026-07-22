@@ -50,6 +50,7 @@ from users.models import Upload, Profile
 # API endpoints return 401 (Unauthorized JSON response).
 # =============================================================================
 
+
 class AuthBoundaryTests(TestCase):
     """Anonymous users must NEVER access protected resources."""
 
@@ -72,16 +73,16 @@ class AuthBoundaryTests(TestCase):
     # ----------------------------------------------------------------
 
     API_PROTECTED_ENDPOINTS = [
-        ("GET",    "/api/auth/me/",              "who-am-I check"),
-        ("POST",   "/api/auth/logout/",           "logout"),
-        ("GET",    "/api/users/me/",              "own profile read"),
-        ("PATCH",  "/api/users/me/",              "own profile update"),
-        ("GET",    "/api/users/me/uploads/",       "own uploads list"),
-        ("POST",   "/api/users/me/uploads/",       "upload creation"),
-        ("DELETE", "/api/users/me/uploads/1/",     "upload deletion"),
-        ("GET",    "/api/users/feed/",             "global feed"),
-        ("GET",    "/api/users/profiles/1/",       "other user profile"),
-        ("GET",    "/api/users/professions/",      "professions list"),
+        ("GET", "/api/auth/me/", "who-am-I check"),
+        ("POST", "/api/auth/logout/", "logout"),
+        ("GET", "/api/users/me/", "own profile read"),
+        ("PATCH", "/api/users/me/", "own profile update"),
+        ("GET", "/api/users/me/uploads/", "own uploads list"),
+        ("POST", "/api/users/me/uploads/", "upload creation"),
+        ("DELETE", "/api/users/me/uploads/1/", "upload deletion"),
+        ("GET", "/api/users/feed/", "global feed"),
+        ("GET", "/api/users/profiles/1/", "other user profile"),
+        ("GET", "/api/users/professions/", "professions list"),
         # EXCLUDED: /api/users/live-events/ — going public soon
     ]
 
@@ -98,9 +99,10 @@ class AuthBoundaryTests(TestCase):
             with self.subTest(endpoint=f"{method} {url}", description=desc):
                 response = getattr(client, method.lower())(url)
                 self.assertEqual(
-                    response.status_code, 401,
+                    response.status_code,
+                    401,
                     f"{method} {url} ({desc}) returned {response.status_code} "
-                    f"for anonymous user — expected 401"
+                    f"for anonymous user — expected 401",
                 )
 
     # ----------------------------------------------------------------
@@ -116,17 +118,16 @@ class AuthBoundaryTests(TestCase):
     # ----------------------------------------------------------------
 
     WEB_PROTECTED_ENDPOINTS = [
-        ("GET",  "/users/profile/",              "own profile page"),
-        ("GET",  "/users/global-feed/",          "global feed page"),
-        ("GET",  "/users/profile/1/",            "other user profile page"),
+        ("GET", "/users/profile/", "own profile page"),
+        ("GET", "/users/global-feed/", "global feed page"),
+        ("GET", "/users/profile/1/", "other user profile page"),
         # EXCLUDED: messaging endpoints — being removed soon
         # EXCLUDED: /users/live-events/ — going public soon
-
         # Booking web views — these are important to keep
-        ("GET",  "/bookings/hire/1/",            "hire form page"),
-        ("GET",  "/bookings/client/",            "client engagements dashboard"),
-        ("GET",  "/bookings/performer/",         "performer engagements dashboard"),
-        ("GET",  "/bookings/engagement/1/",      "engagement detail page"),
+        ("GET", "/bookings/hire/1/", "hire form page"),
+        ("GET", "/bookings/client/", "client engagements dashboard"),
+        ("GET", "/bookings/performer/", "performer engagements dashboard"),
+        ("GET", "/bookings/engagement/1/", "engagement detail page"),
     ]
 
     def test_web_endpoints_redirect_anonymous_to_login(self):
@@ -142,16 +143,17 @@ class AuthBoundaryTests(TestCase):
             with self.subTest(endpoint=f"{method} {url}", description=desc):
                 response = getattr(client, method.lower())(url)
                 self.assertEqual(
-                    response.status_code, 302,
+                    response.status_code,
+                    302,
                     f"{method} {url} ({desc}) returned {response.status_code} "
-                    f"for anonymous user — expected 302 redirect to login"
+                    f"for anonymous user — expected 302 redirect to login",
                 )
                 # Verify it actually redirects to a login page
                 self.assertIn(
                     "/login",
                     response.url.lower(),
                     f"{method} {url} redirected to {response.url} "
-                    f"instead of login page"
+                    f"instead of login page",
                 )
 
 
@@ -163,6 +165,7 @@ class AuthBoundaryTests(TestCase):
 #
 # These tests verify the MECHANISM, not specific users or roles.
 # =============================================================================
+
 
 class CredentialTests(TestCase):
     """Login must validate credentials; logout must invalidate tokens."""
@@ -182,10 +185,13 @@ class CredentialTests(TestCase):
         This is the most basic auth invariant — if this fails,
         anyone can log in as anyone.
         """
-        resp = self.client.post("/api/auth/token/", {
-            "username": "creduser",
-            "password": "WrongPassword999!",
-        })
+        resp = self.client.post(
+            "/api/auth/token/",
+            {
+                "username": "creduser",
+                "password": "WrongPassword999!",
+            },
+        )
         # Must not be 200
         self.assertNotEqual(resp.status_code, 200)
         # Response body must not contain a token
@@ -196,10 +202,13 @@ class CredentialTests(TestCase):
         A username that doesn't exist must never produce a token.
         Prevents enumeration attacks from accidentally succeeding.
         """
-        resp = self.client.post("/api/auth/token/", {
-            "username": "doesnotexist",
-            "password": "AnyPassword123!",
-        })
+        resp = self.client.post(
+            "/api/auth/token/",
+            {
+                "username": "doesnotexist",
+                "password": "AnyPassword123!",
+            },
+        )
         self.assertNotEqual(resp.status_code, 200)
         self.assertNotIn("token", resp.json())
 
@@ -208,10 +217,13 @@ class CredentialTests(TestCase):
         Empty username/password must be rejected.
         Catches edge cases where empty string passes validation.
         """
-        resp = self.client.post("/api/auth/token/", {
-            "username": "",
-            "password": "",
-        })
+        resp = self.client.post(
+            "/api/auth/token/",
+            {
+                "username": "",
+                "password": "",
+            },
+        )
         self.assertNotEqual(resp.status_code, 200)
         self.assertNotIn("token", resp.json())
 
@@ -222,10 +234,13 @@ class CredentialTests(TestCase):
         Two checks in one: token issuance + token validation.
         """
         # Step 1: Get a token with correct credentials
-        resp = self.client.post("/api/auth/token/", {
-            "username": "creduser",
-            "password": "CorrectPass123!",
-        })
+        resp = self.client.post(
+            "/api/auth/token/",
+            {
+                "username": "creduser",
+                "password": "CorrectPass123!",
+            },
+        )
         self.assertEqual(resp.status_code, 200)
         token = resp.json().get("token")
         self.assertIsNotNone(token, "Login succeeded but no token in response")
@@ -234,8 +249,9 @@ class CredentialTests(TestCase):
         self.client.credentials(HTTP_AUTHORIZATION=f"Token {token}")
         resp = self.client.get("/api/auth/me/")
         self.assertEqual(
-            resp.status_code, 200,
-            "Token was issued but doesn't grant access to /api/auth/me/"
+            resp.status_code,
+            200,
+            "Token was issued but doesn't grant access to /api/auth/me/",
         )
 
     def test_logout_kills_the_token(self):
@@ -245,10 +261,13 @@ class CredentialTests(TestCase):
         logged out but their token is still valid forever.
         """
         # Step 1: Login and get a token
-        resp = self.client.post("/api/auth/token/", {
-            "username": "creduser",
-            "password": "CorrectPass123!",
-        })
+        resp = self.client.post(
+            "/api/auth/token/",
+            {
+                "username": "creduser",
+                "password": "CorrectPass123!",
+            },
+        )
         token = resp.json()["token"]
 
         # Step 2: Logout (deletes the token from the database)
@@ -258,8 +277,7 @@ class CredentialTests(TestCase):
         # Step 3: Try using the same token again — must be rejected
         resp = self.client.get("/api/auth/me/")
         self.assertEqual(
-            resp.status_code, 401,
-            "Token still works after logout — logout is broken"
+            resp.status_code, 401, "Token still works after logout — logout is broken"
         )
 
 
@@ -279,6 +297,7 @@ class CredentialTests(TestCase):
 #   - MyUploadsAPIView.get_queryset: filters by request.user
 #   - MyUploadDeleteAPIView.get_queryset: filters by profile__user=request.user
 # =============================================================================
+
 
 class OwnershipIsolationTests(TestCase):
     """User A's data must never leak to User B."""
@@ -340,8 +359,7 @@ class OwnershipIsolationTests(TestCase):
         resp = self.bob_client.get("/api/users/me/uploads/")
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(
-            len(resp.json()), 0,
-            "Bob can see uploads that don't belong to him"
+            len(resp.json()), 0, "Bob can see uploads that don't belong to him"
         )
 
     def test_cannot_delete_other_users_upload(self):
@@ -356,19 +374,18 @@ class OwnershipIsolationTests(TestCase):
         filtered queryset — not 403, not 204.
         """
         # Bob tries to delete Alice's upload
-        resp = self.bob_client.delete(
-            f"/api/users/me/uploads/{self.alice_upload.id}/"
-        )
+        resp = self.bob_client.delete(f"/api/users/me/uploads/{self.alice_upload.id}/")
         # Should be 404 (not found in Bob's queryset), NEVER 204
         self.assertEqual(
-            resp.status_code, 404,
-            f"Bob accessed Alice's upload (status {resp.status_code})"
+            resp.status_code,
+            404,
+            f"Bob accessed Alice's upload (status {resp.status_code})",
         )
 
         # Verify the upload still exists in the database
         self.assertTrue(
             Upload.objects.filter(id=self.alice_upload.id).exists(),
-            "Alice's upload was deleted by Bob — critical ownership violation"
+            "Alice's upload was deleted by Bob — critical ownership violation",
         )
 
 
@@ -383,6 +400,7 @@ class OwnershipIsolationTests(TestCase):
 # If this .exclude() accidentally gets removed during a refactor,
 # you'll see yourself in the feed. This test catches that.
 # =============================================================================
+
 
 class FeedIsolationTests(TestCase):
     """You must never appear in your own global feed."""
@@ -415,7 +433,7 @@ class FeedIsolationTests(TestCase):
             self.user.id,
             user_ids,
             "User appeared in their own global feed — "
-            "the .exclude(user=request.user) filter is broken"
+            "the .exclude(user=request.user) filter is broken",
         )
 
     def test_feed_does_include_other_users(self):
@@ -427,8 +445,7 @@ class FeedIsolationTests(TestCase):
         resp = self.client.get("/api/users/feed/")
         results = resp.json()["results"]
         self.assertGreater(
-            len(results), 0,
-            "Feed is empty — there should be at least one other user"
+            len(results), 0, "Feed is empty — there should be at least one other user"
         )
 
 
@@ -446,6 +463,7 @@ class FeedIsolationTests(TestCase):
 # If someone refactors and accidentally removes a validator, these tests
 # will catch it.
 # =============================================================================
+
 
 class SignupGuardrailTests(TestCase):
     """Signup must reject invalid registrations and accept valid ones."""
@@ -465,15 +483,17 @@ class SignupGuardrailTests(TestCase):
         If this passes through, you get two users with the same username
         and the login system breaks (which one gets the token?).
         """
-        resp = self.client.post("/api/auth/signup/", {
-            "username": "existinguser",     # ← already taken
-            "email": "new@test.com",
-            "password1": "BrandNewPass123!",
-            "password2": "BrandNewPass123!",
-        })
+        resp = self.client.post(
+            "/api/auth/signup/",
+            {
+                "username": "existinguser",  # ← already taken
+                "email": "new@test.com",
+                "password1": "BrandNewPass123!",
+                "password2": "BrandNewPass123!",
+            },
+        )
         self.assertNotEqual(
-            resp.status_code, 201,
-            "Signup accepted a duplicate username"
+            resp.status_code, 201, "Signup accepted a duplicate username"
         )
 
     def test_duplicate_email_rejected(self):
@@ -481,16 +501,16 @@ class SignupGuardrailTests(TestCase):
         Registering with an already-taken email must fail.
         Prevents the same person from creating multiple accounts.
         """
-        resp = self.client.post("/api/auth/signup/", {
-            "username": "brandnewuser",
-            "email": "existing@test.com",   # ← already taken
-            "password1": "BrandNewPass123!",
-            "password2": "BrandNewPass123!",
-        })
-        self.assertNotEqual(
-            resp.status_code, 201,
-            "Signup accepted a duplicate email"
+        resp = self.client.post(
+            "/api/auth/signup/",
+            {
+                "username": "brandnewuser",
+                "email": "existing@test.com",  # ← already taken
+                "password1": "BrandNewPass123!",
+                "password2": "BrandNewPass123!",
+            },
         )
+        self.assertNotEqual(resp.status_code, 201, "Signup accepted a duplicate email")
 
     def test_mismatched_passwords_rejected(self):
         """
@@ -498,15 +518,17 @@ class SignupGuardrailTests(TestCase):
         Prevents users from accidentally setting a password they
         didn't intend (typo in confirmation).
         """
-        resp = self.client.post("/api/auth/signup/", {
-            "username": "mismatchuser",
-            "email": "mismatch@test.com",
-            "password1": "FirstPassword123!",
-            "password2": "DifferentPassword456!",   # ← doesn't match
-        })
+        resp = self.client.post(
+            "/api/auth/signup/",
+            {
+                "username": "mismatchuser",
+                "email": "mismatch@test.com",
+                "password1": "FirstPassword123!",
+                "password2": "DifferentPassword456!",  # ← doesn't match
+            },
+        )
         self.assertNotEqual(
-            resp.status_code, 201,
-            "Signup accepted mismatched passwords"
+            resp.status_code, 201, "Signup accepted mismatched passwords"
         )
 
     def test_valid_signup_returns_token(self):
@@ -518,12 +540,15 @@ class SignupGuardrailTests(TestCase):
 
         This is the happy path — if this fails, nobody can register.
         """
-        resp = self.client.post("/api/auth/signup/", {
-            "username": "newvaliduser",
-            "email": "valid@test.com",
-            "password1": "StrongPass123!",
-            "password2": "StrongPass123!",
-        })
+        resp = self.client.post(
+            "/api/auth/signup/",
+            {
+                "username": "newvaliduser",
+                "email": "valid@test.com",
+                "password1": "StrongPass123!",
+                "password2": "StrongPass123!",
+            },
+        )
         self.assertEqual(resp.status_code, 201)
         data = resp.json()
         self.assertIn("token", data, "Signup succeeded but no token returned")
@@ -544,6 +569,7 @@ class SignupGuardrailTests(TestCase):
 #   3. Non-ASCII — orjson emits raw UTF-8 (no \uXXXX escaping).
 # =============================================================================
 
+
 class ORJSONRendererTests(TestCase):
     """orjson renderer must produce valid JSON for all DRF data types."""
 
@@ -559,11 +585,15 @@ class ORJSONRendererTests(TestCase):
         """Verify the ORJSONRenderer is actually active."""
         from myproject.renderers import ORJSONRenderer
         from rest_framework.settings import api_settings
+
         renderer_classes = api_settings.DEFAULT_RENDERER_CLASSES
         self.assertTrue(
-            any(issubclass(r, ORJSONRenderer) for r in renderer_classes
-                if isinstance(r, type)),
-            "ORJSONRenderer is not in DEFAULT_RENDERER_CLASSES"
+            any(
+                issubclass(r, ORJSONRenderer)
+                for r in renderer_classes
+                if isinstance(r, type)
+            ),
+            "ORJSONRenderer is not in DEFAULT_RENDERER_CLASSES",
         )
 
     def test_datetime_time_serialization_through_renderer(self):
@@ -572,6 +602,7 @@ class ORJSONRendererTests(TestCase):
         (the LiveEventsAPIView scenario).
         """
         from myproject.renderers import ORJSONRenderer
+
         renderer = ORJSONRenderer()
         payload = {
             "date": date(2025, 6, 27),
@@ -591,12 +622,15 @@ class ORJSONRendererTests(TestCase):
         The renderer must serialize them as plain strings, not crash.
         """
         anon = APIClient()
-        resp = anon.post("/api/auth/signup/", {
-            "username": "",
-            "email": "",
-            "password1": "",
-            "password2": "",
-        })
+        resp = anon.post(
+            "/api/auth/signup/",
+            {
+                "username": "",
+                "email": "",
+                "password1": "",
+                "password2": "",
+            },
+        )
         self.assertIn(resp.status_code, (400, 401))
         data = json.loads(resp.content)
         self.assertIsInstance(data, dict)
@@ -619,5 +653,6 @@ class ORJSONRendererTests(TestCase):
     def test_none_data_returns_empty_bytes(self):
         """render(None) must return b'' — parity with DRF's JSONRenderer."""
         from myproject.renderers import ORJSONRenderer
+
         result = ORJSONRenderer().render(None)
         self.assertEqual(result, b"")

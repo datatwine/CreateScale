@@ -8,10 +8,10 @@
  * Run: npm test -- auth
  */
 
+import { fetchAuthMe } from "../api/auth";
+
 jest.mock("../config/api", () => ({ API_BASE_URL: "http://localhost:8000/api" }));
 jest.mock("@react-native-async-storage/async-storage", () => ({ getItem: jest.fn() }));
-
-import { fetchAuthMe } from "../api/auth";
 
 describe("fetchAuthMe", () => {
     beforeEach(() => {

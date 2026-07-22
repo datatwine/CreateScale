@@ -4,6 +4,7 @@ details form must NOT create a Razorpay linked account (no client.account.create
 — bank details on file are enough. It SHOULD pre-create the RazorpayX payout
 destination (ensure_payout_destination) and redirect to the profile page.
 """
+
 from unittest.mock import patch
 
 from django.test import TestCase, override_settings
@@ -13,7 +14,6 @@ from django.contrib.auth.models import User
 
 @override_settings(RAZORPAY_ROUTE_ENABLED=False)
 class TestPaymentDetailsPayoutsMode(TestCase):
-
     def setUp(self):
         self.user = User.objects.create_user(
             username="perf.payouts", password="pass123", email="p@artkhoj.local"

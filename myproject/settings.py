@@ -18,10 +18,12 @@ from django.core.exceptions import ImproperlyConfigured
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 try:
     from dotenv import load_dotenv
+
     BASE_DIR = Path(__file__).resolve().parent.parent
     load_dotenv(BASE_DIR / ".env")
 except Exception:
     pass
+
 
 def env_list(key, default=""):
     raw = os.getenv(key, default)
@@ -46,7 +48,6 @@ if not SECRET_KEY:
         raise ImproperlyConfigured("DJANGO_SECRET_KEY is not set")
 
 
-
 ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", default=["localhost", "127.0.0.1"])
 ALLOWED_HOSTS.append("192.168.29.139")
 ALLOWED_HOSTS.append("192.168.29.105")
@@ -64,15 +65,15 @@ USE_TZ = True
 # Application definition
 
 INSTALLED_APPS = [
-    'django_prometheus',
-    'django.contrib.admin',
-    'django.contrib.auth',
-    'django.contrib.contenttypes',
-    'django.contrib.sessions',
-    'django.contrib.messages',
-    'django.contrib.staticfiles',
-    'silk',
-    'corsheaders',
+    "django_prometheus",
+    "django.contrib.admin",
+    "django.contrib.auth",
+    "django.contrib.contenttypes",
+    "django.contrib.sessions",
+    "django.contrib.messages",
+    "django.contrib.staticfiles",
+    "silk",
+    "corsheaders",
     "allauth",
     "allauth.account",
     "allauth.socialaccount",
@@ -88,7 +89,7 @@ INSTALLED_APPS = [
 
 SITE_ID = 1
 
-#Below is the login/signup settings 
+# Below is the login/signup settings
 
 # Django-allauth local environment settings
 ACCOUNT_DEFAULT_HTTP_PROTOCOL = os.getenv("ACCOUNT_HTTP_PROTOCOL", "http")
@@ -155,32 +156,32 @@ PASSWORD_HASHERS = [
 ]
 
 MIDDLEWARE = [
-    'django_prometheus.middleware.PrometheusBeforeMiddleware',
-    'django.middleware.security.SecurityMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',
-    'django.contrib.sessions.middleware.SessionMiddleware',
-    'corsheaders.middleware.CorsMiddleware',
-    'django.middleware.common.CommonMiddleware',
-    'django.middleware.http.ConditionalGetMiddleware',   # ETag + 304 support
-    'django.middleware.csrf.CsrfViewMiddleware',
-    'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'django.contrib.messages.middleware.MessageMiddleware',
-    'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'allauth.account.middleware.AccountMiddleware',
-    'myproject.middleware.audit.AuditMiddleware',
-    'django_prometheus.middleware.PrometheusAfterMiddleware',
+    "django_prometheus.middleware.PrometheusBeforeMiddleware",
+    "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
+    "django.contrib.sessions.middleware.SessionMiddleware",
+    "corsheaders.middleware.CorsMiddleware",
+    "django.middleware.common.CommonMiddleware",
+    "django.middleware.http.ConditionalGetMiddleware",  # ETag + 304 support
+    "django.middleware.csrf.CsrfViewMiddleware",
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django.contrib.messages.middleware.MessageMiddleware",
+    "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "allauth.account.middleware.AccountMiddleware",
+    "myproject.middleware.audit.AuditMiddleware",
+    "django_prometheus.middleware.PrometheusAfterMiddleware",
 ]
 
 # Silk profiler only in dev — runs per-request checks even at 0% intercept
 if DEBUG:
-    MIDDLEWARE.insert(1, 'silk.middleware.SilkyMiddleware')
+    MIDDLEWARE.insert(1, "silk.middleware.SilkyMiddleware")
 
 AUTHENTICATION_BACKENDS = [
     "django.contrib.auth.backends.ModelBackend",
     "allauth.account.auth_backends.AuthenticationBackend",
 ]
 
-ROOT_URLCONF = 'myproject.urls'
+ROOT_URLCONF = "myproject.urls"
 
 # Django 5.1 made cached.Loader the unconditional default for the template
 # loaders chain. In dev this means template edits don't reach long-running
@@ -211,24 +212,25 @@ TEMPLATES = [
             "loaders": (
                 _DEFAULT_TEMPLATE_LOADERS
                 if DEBUG
-                else [("django.template.loaders.cached.Loader", _DEFAULT_TEMPLATE_LOADERS)]
+                else [
+                    ("django.template.loaders.cached.Loader", _DEFAULT_TEMPLATE_LOADERS)
+                ]
             ),
         },
     },
 ]
 
-WSGI_APPLICATION = 'myproject.wsgi.application'
+WSGI_APPLICATION = "myproject.wsgi.application"
 
 
 # Database
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
 
 DATABASES = {
-    'dev': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+    "dev": {
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": BASE_DIR / "db.sqlite3",
     },
-    
     "default": {
         "ENGINE": "django.db.backends.postgresql",
         "NAME": os.getenv("DB_NAME", "appdb"),
@@ -246,9 +248,7 @@ DATABASES = {
         # transactions, which breaks server-side cursors (session-level objects).
         # This flag forces Django to use client-side cursors for .iterator().
         "DISABLE_SERVER_SIDE_CURSORS": True,
-    }
-    
-
+    },
 }
 
 
@@ -257,16 +257,16 @@ DATABASES = {
 
 AUTH_PASSWORD_VALIDATORS = [
     {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
+        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+        "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
+        "NAME": "django.contrib.auth.password_validation.CommonPasswordValidator",
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
+        "NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",
     },
 ]
 
@@ -274,9 +274,9 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/5.0/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = "en-us"
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = "UTC"
 
 USE_I18N = True
 
@@ -298,7 +298,7 @@ STATIC_ROOT = Path("/vol/static")
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
 
-DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # ------------------------------------------------------------------------------
 # Media / file storage – local vs S3
@@ -356,7 +356,9 @@ if USE_S3:
     if _custom_domain:
         MEDIA_URL = f"https://{_custom_domain}/"
     else:
-        MEDIA_URL = f"https://{AWS_STORAGE_BUCKET_NAME}.s3.{AWS_S3_REGION_NAME}.amazonaws.com/"
+        MEDIA_URL = (
+            f"https://{AWS_STORAGE_BUCKET_NAME}.s3.{AWS_S3_REGION_NAME}.amazonaws.com/"
+        )
     MEDIA_ROOT = None
 else:
     # Local dev fallback
@@ -371,9 +373,9 @@ else:
         },
     }
 
-LOGOUT_REDIRECT_URL = 'login'  # Use the name of your sign-in URL pattern
+LOGOUT_REDIRECT_URL = "login"  # Use the name of your sign-in URL pattern
 
-LOGIN_URL = '/users/login/'
+LOGIN_URL = "/users/login/"
 
 
 # ---------------------------------------------------------------------------
@@ -387,8 +389,8 @@ LOGIN_URL = '/users/login/'
 if DEBUG:
     SILKY_INTERCEPT_PERCENT = 100  # Capture all requests in dev
     SILKY_WHITELIST_PATHS = [
-        r'^/users/profile',
-        r'^/users/global-feed/',
+        r"^/users/profile",
+        r"^/users/global-feed/",
     ]
 else:
     # Production: Silk middleware still loads but intercepts nothing (0%)
@@ -403,7 +405,7 @@ if os.getenv("SILK_OFF") == "1":
     SILKY_INTERCEPT_PERCENT = 0
 
 
-#Sentry Logging below 
+# Sentry Logging below
 
 import os
 
@@ -460,10 +462,10 @@ SESSION_CACHE_ALIAS = "default"
 # ------------------------------------------------------------------------------
 CELERY_BROKER_URL = REDIS_URL
 CELERY_RESULT_BACKEND = REDIS_URL
-CELERY_TASK_TIME_LIMIT = 300          # hard kill after 5 min
-CELERY_TASK_SOFT_TIME_LIMIT = 280     # soft signal at ~4m40s
-CELERY_TASK_ACKS_LATE = True          # re-queue if worker dies mid-task
-CELERY_WORKER_PREFETCH_MULTIPLIER = 1 # don't hoard tasks (fairness on heavy ffmpeg)
+CELERY_TASK_TIME_LIMIT = 300  # hard kill after 5 min
+CELERY_TASK_SOFT_TIME_LIMIT = 280  # soft signal at ~4m40s
+CELERY_TASK_ACKS_LATE = True  # re-queue if worker dies mid-task
+CELERY_WORKER_PREFETCH_MULTIPLIER = 1  # don't hoard tasks (fairness on heavy ffmpeg)
 
 
 REST_FRAMEWORK = {
@@ -489,12 +491,18 @@ REST_FRAMEWORK = {
 # using fake values. RAZORPAY_PLATFORM_FEE_PERCENT / PAYMENT_WINDOW_HOURS /
 # DISPUTE_WINDOW_HOURS are our own business knobs, not Razorpay's.
 # ------------------------------------------------------------------------------
-RAZORPAY_KEY_ID         = os.environ.get("RAZORPAY_KEY_ID", "")
-RAZORPAY_KEY_SECRET     = os.environ.get("RAZORPAY_KEY_SECRET", "")
+RAZORPAY_KEY_ID = os.environ.get("RAZORPAY_KEY_ID", "")
+RAZORPAY_KEY_SECRET = os.environ.get("RAZORPAY_KEY_SECRET", "")
 RAZORPAY_WEBHOOK_SECRET = os.environ.get("RAZORPAY_WEBHOOK_SECRET", "")
-RAZORPAY_PLATFORM_FEE_PERCENT = int(os.environ.get("RAZORPAY_PLATFORM_FEE_PERCENT", "5"))
-RAZORPAY_PAYMENT_WINDOW_HOURS = int(os.environ.get("RAZORPAY_PAYMENT_WINDOW_HOURS", "24"))
-RAZORPAY_DISPUTE_WINDOW_HOURS = int(os.environ.get("RAZORPAY_DISPUTE_WINDOW_HOURS", "24"))
+RAZORPAY_PLATFORM_FEE_PERCENT = int(
+    os.environ.get("RAZORPAY_PLATFORM_FEE_PERCENT", "5")
+)
+RAZORPAY_PAYMENT_WINDOW_HOURS = int(
+    os.environ.get("RAZORPAY_PAYMENT_WINDOW_HOURS", "24")
+)
+RAZORPAY_DISPUTE_WINDOW_HOURS = int(
+    os.environ.get("RAZORPAY_DISPUTE_WINDOW_HOURS", "24")
+)
 
 # ------------------------------------------------------------------------------
 # Route vs RazorpayX Payouts — disbursement engine toggle.
@@ -503,7 +511,9 @@ RAZORPAY_DISPUTE_WINDOW_HOURS = int(os.environ.get("RAZORPAY_DISPUTE_WINDOW_HOUR
 # automated RazorpayX Payouts after the dispute window. Flip to "true" the day
 # Route is enabled — the escrow flow reactivates with zero code changes.
 # ------------------------------------------------------------------------------
-RAZORPAY_ROUTE_ENABLED   = os.environ.get("RAZORPAY_ROUTE_ENABLED", "false").lower() == "true"
+RAZORPAY_ROUTE_ENABLED = (
+    os.environ.get("RAZORPAY_ROUTE_ENABLED", "false").lower() == "true"
+)
 # RazorpayX source account money is debited FROM — the "Customer Identifier" /
 # Current Account number from the RazorpayX dashboard. DIFFERENT for test vs live.
 RAZORPAYX_ACCOUNT_NUMBER = os.environ.get("RAZORPAYX_ACCOUNT_NUMBER", "")
@@ -511,5 +521,4 @@ RAZORPAYX_ACCOUNT_NUMBER = os.environ.get("RAZORPAYX_ACCOUNT_NUMBER", "")
 # their OWN secret. Verifies payout.* events at /bookings/webhook/razorpayx/.
 RAZORPAYX_WEBHOOK_SECRET = os.environ.get("RAZORPAYX_WEBHOOK_SECRET", "")
 # Payout rail. IMPS = near-instant (≤₹5L); NEFT/RTGS also valid. Case-sensitive.
-RAZORPAYX_PAYOUT_MODE    = os.environ.get("RAZORPAYX_PAYOUT_MODE", "IMPS")
-
+RAZORPAYX_PAYOUT_MODE = os.environ.get("RAZORPAYX_PAYOUT_MODE", "IMPS")

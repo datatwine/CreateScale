@@ -12,7 +12,12 @@ from users.models import Profile
 from users.api.views import _LenientPaginatorMixin
 from bookings.models import Engagement
 from bookings.services.payments import PaymentService
-from .serializers import EngagementSerializer, EngagementCreateSerializer, EngagementActionSerializer, PaymentHistorySerializer
+from .serializers import (
+    EngagementSerializer,
+    EngagementCreateSerializer,
+    EngagementActionSerializer,
+    PaymentHistorySerializer,
+)
 
 
 class CreateHireRequestAPIView(APIView):
@@ -25,6 +30,7 @@ class CreateHireRequestAPIView(APIView):
     - calls engagement.full_clean() so Engagement.clean() enforces model rules
     - saves
     """
+
     permission_classes = [IsAuthenticated]
 
     def post(self, request, performer_id):
@@ -32,21 +38,38 @@ class CreateHireRequestAPIView(APIView):
         client_profile = request.user.profile
 
         if request.user == performer_profile.user:
-            return Response({"detail": "You can't hire yourself."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"detail": "You can't hire yourself."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         # Client checks (same as bookings/views.py) :contentReference[oaicite:13]{index=13}
         if not client_profile.is_potential_client:
-            return Response({"detail": "Enable 'I hire performers' on your profile first."}, status=status.HTTP_403_FORBIDDEN)
+            return Response(
+                {"detail": "Enable 'I hire performers' on your profile first."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
 
         if not client_profile.client_approved:
-            return Response({"detail": "Admin has not approved you for hiring yet."}, status=status.HTTP_403_FORBIDDEN)
+            return Response(
+                {"detail": "Admin has not approved you for hiring yet."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
 
         if client_profile.client_blacklisted:
-            return Response({"detail": "You are currently blocked from hiring performers."}, status=status.HTTP_403_FORBIDDEN)
+            return Response(
+                {"detail": "You are currently blocked from hiring performers."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
 
         # Performer checks :contentReference[oaicite:14]{index=14}
-        if (not performer_profile.is_performer) or performer_profile.performer_blacklisted:
-            return Response({"detail": "This user is not available for hire right now."}, status=status.HTTP_403_FORBIDDEN)
+        if (
+            not performer_profile.is_performer
+        ) or performer_profile.performer_blacklisted:
+            return Response(
+                {"detail": "This user is not available for hire right now."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
 
         ser = EngagementCreateSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
@@ -68,10 +91,14 @@ class CreateHireRequestAPIView(APIView):
         try:
             engagement.full_clean()
         except ValidationError as e:
-            return Response({"detail": " ".join(e.messages)}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"detail": " ".join(e.messages)}, status=status.HTTP_400_BAD_REQUEST
+            )
 
         engagement.save()
-        return Response(EngagementSerializer(engagement).data, status=status.HTTP_201_CREATED)
+        return Response(
+            EngagementSerializer(engagement).data, status=status.HTTP_201_CREATED
+        )
 
 
 _PAID_STATUSES = [
@@ -90,22 +117,30 @@ class PerformerPayoutsAPIView(_LenientPaginatorMixin, APIView):
     performer with hundreds of paid gigs doesn't serialize/transfer them
     all in one response.
     """
+
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        qs = (Engagement.objects
-              .filter(performer=request.user, payment_status__in=_PAID_STATUSES)
-              .select_related("client", "performer")
-              .order_by("-date", "-time"))
+        qs = (
+            Engagement.objects.filter(
+                performer=request.user, payment_status__in=_PAID_STATUSES
+            )
+            .select_related("client", "performer")
+            .order_by("-date", "-time")
+        )
         paginator, page_obj = self.paginate_lenient(qs, request)
-        return Response({
-            "count": paginator.count,
-            "num_pages": paginator.num_pages,
-            "page": page_obj.number,
-            "has_next": page_obj.has_next(),
-            "has_previous": page_obj.has_previous(),
-            "results": PaymentHistorySerializer(page_obj.object_list, many=True).data,
-        })
+        return Response(
+            {
+                "count": paginator.count,
+                "num_pages": paginator.num_pages,
+                "page": page_obj.number,
+                "has_next": page_obj.has_next(),
+                "has_previous": page_obj.has_previous(),
+                "results": PaymentHistorySerializer(
+                    page_obj.object_list, many=True
+                ).data,
+            }
+        )
 
 
 class ClientPaymentsAPIView(_LenientPaginatorMixin, APIView):
@@ -115,22 +150,30 @@ class ClientPaymentsAPIView(_LenientPaginatorMixin, APIView):
     mirroring the web client_payments view in bookings/views.py. Paginated
     for the same reason as PerformerPayoutsAPIView above.
     """
+
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        qs = (Engagement.objects
-              .filter(client=request.user, payment_status__in=_PAID_STATUSES)
-              .select_related("client", "performer")
-              .order_by("-paid_at"))
+        qs = (
+            Engagement.objects.filter(
+                client=request.user, payment_status__in=_PAID_STATUSES
+            )
+            .select_related("client", "performer")
+            .order_by("-paid_at")
+        )
         paginator, page_obj = self.paginate_lenient(qs, request)
-        return Response({
-            "count": paginator.count,
-            "num_pages": paginator.num_pages,
-            "page": page_obj.number,
-            "has_next": page_obj.has_next(),
-            "has_previous": page_obj.has_previous(),
-            "results": PaymentHistorySerializer(page_obj.object_list, many=True).data,
-        })
+        return Response(
+            {
+                "count": paginator.count,
+                "num_pages": paginator.num_pages,
+                "page": page_obj.number,
+                "has_next": page_obj.has_next(),
+                "has_previous": page_obj.has_previous(),
+                "results": PaymentHistorySerializer(
+                    page_obj.object_list, many=True
+                ).data,
+            }
+        )
 
 
 class EngagementViewSet(viewsets.ViewSet):
@@ -142,13 +185,17 @@ class EngagementViewSet(viewsets.ViewSet):
       accept(), decline(), cancel_by_client(), cancel_by_performer()
     :contentReference[oaicite:16]{index=16}
     """
+
     permission_classes = [IsAuthenticated]
 
     def _is_admin(self, request):
         return request.user.is_superuser
 
     def _is_participant(self, request, engagement: Engagement):
-        return engagement.client_id == request.user.id or engagement.performer_id == request.user.id
+        return (
+            engagement.client_id == request.user.id
+            or engagement.performer_id == request.user.id
+        )
 
     def _get_visible_qs(self, request):
         if self._is_admin(request):
@@ -170,7 +217,9 @@ class EngagementViewSet(viewsets.ViewSet):
         GET /api/bookings/engagements/<pk>/
         Allowed for participant or admin (mirrors bookings.views.engagement_detail). :contentReference[oaicite:17]{index=17}
         """
-        engagement = get_object_or_404(Engagement.objects.select_related("client", "performer"), pk=pk)
+        engagement = get_object_or_404(
+            Engagement.objects.select_related("client", "performer"), pk=pk
+        )
         if not (self._is_admin(request) or self._is_participant(request, engagement)):
             raise PermissionDenied("You are not allowed to view this booking.")
         return Response(EngagementSerializer(engagement).data)
@@ -181,7 +230,9 @@ class EngagementViewSet(viewsets.ViewSet):
         GET /api/bookings/engagements/client/
         Mirrors bookings.views.client_engagement_list. :contentReference[oaicite:18]{index=18}
         """
-        qs = Engagement.objects.filter(client=request.user).select_related("client", "performer")
+        qs = Engagement.objects.filter(client=request.user).select_related(
+            "client", "performer"
+        )
         return Response(EngagementSerializer(qs, many=True).data)
 
     @action(detail=False, methods=["get"], url_path="performer")
@@ -190,7 +241,9 @@ class EngagementViewSet(viewsets.ViewSet):
         GET /api/bookings/engagements/performer/
         Mirrors bookings.views.performer_engagement_list. :contentReference[oaicite:19]{index=19}
         """
-        qs = Engagement.objects.filter(performer=request.user).select_related("client", "performer")
+        qs = Engagement.objects.filter(performer=request.user).select_related(
+            "client", "performer"
+        )
         return Response(EngagementSerializer(qs, many=True).data)
 
     @action(detail=True, methods=["post"], url_path="action")
@@ -200,7 +253,9 @@ class EngagementViewSet(viewsets.ViewSet):
         Body: {"action": "...", "emergency_reason": "..."}
         Uses model methods only. :contentReference[oaicite:20]{index=20}
         """
-        engagement = get_object_or_404(Engagement.objects.select_related("client", "performer"), pk=pk)
+        engagement = get_object_or_404(
+            Engagement.objects.select_related("client", "performer"), pk=pk
+        )
         is_client = engagement.client_id == request.user.id
         is_performer = engagement.performer_id == request.user.id
         is_admin = self._is_admin(request)
@@ -235,7 +290,12 @@ class EngagementViewSet(viewsets.ViewSet):
                     PaymentService.refund_to_client(engagement)
                 return Response({"detail": "Cancelled by performer."})
 
-            return Response({"detail": "Invalid action for your role."}, status=status.HTTP_403_FORBIDDEN)
+            return Response(
+                {"detail": "Invalid action for your role."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
 
         except ValidationError as e:
-            return Response({"detail": " ".join(e.messages)}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"detail": " ".join(e.messages)}, status=status.HTTP_400_BAD_REQUEST
+            )
