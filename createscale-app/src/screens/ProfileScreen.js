@@ -18,6 +18,8 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  Platform,
+  StatusBar,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
@@ -1389,7 +1391,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: 16,
-    marginTop: 4,
+    marginTop: Platform.OS === "android" ? (StatusBar.currentHeight || 24) + 10 : 4,
   },
   screenTitle: {
     fontSize: 28,
@@ -1844,10 +1846,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
 
-  uploadDateText: {
-    color: COLORS.textMuted,
-    fontSize: 11,
-  },
+
   uploadMeta: {
     marginTop: 6,
     color: COLORS.textMuted,
