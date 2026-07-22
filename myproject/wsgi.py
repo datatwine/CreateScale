@@ -14,8 +14,10 @@ pre-patched references and silently break gevent cooperation.
 
 # --- gevent monkey patching (must be first, before any other import) ---
 from gevent import monkey  # noqa: E402
+
 monkey.patch_all()
 from psycogreen.gevent import patch_psycopg  # noqa: E402
+
 patch_psycopg()
 # ----------------------------------------------------------------------
 
@@ -23,13 +25,14 @@ import os  # noqa: E402
 
 from django.core.wsgi import get_wsgi_application  # noqa: E402
 
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'myproject.settings')
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "myproject.settings")
 
 application = get_wsgi_application()
 
 # Wrap with Sentry WSGI middleware if SDK is active
 try:
     from sentry_sdk.integrations.wsgi import SentryWsgiMiddleware
+
     application = SentryWsgiMiddleware(application)
 except ImportError:
     pass

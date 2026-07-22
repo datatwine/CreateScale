@@ -18,6 +18,7 @@ Three scheduled tasks:
 All tasks are safe to run multiple times — every state transition is
 idempotent at the model/PaymentService layer.
 """
+
 import logging
 from datetime import timedelta
 
@@ -48,10 +49,7 @@ def expire_unpaid_engagements() -> int:
     )
 
     now = timezone.now()
-    to_expire = [
-        e.pk for e in candidates
-        if (d := e.payment_deadline()) and now > d
-    ]
+    to_expire = [e.pk for e in candidates if (d := e.payment_deadline()) and now > d]
 
     if to_expire:
         Engagement.objects.filter(pk__in=to_expire).update(
@@ -101,14 +99,12 @@ def release_completed_event_payouts() -> int:
     webhook completes them — and because processing/failed rows no longer match
     the payment_status=PAID filter, they're never re-processed by a later run.
     """
-    cutoff = timezone.now() - timedelta(
-        hours=settings.RAZORPAY_DISPUTE_WINDOW_HOURS
-    )
+    cutoff = timezone.now() - timedelta(hours=settings.RAZORPAY_DISPUTE_WINDOW_HOURS)
 
     ready = Engagement.objects.filter(
         status=Engagement.STATUS_ACCEPTED,
         payment_status=Engagement.PAYMENT_PAID,
-        disputed_at__isnull=True,    # critical: skip disputed
+        disputed_at__isnull=True,  # critical: skip disputed
     ).prefetch_related("payments")
 
     released_count = 0
@@ -121,7 +117,8 @@ def release_completed_event_payouts() -> int:
                 # Don't let one bad row stop the whole batch.
                 logger.exception(
                     "Payout release failed for engagement %s: %s",
-                    e.pk, exc,
+                    e.pk,
+                    exc,
                 )
 
     logger.info(

@@ -21,9 +21,9 @@ _log = logging.getLogger(__name__)
 
 # kind -> (max longest edge px, WebP quality)
 IMAGE_PROFILES = {
-    "avatar":  (512,  60),   # Profile.profile_picture
-    "cover":   (1920, 60),   # Profile.cover_photo
-    "gallery": (1080, 60),   # Upload.image
+    "avatar": (512, 60),  # Profile.profile_picture
+    "cover": (1920, 60),  # Profile.cover_photo
+    "gallery": (1080, 60),  # Upload.image
 }
 
 

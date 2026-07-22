@@ -6,6 +6,7 @@ from .models import Profile
 from allauth.account.signals import user_signed_up
 from django.contrib.auth import get_user_model
 
+
 @receiver(post_save, sender=User)
 def create_profile(sender, instance, created, **kwargs):
     if created:
@@ -13,6 +14,7 @@ def create_profile(sender, instance, created, **kwargs):
 
 
 User = get_user_model()
+
 
 @receiver(user_signed_up)
 def ensure_profile_on_google_signup(request, user, **kwargs):
