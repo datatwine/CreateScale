@@ -101,12 +101,14 @@
                 </a>
                 {% endcache %}
                 {% endif %}
-            {% empty %}
+            {% endfor %}
+
+            {% if profiles.paginator.count == 0 or profiles.paginator.count == 1 and profiles.0.user.id == current_user_id %}
                 <div class="feed-empty">
                     <strong>No artists found</strong>
                     Try a different filter or check back soon.
                 </div>
-            {% endfor %}
+            {% endif %}
         </div>
 
         <!-- Pagination -->
