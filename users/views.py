@@ -163,6 +163,7 @@ def global_feed(request):
             Profile.objects.select_related("user")
             .only("user__id", "user__username", "profession", "profile_picture")
             .exclude(user=request.user)
+            .order_by("id")
         )
         if profession_filter_form.is_valid():
             professions = profession_filter_form.cleaned_data.get("professions")
