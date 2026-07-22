@@ -237,7 +237,7 @@ function HireSection({ targetProfile, myProfile, token, onHireSuccess }) {
             <View style={styles.hireNotice}>
                 <Ionicons name="information-circle" size={18} color={COLORS.badgeAmberText} />
                 <Text style={styles.hireNoticeText}>
-                    Enable "I hire performers" on your profile to send hire requests.
+                    Enable &quot;I hire performers&quot; on your profile to send hire requests.
                 </Text>
             </View>
         );
@@ -504,7 +504,7 @@ export default function ProfileDetailScreen({ route, navigation }) {
                         <Ionicons name="arrow-back" size={24} color={COLORS.textPrimary} />
                     </TouchableOpacity>
                     <Text style={styles.headerTitle} numberOfLines={1}>
-                        {profile.username}'s Profile
+                        {profile.username}&apos;s Profile
                     </Text>
                 </View>
 

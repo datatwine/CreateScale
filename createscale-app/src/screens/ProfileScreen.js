@@ -1846,10 +1846,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
 
-  uploadDateText: {
-    color: COLORS.textMuted,
-    fontSize: 11,
-  },
+
   uploadMeta: {
     marginTop: 6,
     color: COLORS.textMuted,
