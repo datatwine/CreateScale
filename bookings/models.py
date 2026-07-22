@@ -60,33 +60,40 @@ class Engagement(models.Model):
     # Snapshot of performer's profile fee at hire time (immutable for this
     # engagement). Profile fee can change anytime without affecting open bookings.
     fee = models.PositiveIntegerField(
-        null=True, blank=True,
+        null=True,
+        blank=True,
         help_text="Locked-in fee in rupees, snapshot from performer profile at hire time.",
     )
 
-    PAYMENT_UNPAID            = "unpaid"
-    PAYMENT_PAID              = "paid"       # captured (escrow in Route; our balance in Payouts)
-    PAYMENT_PAYOUT_PROCESSING = "payout_processing"  # payouts mode: payout fired, awaiting webhook
-    PAYMENT_PAYOUT_FAILED     = "payout_failed"      # payouts mode: payout reversed/failed, needs retry
-    PAYMENT_RELEASED          = "released"   # money reached the performer (both modes)
-    PAYMENT_REFUNDED          = "refunded"   # reversed back to client
+    PAYMENT_UNPAID = "unpaid"
+    PAYMENT_PAID = "paid"  # captured (escrow in Route; our balance in Payouts)
+    PAYMENT_PAYOUT_PROCESSING = (
+        "payout_processing"  # payouts mode: payout fired, awaiting webhook
+    )
+    PAYMENT_PAYOUT_FAILED = (
+        "payout_failed"  # payouts mode: payout reversed/failed, needs retry
+    )
+    PAYMENT_RELEASED = "released"  # money reached the performer (both modes)
+    PAYMENT_REFUNDED = "refunded"  # reversed back to client
 
     PAYMENT_CHOICES = [
-        (PAYMENT_UNPAID,            "Unpaid"),
-        (PAYMENT_PAID,              "Paid (secured)"),
+        (PAYMENT_UNPAID, "Unpaid"),
+        (PAYMENT_PAID, "Paid (secured)"),
         (PAYMENT_PAYOUT_PROCESSING, "Payout processing"),
-        (PAYMENT_PAYOUT_FAILED,     "Payout failed — needs attention"),
-        (PAYMENT_RELEASED,          "Released to performer"),
-        (PAYMENT_REFUNDED,          "Refunded to client"),
+        (PAYMENT_PAYOUT_FAILED, "Payout failed — needs attention"),
+        (PAYMENT_RELEASED, "Released to performer"),
+        (PAYMENT_REFUNDED, "Refunded to client"),
     ]
     payment_status = models.CharField(
-        max_length=20, choices=PAYMENT_CHOICES,   # widened 16→20 for "payout_processing"
-        default=PAYMENT_UNPAID, db_index=True,
+        max_length=20,
+        choices=PAYMENT_CHOICES,  # widened 16→20 for "payout_processing"
+        default=PAYMENT_UNPAID,
+        db_index=True,
     )
 
     # Timestamps for payment-driven state machine
     accepted_at = models.DateTimeField(null=True, blank=True)
-    paid_at     = models.DateTimeField(null=True, blank=True, db_index=True)
+    paid_at = models.DateTimeField(null=True, blank=True, db_index=True)
     released_at = models.DateTimeField(null=True, blank=True)
     refunded_at = models.DateTimeField(null=True, blank=True)
     # Stamped when the RazorpayX payout is fired (payouts mode only).
@@ -95,14 +102,15 @@ class Engagement(models.Model):
     # Cancellation (mandatory reason after Phase 3 rewrite)
     cancellation_reason = models.TextField(blank=True)
     cancelled_by = models.CharField(
-        max_length=16, blank=True,
+        max_length=16,
+        blank=True,
         choices=[("client", "Client"), ("performer", "Performer")],
     )
 
     # Dispute fields — client raises issue within 24h of event end.
     # Disputed engagements skip auto-release; admin resolves manually.
-    disputed_at         = models.DateTimeField(null=True, blank=True)
-    dispute_reason      = models.TextField(blank=True)
+    disputed_at = models.DateTimeField(null=True, blank=True)
+    dispute_reason = models.TextField(blank=True)
     dispute_resolved_at = models.DateTimeField(null=True, blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
@@ -112,16 +120,14 @@ class Engagement(models.Model):
         ordering = ["date", "time", "performer"]
         # Uniqueness/limits enforced in clean() to keep it model-heavy
 
-            # High-value indexes for query patterns used across the app
+        # High-value indexes for query patterns used across the app
         indexes = [
-        # Client dashboards + "max 3 future bookings" checks
-        models.Index(fields=["client", "status", "date"]),
-
-        # Performer dashboards + "only one accepted per day" rules
-        models.Index(fields=["performer", "status", "date"]),
-
-        # Live events view: accepted future events ordered by date/time
-        models.Index(fields=["status", "date", "time"]),
+            # Client dashboards + "max 3 future bookings" checks
+            models.Index(fields=["client", "status", "date"]),
+            # Performer dashboards + "only one accepted per day" rules
+            models.Index(fields=["performer", "status", "date"]),
+            # Live events view: accepted future events ordered by date/time
+            models.Index(fields=["status", "date", "time"]),
         ]
 
     def __str__(self) -> str:
@@ -200,7 +206,9 @@ class Engagement(models.Model):
             if self.status == self.STATUS_PENDING:
                 self.status = self.STATUS_AUTO_EXPIRED
                 self.save(update_fields=["status"])
-            raise ValidationError("This request has expired (no response within 24 hours).")
+            raise ValidationError(
+                "This request has expired (no response within 24 hours)."
+            )
 
     def _check_within_24h_cancellation_block(self):
         """
@@ -265,8 +273,10 @@ class Engagement(models.Model):
             return False
         now = timezone.now()
         event_end = self.event_datetime()
-        return event_end <= now <= event_end + timedelta(
-            hours=settings.RAZORPAY_DISPUTE_WINDOW_HOURS
+        return (
+            event_end
+            <= now
+            <= event_end + timedelta(hours=settings.RAZORPAY_DISPUTE_WINDOW_HOURS)
         )
 
     def accept(self):
@@ -287,11 +297,15 @@ class Engagement(models.Model):
         self._ensure_accept_within_24h()
 
         # Block if there is already an accepted gig this day
-        conflict_exists = Engagement.objects.filter(
-            performer=self.performer,
-            date=self.date,
-            status=self.STATUS_ACCEPTED,
-        ).exclude(pk=self.pk).exists()
+        conflict_exists = (
+            Engagement.objects.filter(
+                performer=self.performer,
+                date=self.date,
+                status=self.STATUS_ACCEPTED,
+            )
+            .exclude(pk=self.pk)
+            .exists()
+        )
 
         if conflict_exists:
             raise ValidationError(
@@ -361,18 +375,21 @@ class Payment(models.Model):
     Payment rows (failed attempts, retries) — the latest 'captured' row is
     the source of truth for the engagement's money.
     """
-    engagement      = models.ForeignKey(
-        Engagement, on_delete=models.CASCADE, related_name="payments",
+
+    engagement = models.ForeignKey(
+        Engagement,
+        on_delete=models.CASCADE,
+        related_name="payments",
     )
-    amount          = models.PositiveIntegerField(help_text="Total in rupees")
-    platform_fee    = models.PositiveIntegerField(default=0)
+    amount = models.PositiveIntegerField(help_text="Total in rupees")
+    platform_fee = models.PositiveIntegerField(default=0)
     performer_share = models.PositiveIntegerField(default=0)
 
     # Razorpay references — opaque IDs returned by Razorpay's API.
-    razorpay_order_id    = models.CharField(max_length=64, unique=True)
-    razorpay_payment_id  = models.CharField(max_length=64, blank=True, db_index=True)
+    razorpay_order_id = models.CharField(max_length=64, unique=True)
+    razorpay_payment_id = models.CharField(max_length=64, blank=True, db_index=True)
     razorpay_transfer_id = models.CharField(max_length=64, blank=True, db_index=True)
-    razorpay_refund_id   = models.CharField(max_length=64, blank=True, db_index=True)
+    razorpay_refund_id = models.CharField(max_length=64, blank=True, db_index=True)
 
     # RazorpayX payout references (payouts mode). razorpayx_payout_id is the
     # pout_... handle; payout_reference stores the bank UTR once the payout is
@@ -380,21 +397,24 @@ class Payment(models.Model):
     # mode (Route uses razorpay_transfer_id). payout_idempotency_key is the UUID
     # sent as X-Payout-Idempotency for the current attempt — rotated on each
     # retry so a retry after a genuine failure isn't deduped to the old payout.
-    razorpayx_payout_id    = models.CharField(max_length=64, blank=True, db_index=True)
-    payout_reference       = models.CharField(max_length=64, blank=True)
+    razorpayx_payout_id = models.CharField(max_length=64, blank=True, db_index=True)
+    payout_reference = models.CharField(max_length=64, blank=True)
     payout_idempotency_key = models.CharField(max_length=64, blank=True)
 
     STATUS_CHOICES = [
-        ("created",           "Order created"),
-        ("captured",          "Payment captured"),
+        ("created", "Order created"),
+        ("captured", "Payment captured"),
         ("payout_processing", "Payout processing"),
-        ("payout_failed",     "Payout failed"),
-        ("released",          "Released to performer"),
-        ("refunded",          "Refunded to client"),
-        ("failed",            "Failed"),
+        ("payout_failed", "Payout failed"),
+        ("released", "Released to performer"),
+        ("refunded", "Refunded to client"),
+        ("failed", "Failed"),
     ]
     status = models.CharField(
-        max_length=20, choices=STATUS_CHOICES, default="created", db_index=True,  # 16→20
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default="created",
+        db_index=True,  # 16→20
     )
 
     # Append-only audit trail of webhook payloads we received for this payment.

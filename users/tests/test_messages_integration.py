@@ -24,8 +24,9 @@ class TestSendMessageWebIntegration(TestCase):
         self.assertRedirects(resp, f"/users/message_thread/{self.receiver.id}/")
         self.assertTrue(
             Message.objects.filter(
-                sender=self.sender, recipient=self.receiver,
-                content="Hello, this is a test."
+                sender=self.sender,
+                recipient=self.receiver,
+                content="Hello, this is a test.",
             ).exists()
         )
 
@@ -82,10 +83,14 @@ class TestInboxWebIntegration(TestCase):
 
     def test_inbox_shows_latest_message_per_conversation(self):
         older = Message.objects.create(
-            sender=self.user, recipient=self.other, content="Older",
+            sender=self.user,
+            recipient=self.other,
+            content="Older",
         )
         newer = Message.objects.create(
-            sender=self.user, recipient=self.other, content="Newer",
+            sender=self.user,
+            recipient=self.other,
+            content="Newer",
         )
         now = timezone.now()
         Message.objects.filter(pk=older.pk).update(timestamp=now - timedelta(minutes=1))
@@ -146,8 +151,7 @@ class TestMessageThreadWebIntegration(TestCase):
         self.assertRedirects(resp, f"/users/message_thread/{self.other.id}/")
         self.assertTrue(
             Message.objects.filter(
-                sender=self.user, recipient=self.other,
-                content="New message via thread"
+                sender=self.user, recipient=self.other, content="New message via thread"
             ).exists()
         )
 

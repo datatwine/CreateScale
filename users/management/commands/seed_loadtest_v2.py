@@ -54,11 +54,11 @@ TOTAL_DEMO_USERS = 50
 PASSWORD = "Passw0rd!AK2025v2"
 
 # Load test user ranges
-PERFORMER_RANGE = range(1, 801)          # 800 performers
-DUAL_ROLE_RANGE = range(601, 801)        # 200 dual-role (subset of performers)
-CLIENT_RANGE = range(801, 1701)          # 900 clients
-SCROLLER_RANGE = range(1701, 1801)       # 100 scrollers
-LOGIN_RANGE = range(1801, 2001)          # 200 login-only
+PERFORMER_RANGE = range(1, 801)  # 800 performers
+DUAL_ROLE_RANGE = range(601, 801)  # 200 dual-role (subset of performers)
+CLIENT_RANGE = range(801, 1701)  # 900 clients
+SCROLLER_RANGE = range(1701, 1801)  # 100 scrollers
+LOGIN_RANGE = range(1801, 2001)  # 200 login-only
 
 TOKEN_OUTPUT_PATH = "/app/loadtest_tokens_v2.json"
 
@@ -70,22 +70,58 @@ DEMO_IMAGES_DIR = "/app/demo_images"
 # Realistic data pools
 # ---------------------------------------------------------------------------
 PROFESSIONS = [
-    "Classical Dancer", "Contemporary Dancer", "Hip-Hop Dancer",
-    "Bharatanatyam Dancer", "Kathak Dancer", "Salsa Dancer",
-    "Vocalist", "Guitarist", "Pianist", "Drummer", "DJ",
-    "Violinist", "Flautist", "Tabla Player", "Sitar Player",
-    "Stand-up Comedian", "Emcee", "Event Host",
-    "Painter", "Sketch Artist", "Muralist", "Digital Artist",
-    "Photographer", "Videographer", "Photo Editor",
-    "Mehendi Artist", "Rangoli Artist", "Calligrapher",
-    "Magician", "Puppeteer", "Mime Artist",
-    "Singer-Songwriter", "Band (Full)", "Acoustic Duo",
+    "Classical Dancer",
+    "Contemporary Dancer",
+    "Hip-Hop Dancer",
+    "Bharatanatyam Dancer",
+    "Kathak Dancer",
+    "Salsa Dancer",
+    "Vocalist",
+    "Guitarist",
+    "Pianist",
+    "Drummer",
+    "DJ",
+    "Violinist",
+    "Flautist",
+    "Tabla Player",
+    "Sitar Player",
+    "Stand-up Comedian",
+    "Emcee",
+    "Event Host",
+    "Painter",
+    "Sketch Artist",
+    "Muralist",
+    "Digital Artist",
+    "Photographer",
+    "Videographer",
+    "Photo Editor",
+    "Mehendi Artist",
+    "Rangoli Artist",
+    "Calligrapher",
+    "Magician",
+    "Puppeteer",
+    "Mime Artist",
+    "Singer-Songwriter",
+    "Band (Full)",
+    "Acoustic Duo",
 ]
 
 LOCATIONS = [
-    "Bangalore", "Mysore", "Mumbai", "Delhi", "Hyderabad",
-    "Chennai", "Pune", "Kolkata", "Jaipur", "Ahmedabad",
-    "Goa", "Kochi", "Lucknow", "Chandigarh", "Bhopal",
+    "Bangalore",
+    "Mysore",
+    "Mumbai",
+    "Delhi",
+    "Hyderabad",
+    "Chennai",
+    "Pune",
+    "Kolkata",
+    "Jaipur",
+    "Ahmedabad",
+    "Goa",
+    "Kochi",
+    "Lucknow",
+    "Chandigarh",
+    "Bhopal",
 ]
 
 BIO_TEMPLATES = [
@@ -100,17 +136,33 @@ BIO_TEMPLATES = [
 ]
 
 VENUES = [
-    "The Jazz Lounge", "Blue Note Club", "Grand Ballroom",
-    "City Park Amphitheater", "Sunset Terrace", "Hotel Majestic",
-    "Convention Center Hall A", "Rooftop Garden Bar", "Beach Resort Stage",
-    "Heritage Palace Courtyard", "The Art Gallery", "Community Hall",
+    "The Jazz Lounge",
+    "Blue Note Club",
+    "Grand Ballroom",
+    "City Park Amphitheater",
+    "Sunset Terrace",
+    "Hotel Majestic",
+    "Convention Center Hall A",
+    "Rooftop Garden Bar",
+    "Beach Resort Stage",
+    "Heritage Palace Courtyard",
+    "The Art Gallery",
+    "Community Hall",
 ]
 
 OCCASIONS = [
-    "Birthday Party", "Corporate Event", "Wedding Reception",
-    "Private Dinner", "Club Night", "Festival", "College Fest",
-    "Product Launch", "Charity Gala", "House Party",
-    "New Year Eve Party", "Anniversary Celebration",
+    "Birthday Party",
+    "Corporate Event",
+    "Wedding Reception",
+    "Private Dinner",
+    "Club Night",
+    "Festival",
+    "College Fest",
+    "Product Launch",
+    "Charity Gala",
+    "House Party",
+    "New Year Eve Party",
+    "Anniversary Celebration",
 ]
 
 # ---------------------------------------------------------------------------
@@ -118,120 +170,313 @@ OCCASIONS = [
 # ---------------------------------------------------------------------------
 DEMO_USERS = [
     # Classical Dancers (8)
-    {"name": "Meera Krishnan", "prof": "Bharatanatyam Dancer", "loc": "Chennai",
-     "bio": "Bharatanatyam dancer with 12 years of stage experience. Trained at Kalakshetra. Available for weddings & cultural fests."},
-    {"name": "Anjali Nair", "prof": "Kathak Dancer", "loc": "Delhi",
-     "bio": "Kathak performer & choreographer. Trained under Pandit Birju Maharaj's lineage. Solo & group performances available."},
-    {"name": "Priya Menon", "prof": "Classical Dancer", "loc": "Kochi",
-     "bio": "Mohiniyattam & Bharatanatyam. 8 years on stage. Performed at national festivals. Book me for cultural events."},
-    {"name": "Kavitha Rao", "prof": "Bharatanatyam Dancer", "loc": "Bangalore",
-     "bio": "Classical dancer specializing in Bharatanatyam & contemporary fusion. Corporate shows, weddings, private events."},
-    {"name": "Nandini Sharma", "prof": "Kathak Dancer", "loc": "Jaipur",
-     "bio": "Jaipur gharana Kathak. 15 years of performance experience. Dance workshops & live shows across Rajasthan."},
-    {"name": "Riya Iyer", "prof": "Contemporary Dancer", "loc": "Mumbai",
-     "bio": "Contemporary & jazz fusion dancer. Bollywood background dancer turned solo artist. Available pan-India."},
-    {"name": "Lakshmi Sundaram", "prof": "Classical Dancer", "loc": "Mysore",
-     "bio": "Mysore-style Bharatanatyam. Performed at Dasara festival 5 times. Temple festivals & cultural programs."},
-    {"name": "Tara Bhatt", "prof": "Hip-Hop Dancer", "loc": "Pune",
-     "bio": "B-girl & hip-hop choreographer. Dance battles, college fests, brand events. Energy guaranteed! 🔥"},
-
+    {
+        "name": "Meera Krishnan",
+        "prof": "Bharatanatyam Dancer",
+        "loc": "Chennai",
+        "bio": "Bharatanatyam dancer with 12 years of stage experience. Trained at Kalakshetra. Available for weddings & cultural fests.",
+    },
+    {
+        "name": "Anjali Nair",
+        "prof": "Kathak Dancer",
+        "loc": "Delhi",
+        "bio": "Kathak performer & choreographer. Trained under Pandit Birju Maharaj's lineage. Solo & group performances available.",
+    },
+    {
+        "name": "Priya Menon",
+        "prof": "Classical Dancer",
+        "loc": "Kochi",
+        "bio": "Mohiniyattam & Bharatanatyam. 8 years on stage. Performed at national festivals. Book me for cultural events.",
+    },
+    {
+        "name": "Kavitha Rao",
+        "prof": "Bharatanatyam Dancer",
+        "loc": "Bangalore",
+        "bio": "Classical dancer specializing in Bharatanatyam & contemporary fusion. Corporate shows, weddings, private events.",
+    },
+    {
+        "name": "Nandini Sharma",
+        "prof": "Kathak Dancer",
+        "loc": "Jaipur",
+        "bio": "Jaipur gharana Kathak. 15 years of performance experience. Dance workshops & live shows across Rajasthan.",
+    },
+    {
+        "name": "Riya Iyer",
+        "prof": "Contemporary Dancer",
+        "loc": "Mumbai",
+        "bio": "Contemporary & jazz fusion dancer. Bollywood background dancer turned solo artist. Available pan-India.",
+    },
+    {
+        "name": "Lakshmi Sundaram",
+        "prof": "Classical Dancer",
+        "loc": "Mysore",
+        "bio": "Mysore-style Bharatanatyam. Performed at Dasara festival 5 times. Temple festivals & cultural programs.",
+    },
+    {
+        "name": "Tara Bhatt",
+        "prof": "Hip-Hop Dancer",
+        "loc": "Pune",
+        "bio": "B-girl & hip-hop choreographer. Dance battles, college fests, brand events. Energy guaranteed! 🔥",
+    },
     # Musicians (8)
-    {"name": "Rohan Sharma", "prof": "Guitarist", "loc": "Bangalore",
-     "bio": "Session guitarist & live performer. Rock, blues, jazz. 200+ gigs across India. Available for events & studio work."},
-    {"name": "Kavya Iyer", "prof": "Vocalist", "loc": "Chennai",
-     "bio": "Carnatic vocalist & playback singer. Trained for 10 years. Weddings, temples, corporate shows, private concerts."},
-    {"name": "Arjun Mehta", "prof": "DJ", "loc": "Mumbai",
-     "bio": "DJ & electronic music producer. Resident at top Mumbai clubs. Available for parties, weddings & brand events."},
-    {"name": "Siddharth Patel", "prof": "Tabla Player", "loc": "Ahmedabad",
-     "bio": "Classical tabla artist. Accompanist for concerts & recordings. 8 years with leading Hindustani musicians."},
-    {"name": "Aditi Kulkarni", "prof": "Pianist", "loc": "Pune",
-     "bio": "Classical & jazz pianist. Piano accompaniment for events. Teaching & performing since 2015. 🎹"},
-    {"name": "Dev Saxena", "prof": "Drummer", "loc": "Delhi",
-     "bio": "Professional drummer. Rock, funk, Bollywood. Touring band experience. Available for live shows & sessions."},
-    {"name": "Sneha Reddy", "prof": "Flautist", "loc": "Hyderabad",
-     "bio": "Bamboo flute artist. Carnatic & Hindustani styles. Perfect for intimate events, weddings & meditation sessions."},
-    {"name": "Vikram Joshi", "prof": "Singer-Songwriter", "loc": "Goa",
-     "bio": "Indie singer-songwriter. Acoustic sets, cafe gigs, private events. Hindi & English originals + covers. 🎵"},
-
+    {
+        "name": "Rohan Sharma",
+        "prof": "Guitarist",
+        "loc": "Bangalore",
+        "bio": "Session guitarist & live performer. Rock, blues, jazz. 200+ gigs across India. Available for events & studio work.",
+    },
+    {
+        "name": "Kavya Iyer",
+        "prof": "Vocalist",
+        "loc": "Chennai",
+        "bio": "Carnatic vocalist & playback singer. Trained for 10 years. Weddings, temples, corporate shows, private concerts.",
+    },
+    {
+        "name": "Arjun Mehta",
+        "prof": "DJ",
+        "loc": "Mumbai",
+        "bio": "DJ & electronic music producer. Resident at top Mumbai clubs. Available for parties, weddings & brand events.",
+    },
+    {
+        "name": "Siddharth Patel",
+        "prof": "Tabla Player",
+        "loc": "Ahmedabad",
+        "bio": "Classical tabla artist. Accompanist for concerts & recordings. 8 years with leading Hindustani musicians.",
+    },
+    {
+        "name": "Aditi Kulkarni",
+        "prof": "Pianist",
+        "loc": "Pune",
+        "bio": "Classical & jazz pianist. Piano accompaniment for events. Teaching & performing since 2015. 🎹",
+    },
+    {
+        "name": "Dev Saxena",
+        "prof": "Drummer",
+        "loc": "Delhi",
+        "bio": "Professional drummer. Rock, funk, Bollywood. Touring band experience. Available for live shows & sessions.",
+    },
+    {
+        "name": "Sneha Reddy",
+        "prof": "Flautist",
+        "loc": "Hyderabad",
+        "bio": "Bamboo flute artist. Carnatic & Hindustani styles. Perfect for intimate events, weddings & meditation sessions.",
+    },
+    {
+        "name": "Vikram Joshi",
+        "prof": "Singer-Songwriter",
+        "loc": "Goa",
+        "bio": "Indie singer-songwriter. Acoustic sets, cafe gigs, private events. Hindi & English originals + covers. 🎵",
+    },
     # Painters / Visual Artists (8)
-    {"name": "Priya Deshmukh", "prof": "Painter", "loc": "Pune",
-     "bio": "Oil & watercolor artist. Commissioned portraits, murals, live painting at events. Gallery exhibitions across India."},
-    {"name": "Arjun Reddy", "prof": "Digital Artist", "loc": "Hyderabad",
-     "bio": "Digital illustrator & concept artist. Event caricatures, live digital art, brand illustrations. Tech meets art."},
-    {"name": "Zara Khan", "prof": "Muralist", "loc": "Mumbai",
-     "bio": "Large-scale muralist. Transformed 50+ walls across Mumbai. Available for commercial & residential projects."},
-    {"name": "Ananya Das", "prof": "Sketch Artist", "loc": "Kolkata",
-     "bio": "Charcoal & pencil sketch artist. Live event sketching, commissioned portraits. 300+ happy clients."},
-    {"name": "Rahul Verma", "prof": "Painter", "loc": "Jaipur",
-     "bio": "Miniature painting specialist. Rajasthani & Mughal styles. Workshops, exhibitions & commissioned work."},
-    {"name": "Ishita Ghosh", "prof": "Digital Artist", "loc": "Bangalore",
-     "bio": "UI designer by day, digital artist by passion. NFTs, prints & live digital painting at tech events."},
-    {"name": "Karthik Nair", "prof": "Muralist", "loc": "Kochi",
-     "bio": "Street art & mural artist. Public art installations, cafe murals, festival art. Color is my language. 🎨"},
-    {"name": "Divya Rajan", "prof": "Painter", "loc": "Chennai",
-     "bio": "Tanjore painting & contemporary art. Gold leaf specialist. Custom pieces for homes, offices & temples."},
-
+    {
+        "name": "Priya Deshmukh",
+        "prof": "Painter",
+        "loc": "Pune",
+        "bio": "Oil & watercolor artist. Commissioned portraits, murals, live painting at events. Gallery exhibitions across India.",
+    },
+    {
+        "name": "Arjun Reddy",
+        "prof": "Digital Artist",
+        "loc": "Hyderabad",
+        "bio": "Digital illustrator & concept artist. Event caricatures, live digital art, brand illustrations. Tech meets art.",
+    },
+    {
+        "name": "Zara Khan",
+        "prof": "Muralist",
+        "loc": "Mumbai",
+        "bio": "Large-scale muralist. Transformed 50+ walls across Mumbai. Available for commercial & residential projects.",
+    },
+    {
+        "name": "Ananya Das",
+        "prof": "Sketch Artist",
+        "loc": "Kolkata",
+        "bio": "Charcoal & pencil sketch artist. Live event sketching, commissioned portraits. 300+ happy clients.",
+    },
+    {
+        "name": "Rahul Verma",
+        "prof": "Painter",
+        "loc": "Jaipur",
+        "bio": "Miniature painting specialist. Rajasthani & Mughal styles. Workshops, exhibitions & commissioned work.",
+    },
+    {
+        "name": "Ishita Ghosh",
+        "prof": "Digital Artist",
+        "loc": "Bangalore",
+        "bio": "UI designer by day, digital artist by passion. NFTs, prints & live digital painting at tech events.",
+    },
+    {
+        "name": "Karthik Nair",
+        "prof": "Muralist",
+        "loc": "Kochi",
+        "bio": "Street art & mural artist. Public art installations, cafe murals, festival art. Color is my language. 🎨",
+    },
+    {
+        "name": "Divya Rajan",
+        "prof": "Painter",
+        "loc": "Chennai",
+        "bio": "Tanjore painting & contemporary art. Gold leaf specialist. Custom pieces for homes, offices & temples.",
+    },
     # Photographers (6)
-    {"name": "Dev Mehra", "prof": "Photographer", "loc": "Mumbai",
-     "bio": "Wedding & portrait photographer. 10 years, 500+ weddings shot. Candid, fine art & documentary styles."},
-    {"name": "Nandini Chakraborty", "prof": "Photographer", "loc": "Kolkata",
-     "bio": "Street & documentary photographer. Published in national magazines. Available for events & editorial shoots."},
-    {"name": "Sameer Gupta", "prof": "Videographer", "loc": "Delhi",
-     "bio": "Cinematic wedding films & event videos. Drone + gimbal specialist. Editing included. Pan-India available."},
-    {"name": "Pooja Kapoor", "prof": "Photographer", "loc": "Chandigarh",
-     "bio": "Fashion & product photographer. Studio & outdoor shoots. E-commerce, lookbooks & social media content."},
-    {"name": "Aakash Singh", "prof": "Photographer", "loc": "Bangalore",
-     "bio": "Event & concert photographer. Low-light specialist. 1000+ events captured. Fast delivery guaranteed."},
-    {"name": "Rhea Fernandes", "prof": "Videographer", "loc": "Goa",
-     "bio": "Travel & lifestyle videographer. Short films, reels & brand content. Telling stories through the lens. 📸"},
-
+    {
+        "name": "Dev Mehra",
+        "prof": "Photographer",
+        "loc": "Mumbai",
+        "bio": "Wedding & portrait photographer. 10 years, 500+ weddings shot. Candid, fine art & documentary styles.",
+    },
+    {
+        "name": "Nandini Chakraborty",
+        "prof": "Photographer",
+        "loc": "Kolkata",
+        "bio": "Street & documentary photographer. Published in national magazines. Available for events & editorial shoots.",
+    },
+    {
+        "name": "Sameer Gupta",
+        "prof": "Videographer",
+        "loc": "Delhi",
+        "bio": "Cinematic wedding films & event videos. Drone + gimbal specialist. Editing included. Pan-India available.",
+    },
+    {
+        "name": "Pooja Kapoor",
+        "prof": "Photographer",
+        "loc": "Chandigarh",
+        "bio": "Fashion & product photographer. Studio & outdoor shoots. E-commerce, lookbooks & social media content.",
+    },
+    {
+        "name": "Aakash Singh",
+        "prof": "Photographer",
+        "loc": "Bangalore",
+        "bio": "Event & concert photographer. Low-light specialist. 1000+ events captured. Fast delivery guaranteed.",
+    },
+    {
+        "name": "Rhea Fernandes",
+        "prof": "Videographer",
+        "loc": "Goa",
+        "bio": "Travel & lifestyle videographer. Short films, reels & brand content. Telling stories through the lens. 📸",
+    },
     # Stand-up / Spoken Word (5)
-    {"name": "Kabir Malhotra", "prof": "Stand-up Comedian", "loc": "Mumbai",
-     "bio": "Professional stand-up comedian. 5 years on the circuit. Corporate shows, open mics & college tours. Clean humor."},
-    {"name": "Aisha Siddiqui", "prof": "Emcee", "loc": "Bangalore",
-     "bio": "Bilingual emcee & event host. Weddings, award nights, corporate events. Keeping your audience engaged! 🎤"},
-    {"name": "Nikhil Rane", "prof": "Stand-up Comedian", "loc": "Pune",
-     "bio": "Observational comedy. Featured in comedy specials. Available for private shows & brand collaborations."},
-    {"name": "Swati Mishra", "prof": "Event Host", "loc": "Delhi",
-     "bio": "Professional anchor & moderator. Panel discussions, product launches, galas. Hindi, English & Marathi."},
-    {"name": "Ravi Teja", "prof": "Stand-up Comedian", "loc": "Hyderabad",
-     "bio": "Telugu & English comedy. Corporate shows, college fests. Making South India laugh, one city at a time. 😂"},
-
+    {
+        "name": "Kabir Malhotra",
+        "prof": "Stand-up Comedian",
+        "loc": "Mumbai",
+        "bio": "Professional stand-up comedian. 5 years on the circuit. Corporate shows, open mics & college tours. Clean humor.",
+    },
+    {
+        "name": "Aisha Siddiqui",
+        "prof": "Emcee",
+        "loc": "Bangalore",
+        "bio": "Bilingual emcee & event host. Weddings, award nights, corporate events. Keeping your audience engaged! 🎤",
+    },
+    {
+        "name": "Nikhil Rane",
+        "prof": "Stand-up Comedian",
+        "loc": "Pune",
+        "bio": "Observational comedy. Featured in comedy specials. Available for private shows & brand collaborations.",
+    },
+    {
+        "name": "Swati Mishra",
+        "prof": "Event Host",
+        "loc": "Delhi",
+        "bio": "Professional anchor & moderator. Panel discussions, product launches, galas. Hindi, English & Marathi.",
+    },
+    {
+        "name": "Ravi Teja",
+        "prof": "Stand-up Comedian",
+        "loc": "Hyderabad",
+        "bio": "Telugu & English comedy. Corporate shows, college fests. Making South India laugh, one city at a time. 😂",
+    },
     # Mehendi / Folk Art (5)
-    {"name": "Pooja Verma", "prof": "Mehendi Artist", "loc": "Jaipur",
-     "bio": "Bridal mehendi specialist. Arabic, Indian & Indo-fusion styles. 1000+ brides served. Advance booking only."},
-    {"name": "Fatima Sheikh", "prof": "Mehendi Artist", "loc": "Lucknow",
-     "bio": "Intricate Lucknowi mehendi designs. Bridal, festive & corporate events. Natural henna only. ✋"},
-    {"name": "Savita Kumari", "prof": "Rangoli Artist", "loc": "Pune",
-     "bio": "Traditional & modern rangoli. Diwali, weddings, corporate lobbies. Large installations a specialty."},
-    {"name": "Geeta Devi", "prof": "Calligrapher", "loc": "Ahmedabad",
-     "bio": "Hindi & Urdu calligraphy. Wedding cards, wall art, live calligraphy at events. Ink meets tradition."},
-    {"name": "Meenakshi Pillai", "prof": "Rangoli Artist", "loc": "Mysore",
-     "bio": "Mysore-style rangoli & kolam expert. Temple festivals, government events & cultural programs."},
-
+    {
+        "name": "Pooja Verma",
+        "prof": "Mehendi Artist",
+        "loc": "Jaipur",
+        "bio": "Bridal mehendi specialist. Arabic, Indian & Indo-fusion styles. 1000+ brides served. Advance booking only.",
+    },
+    {
+        "name": "Fatima Sheikh",
+        "prof": "Mehendi Artist",
+        "loc": "Lucknow",
+        "bio": "Intricate Lucknowi mehendi designs. Bridal, festive & corporate events. Natural henna only. ✋",
+    },
+    {
+        "name": "Savita Kumari",
+        "prof": "Rangoli Artist",
+        "loc": "Pune",
+        "bio": "Traditional & modern rangoli. Diwali, weddings, corporate lobbies. Large installations a specialty.",
+    },
+    {
+        "name": "Geeta Devi",
+        "prof": "Calligrapher",
+        "loc": "Ahmedabad",
+        "bio": "Hindi & Urdu calligraphy. Wedding cards, wall art, live calligraphy at events. Ink meets tradition.",
+    },
+    {
+        "name": "Meenakshi Pillai",
+        "prof": "Rangoli Artist",
+        "loc": "Mysore",
+        "bio": "Mysore-style rangoli & kolam expert. Temple festivals, government events & cultural programs.",
+    },
     # DJs / Event MCs (5)
-    {"name": "Kabir Singh", "prof": "DJ", "loc": "Delhi",
-     "bio": "Club DJ & wedding specialist. Bollywood, EDM & retro mixes. Own sound system available. Book early! 🎧"},
-    {"name": "Radhika Menon", "prof": "Emcee", "loc": "Bangalore",
-     "bio": "Corporate emcee & team-building facilitator. Product launches, hackathons & award ceremonies. Energy+!"},
-    {"name": "Farhan Ali", "prof": "DJ", "loc": "Mumbai",
-     "bio": "Techno & house DJ. Underground scene veteran. Available for festivals, clubs & private parties."},
-    {"name": "Deepa Nambiar", "prof": "Event Host", "loc": "Kochi",
-     "bio": "Multilingual event host. Malayalam, English & Hindi. Weddings, cultural events & TV shows. Warm & fun."},
-    {"name": "Rajesh Kumar", "prof": "DJ", "loc": "Chennai",
-     "bio": "Tamil party DJ & karaoke host. College fests, house parties, sangeets. Bringing the beat since 2018. 🎶"},
-
+    {
+        "name": "Kabir Singh",
+        "prof": "DJ",
+        "loc": "Delhi",
+        "bio": "Club DJ & wedding specialist. Bollywood, EDM & retro mixes. Own sound system available. Book early! 🎧",
+    },
+    {
+        "name": "Radhika Menon",
+        "prof": "Emcee",
+        "loc": "Bangalore",
+        "bio": "Corporate emcee & team-building facilitator. Product launches, hackathons & award ceremonies. Energy+!",
+    },
+    {
+        "name": "Farhan Ali",
+        "prof": "DJ",
+        "loc": "Mumbai",
+        "bio": "Techno & house DJ. Underground scene veteran. Available for festivals, clubs & private parties.",
+    },
+    {
+        "name": "Deepa Nambiar",
+        "prof": "Event Host",
+        "loc": "Kochi",
+        "bio": "Multilingual event host. Malayalam, English & Hindi. Weddings, cultural events & TV shows. Warm & fun.",
+    },
+    {
+        "name": "Rajesh Kumar",
+        "prof": "DJ",
+        "loc": "Chennai",
+        "bio": "Tamil party DJ & karaoke host. College fests, house parties, sangeets. Bringing the beat since 2018. 🎶",
+    },
     # Mixed / Versatile (5)
-    {"name": "Arun Pillai", "prof": "Magician", "loc": "Kochi",
-     "bio": "Close-up & stage magician. 12 years of wonder. Birthday parties, corporate shows & TV appearances. ✨"},
-    {"name": "Simran Kaur", "prof": "Mime Artist", "loc": "Chandigarh",
-     "bio": "Professional mime & physical theater artist. Street performances, corporate events & art festivals."},
-    {"name": "Varun Khanna", "prof": "Emcee", "loc": "Delhi",
-     "bio": "High-energy emcee & entertainer. Weddings, sangeets, receptions. Trilingual: Hindi, English, Punjabi."},
-    {"name": "Neha Banerjee", "prof": "Vocalist", "loc": "Kolkata",
-     "bio": "Rabindra Sangeet & modern Bengali vocalist. Intimate concerts, cultural events & studio recordings."},
-    {"name": "Manish Agarwal", "prof": "Acoustic Duo", "loc": "Jaipur",
-     "bio": "Guitar-vocal acoustic duo. Cafe gigs, house concerts, sundowner sets. Bollywood + international covers."},
+    {
+        "name": "Arun Pillai",
+        "prof": "Magician",
+        "loc": "Kochi",
+        "bio": "Close-up & stage magician. 12 years of wonder. Birthday parties, corporate shows & TV appearances. ✨",
+    },
+    {
+        "name": "Simran Kaur",
+        "prof": "Mime Artist",
+        "loc": "Chandigarh",
+        "bio": "Professional mime & physical theater artist. Street performances, corporate events & art festivals.",
+    },
+    {
+        "name": "Varun Khanna",
+        "prof": "Emcee",
+        "loc": "Delhi",
+        "bio": "High-energy emcee & entertainer. Weddings, sangeets, receptions. Trilingual: Hindi, English, Punjabi.",
+    },
+    {
+        "name": "Neha Banerjee",
+        "prof": "Vocalist",
+        "loc": "Kolkata",
+        "bio": "Rabindra Sangeet & modern Bengali vocalist. Intimate concerts, cultural events & studio recordings.",
+    },
+    {
+        "name": "Manish Agarwal",
+        "prof": "Acoustic Duo",
+        "loc": "Jaipur",
+        "bio": "Guitar-vocal acoustic duo. Cafe gigs, house concerts, sundowner sets. Bollywood + international covers.",
+    },
 ]
 
 
@@ -246,12 +491,17 @@ def _load_test_images(directory):
         # Fallback: generate a 400x400 colored JPEG in memory (~20KB)
         try:
             from PIL import Image
+
             for i in range(10):
-                img = Image.new("RGB", (400, 400), color=(
-                    random.randint(30, 220),
-                    random.randint(30, 220),
-                    random.randint(30, 220),
-                ))
+                img = Image.new(
+                    "RGB",
+                    (400, 400),
+                    color=(
+                        random.randint(30, 220),
+                        random.randint(30, 220),
+                        random.randint(30, 220),
+                    ),
+                )
                 buf = BytesIO()
                 img.save(buf, format="JPEG", quality=85)
                 images.append((f"fallback_{i}.jpg", buf.getvalue()))
@@ -288,17 +538,22 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument("--users", type=int, default=TOTAL_LOADTEST_USERS)
         parser.add_argument("--demo", type=int, default=TOTAL_DEMO_USERS)
-        parser.add_argument("--skip-bookings", action="store_true",
-                            help="Skip pre-seeding engagements (faster for testing)")
+        parser.add_argument(
+            "--skip-bookings",
+            action="store_true",
+            help="Skip pre-seeding engagements (faster for testing)",
+        )
 
     def handle(self, *args, **options):
         total_users = options["users"]
         total_demo = options["demo"]
 
-        self.stdout.write(self.style.MIGRATE_HEADING(
-            f"\n=== Load Test V2 Seeder ===\n"
-            f"Load test users: {total_users}  |  Demo users: {total_demo}\n"
-        ))
+        self.stdout.write(
+            self.style.MIGRATE_HEADING(
+                f"\n=== Load Test V2 Seeder ===\n"
+                f"Load test users: {total_users}  |  Demo users: {total_demo}\n"
+            )
+        )
 
         # Load images
         test_images = _load_test_images(TEST_IMAGES_DIR)
@@ -307,9 +562,11 @@ class Command(BaseCommand):
         self.stdout.write(f"  Demo images loaded: {len(demo_images)}")
 
         if not test_images:
-            self.stdout.write(self.style.WARNING(
-                "  ⚠️ No test images found! Uploads will use fallback colored squares."
-            ))
+            self.stdout.write(
+                self.style.WARNING(
+                    "  ⚠️ No test images found! Uploads will use fallback colored squares."
+                )
+            )
 
         # --- Phase 1: Load test users ---
         tokens = {}
@@ -350,10 +607,7 @@ class Command(BaseCommand):
                 if existing < target_uploads and test_images:
                     for j in range(existing, target_uploads):
                         img = random.choice(test_images)
-                        _make_upload(
-                            profile, img,
-                            f"{prof} portfolio piece {j+1}"
-                        )
+                        _make_upload(profile, img, f"{prof} portfolio piece {j + 1}")
 
             # Client setup (801–1700)
             if i in CLIENT_RANGE:
@@ -361,7 +615,9 @@ class Command(BaseCommand):
                 profile.client_approved = True
                 profile.client_blacklisted = False
                 profile.location = profile.location or random.choice(LOCATIONS)
-                profile.bio = profile.bio or f"Looking to hire performers in {profile.location}."
+                profile.bio = (
+                    profile.bio or f"Looking to hire performers in {profile.location}."
+                )
                 clients.append(user.id)
 
             # Dual-role (601–800 get client flags too)
@@ -382,10 +638,12 @@ class Command(BaseCommand):
             if i % 100 == 0:
                 self.stdout.write(f"  Load test users created: {i}/{total_users}")
 
-        self.stdout.write(self.style.SUCCESS(
-            f"  ✅ {total_users} load test users ready "
-            f"({len(performers)} performers, {len(clients)} clients)"
-        ))
+        self.stdout.write(
+            self.style.SUCCESS(
+                f"  ✅ {total_users} load test users ready "
+                f"({len(performers)} performers, {len(clients)} clients)"
+            )
+        )
 
         # --- Phase 2: Demo/showcase users ---
         demo_data = DEMO_USERS[:total_demo]
@@ -429,8 +687,7 @@ class Command(BaseCommand):
                 for j in range(existing, target):
                     img = source_images[j % len(source_images)]
                     _make_upload(
-                        profile, img,
-                        f"{d['prof']} — {d['name']} showcase {j+1}"
+                        profile, img, f"{d['prof']} — {d['name']} showcase {j + 1}"
                     )
 
             # Auth token (demo users also get tokens for testing)
@@ -438,11 +695,9 @@ class Command(BaseCommand):
             tokens[username] = token.key
 
             if (idx + 1) % 10 == 0:
-                self.stdout.write(f"  Demo users created: {idx+1}/{total_demo}")
+                self.stdout.write(f"  Demo users created: {idx + 1}/{total_demo}")
 
-        self.stdout.write(self.style.SUCCESS(
-            f"  ✅ {len(demo_data)} demo users ready"
-        ))
+        self.stdout.write(self.style.SUCCESS(f"  ✅ {len(demo_data)} demo users ready"))
 
         # --- Phase 3: Pre-seed engagements ---
         if not options.get("skip_bookings"):
@@ -458,27 +713,29 @@ class Command(BaseCommand):
         with open(TOKEN_OUTPUT_PATH, "w") as f:
             json.dump(output, f, indent=2)
 
-        self.stdout.write(self.style.SUCCESS(
-            f"\n{'='*60}\n"
-            f"  ✅ SEED COMPLETE\n"
-            f"  Load test users: {total_users}\n"
-            f"  Demo users:      {len(demo_data)}\n"
-            f"  Performers:      {len(performers)}\n"
-            f"  Clients:         {len(clients)}\n"
-            f"  Tokens:          {TOKEN_OUTPUT_PATH}\n"
-            f"{'='*60}\n"
-        ))
+        self.stdout.write(
+            self.style.SUCCESS(
+                f"\n{'=' * 60}\n"
+                f"  ✅ SEED COMPLETE\n"
+                f"  Load test users: {total_users}\n"
+                f"  Demo users:      {len(demo_data)}\n"
+                f"  Performers:      {len(performers)}\n"
+                f"  Clients:         {len(clients)}\n"
+                f"  Tokens:          {TOKEN_OUTPUT_PATH}\n"
+                f"{'=' * 60}\n"
+            )
+        )
 
     def _seed_engagements(self, performer_ids, client_ids):
         """Create 500 pre-seeded engagements in various statuses."""
         self.stdout.write("  Seeding 500 engagements...")
 
         statuses_to_create = (
-            [Engagement.STATUS_PENDING] * 200 +
-            [Engagement.STATUS_ACCEPTED] * 150 +
-            [Engagement.STATUS_DECLINED] * 50 +
-            [Engagement.STATUS_CANCELLED_CLIENT] * 50 +
-            [Engagement.STATUS_CANCELLED_PERFORMER] * 50
+            [Engagement.STATUS_PENDING] * 200
+            + [Engagement.STATUS_ACCEPTED] * 150
+            + [Engagement.STATUS_DECLINED] * 50
+            + [Engagement.STATUS_CANCELLED_CLIENT] * 50
+            + [Engagement.STATUS_CANCELLED_PERFORMER] * 50
         )
         random.shuffle(statuses_to_create)
 
@@ -527,6 +784,4 @@ class Command(BaseCommand):
             if created % 100 == 0:
                 self.stdout.write(f"    Engagements: {created}")
 
-        self.stdout.write(self.style.SUCCESS(
-            f"  ✅ {created} engagements seeded"
-        ))
+        self.stdout.write(self.style.SUCCESS(f"  ✅ {created} engagements seeded"))

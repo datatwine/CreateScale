@@ -5,7 +5,9 @@ from .settings import *  # reuse everything (INSTALLED_APPS, etc.)
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
-        "NAME": str(BASE_DIR / "db.sqlite3"),  # adjust path if your sqlite file lives elsewhere
+        "NAME": str(
+            BASE_DIR / "db.sqlite3"
+        ),  # adjust path if your sqlite file lives elsewhere
     }
 }
 

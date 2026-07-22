@@ -9,6 +9,7 @@ LinkedIn: sends {"provider":"linkedin", "code": "...", "redirect_uri": "..."}
 
 Returns: {"token": "<DRF token>", "user_id": 1, "username": "..."}
 """
+
 import requests as http_requests
 
 from django.conf import settings
@@ -80,7 +81,9 @@ class SocialLoginAPIView(APIView):
                 data={
                     "grant_type": "authorization_code",
                     "code": code,
-                    "client_id": settings.SOCIALACCOUNT_PROVIDERS["twitter_oauth2"]["APP"]["client_id"],
+                    "client_id": settings.SOCIALACCOUNT_PROVIDERS["twitter_oauth2"][
+                        "APP"
+                    ]["client_id"],
                     "redirect_uri": redirect_uri,
                     "code_verifier": code_verifier,
                 },
@@ -122,8 +125,12 @@ class SocialLoginAPIView(APIView):
                 data={
                     "grant_type": "authorization_code",
                     "code": code,
-                    "client_id": settings.SOCIALACCOUNT_PROVIDERS["linkedin_oauth2"]["APP"]["client_id"],
-                    "client_secret": settings.SOCIALACCOUNT_PROVIDERS["linkedin_oauth2"]["APP"]["secret"],
+                    "client_id": settings.SOCIALACCOUNT_PROVIDERS["linkedin_oauth2"][
+                        "APP"
+                    ]["client_id"],
+                    "client_secret": settings.SOCIALACCOUNT_PROVIDERS[
+                        "linkedin_oauth2"
+                    ]["APP"]["secret"],
                     "redirect_uri": redirect_uri,
                 },
                 timeout=15,
@@ -179,8 +186,10 @@ class SocialLoginAPIView(APIView):
             user.save()
 
         token, _ = Token.objects.get_or_create(user=user)
-        return Response({
-            "token": token.key,
-            "user_id": user.id,
-            "username": user.username,
-        })
+        return Response(
+            {
+                "token": token.key,
+                "user_id": user.id,
+                "username": user.username,
+            }
+        )

@@ -4,14 +4,16 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('users', '0011_profile_bank_account_holder_name_and_more'),
+        ("users", "0011_profile_bank_account_holder_name_and_more"),
     ]
 
     operations = [
         migrations.AddIndex(
-            model_name='upload',
-            index=models.Index(fields=['profile', '-upload_date'], name='users_uploa_profile_6a9f40_idx'),
+            model_name="upload",
+            index=models.Index(
+                fields=["profile", "-upload_date"],
+                name="users_uploa_profile_6a9f40_idx",
+            ),
         ),
     ]

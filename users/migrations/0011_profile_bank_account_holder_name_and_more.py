@@ -4,50 +4,67 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('users', '0010_profile_cover_photo'),
+        ("users", "0010_profile_cover_photo"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='profile',
-            name='bank_account_holder_name',
+            model_name="profile",
+            name="bank_account_holder_name",
             field=models.CharField(blank=True, max_length=120),
         ),
         migrations.AddField(
-            model_name='profile',
-            name='bank_account_number',
+            model_name="profile",
+            name="bank_account_number",
             field=models.CharField(blank=True, max_length=20),
         ),
         migrations.AddField(
-            model_name='profile',
-            name='bank_ifsc',
+            model_name="profile",
+            name="bank_ifsc",
             field=models.CharField(blank=True, max_length=11),
         ),
         migrations.AddField(
-            model_name='profile',
-            name='pan_number',
+            model_name="profile",
+            name="pan_number",
             field=models.CharField(blank=True, max_length=10),
         ),
         migrations.AddField(
-            model_name='profile',
-            name='performer_fee',
-            field=models.PositiveIntegerField(blank=True, help_text='Standard fee per engagement in rupees (shown on public profile).', null=True),
+            model_name="profile",
+            name="performer_fee",
+            field=models.PositiveIntegerField(
+                blank=True,
+                help_text="Standard fee per engagement in rupees (shown on public profile).",
+                null=True,
+            ),
         ),
         migrations.AddField(
-            model_name='profile',
-            name='phone_number',
-            field=models.CharField(blank=True, help_text='10-digit Indian mobile — required by Razorpay for linked account KYC.', max_length=10),
+            model_name="profile",
+            name="phone_number",
+            field=models.CharField(
+                blank=True,
+                help_text="10-digit Indian mobile — required by Razorpay for linked account KYC.",
+                max_length=10,
+            ),
         ),
         migrations.AddField(
-            model_name='profile',
-            name='razorpay_account_id',
+            model_name="profile",
+            name="razorpay_account_id",
             field=models.CharField(blank=True, db_index=True, max_length=64),
         ),
         migrations.AddField(
-            model_name='profile',
-            name='razorpay_kyc_status',
-            field=models.CharField(blank=True, choices=[('', 'Not started'), ('pending', 'Pending RBI review'), ('approved', 'Approved — ready for payouts'), ('rejected', 'Rejected — contact support')], default='', max_length=16),
+            model_name="profile",
+            name="razorpay_kyc_status",
+            field=models.CharField(
+                blank=True,
+                choices=[
+                    ("", "Not started"),
+                    ("pending", "Pending RBI review"),
+                    ("approved", "Approved — ready for payouts"),
+                    ("rejected", "Rejected — contact support"),
+                ],
+                default="",
+                max_length=16,
+            ),
         ),
     ]

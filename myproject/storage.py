@@ -12,4 +12,5 @@ class ForgivingStaticFilesStorage(CompressedManifestStaticFilesStorage):
       - Missing files return the unhashed URL instead of crashing
       - Prevents a single missing static file from taking down the page
     """
+
     manifest_strict = False

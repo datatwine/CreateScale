@@ -4,9 +4,7 @@ from django.contrib.auth.models import User
 
 class TestOnboardingIdempotent(TestCase):
     def setUp(self):
-        self.user = User.objects.create_user(
-            username="perf.pay", password="pass123"
-        )
+        self.user = User.objects.create_user(username="perf.pay", password="pass123")
         self.profile = self.user.profile
         self.profile.is_performer = True
         self.profile.pan_number = "ABCDE1234F"

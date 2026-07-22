@@ -40,10 +40,10 @@ from users.models import Profile, Upload
 # Constants
 # ---------------------------------------------------------------------------
 TOTAL_USERS = 200
-PASSWORD = "Passw0rd!AK2025"   # Same password set during earlier user creation
-PERFORMER_RANGE = range(1, 81)       # users 1–80  (80 performers)
-CLIENT_RANGE = range(81, 181)        # users 81–180 (100 clients)
-DUAL_ROLE_RANGE = range(61, 81)      # users 61–80  (subset: both performer + client)
+PASSWORD = "Passw0rd!AK2025"  # Same password set during earlier user creation
+PERFORMER_RANGE = range(1, 81)  # users 1–80  (80 performers)
+CLIENT_RANGE = range(81, 181)  # users 81–180 (100 clients)
+DUAL_ROLE_RANGE = range(61, 81)  # users 61–80  (subset: both performer + client)
 TOKEN_OUTPUT_PATH = "/app/loadtest_tokens.json"
 
 
@@ -73,9 +73,9 @@ class Command(BaseCommand):
     help = "Seed test users with performer/client flags and pre-fetch auth tokens for Locust."
 
     def handle(self, *args, **options):
-        tokens = {}      # {username: token_key}
-        performers = []   # user_ids of performers (for Locust to know who to hire)
-        clients = []      # user_ids of approved clients
+        tokens = {}  # {username: token_key}
+        performers = []  # user_ids of performers (for Locust to know who to hire)
+        clients = []  # user_ids of approved clients
 
         for i in range(1, TOTAL_USERS + 1):
             username = f"loadtest_user_{i}"
@@ -142,9 +142,11 @@ class Command(BaseCommand):
         with open(TOKEN_OUTPUT_PATH, "w") as f:
             json.dump(output, f, indent=2)
 
-        self.stdout.write(self.style.SUCCESS(
-            f"\n✅ Seeded {TOTAL_USERS} users.\n"
-            f"   Performers: {len(performers)} (users 1–80)\n"
-            f"   Clients:    {len(clients)} (users 81–180, incl. dual-role 61–80)\n"
-            f"   Tokens:     {TOKEN_OUTPUT_PATH}\n"
-        ))
+        self.stdout.write(
+            self.style.SUCCESS(
+                f"\n✅ Seeded {TOTAL_USERS} users.\n"
+                f"   Performers: {len(performers)} (users 1–80)\n"
+                f"   Clients:    {len(clients)} (users 81–180, incl. dual-role 61–80)\n"
+                f"   Tokens:     {TOKEN_OUTPUT_PATH}\n"
+            )
+        )

@@ -29,6 +29,7 @@ TIMEOUT = float(os.getenv("DOCKER_TIMEOUT", "5"))
 # Docker socket helpers
 # ---------------------------------------------------------------------------
 
+
 def _unix_get(path):
     """Fire a GET request over the Unix socket and return parsed JSON."""
     s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
@@ -47,7 +48,7 @@ def _unix_get(path):
 
     # Strip HTTP headers
     header_end = buf.find(b"\r\n\r\n")
-    body = buf[header_end + 4:] if header_end != -1 else buf
+    body = buf[header_end + 4 :] if header_end != -1 else buf
     return json.loads(body)
 
 
@@ -62,6 +63,7 @@ def get_stats(container_id):
 # ---------------------------------------------------------------------------
 # Metric collection (concurrent per container)
 # ---------------------------------------------------------------------------
+
 
 def collect_one(c, results):
     labels = c.get("Labels", {})
@@ -131,6 +133,7 @@ def collect_metrics():
 # ---------------------------------------------------------------------------
 # HTTP server
 # ---------------------------------------------------------------------------
+
 
 class MetricsHandler(http.server.BaseHTTPRequestHandler):
     def do_GET(self):
