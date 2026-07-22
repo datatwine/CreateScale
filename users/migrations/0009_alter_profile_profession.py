@@ -4,15 +4,14 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('users', '0008_profile_client_approved_profile_client_blacklisted_and_more'),
+        ("users", "0008_profile_client_approved_profile_client_blacklisted_and_more"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='profile',
-            name='profession',
+            model_name="profile",
+            name="profession",
             field=models.CharField(blank=True, db_index=True, max_length=100),
         ),
     ]

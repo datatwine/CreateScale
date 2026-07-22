@@ -4,40 +4,64 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('bookings', '0004_alter_engagement_paid_at_and_more'),
+        ("bookings", "0004_alter_engagement_paid_at_and_more"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='engagement',
-            name='payout_initiated_at',
+            model_name="engagement",
+            name="payout_initiated_at",
             field=models.DateTimeField(blank=True, null=True),
         ),
         migrations.AddField(
-            model_name='payment',
-            name='payout_idempotency_key',
+            model_name="payment",
+            name="payout_idempotency_key",
             field=models.CharField(blank=True, max_length=64),
         ),
         migrations.AddField(
-            model_name='payment',
-            name='payout_reference',
+            model_name="payment",
+            name="payout_reference",
             field=models.CharField(blank=True, max_length=64),
         ),
         migrations.AddField(
-            model_name='payment',
-            name='razorpayx_payout_id',
+            model_name="payment",
+            name="razorpayx_payout_id",
             field=models.CharField(blank=True, db_index=True, max_length=64),
         ),
         migrations.AlterField(
-            model_name='engagement',
-            name='payment_status',
-            field=models.CharField(choices=[('unpaid', 'Unpaid'), ('paid', 'Paid (secured)'), ('payout_processing', 'Payout processing'), ('payout_failed', 'Payout failed — needs attention'), ('released', 'Released to performer'), ('refunded', 'Refunded to client')], db_index=True, default='unpaid', max_length=20),
+            model_name="engagement",
+            name="payment_status",
+            field=models.CharField(
+                choices=[
+                    ("unpaid", "Unpaid"),
+                    ("paid", "Paid (secured)"),
+                    ("payout_processing", "Payout processing"),
+                    ("payout_failed", "Payout failed — needs attention"),
+                    ("released", "Released to performer"),
+                    ("refunded", "Refunded to client"),
+                ],
+                db_index=True,
+                default="unpaid",
+                max_length=20,
+            ),
         ),
         migrations.AlterField(
-            model_name='payment',
-            name='status',
-            field=models.CharField(choices=[('created', 'Order created'), ('captured', 'Payment captured'), ('payout_processing', 'Payout processing'), ('payout_failed', 'Payout failed'), ('released', 'Released to performer'), ('refunded', 'Refunded to client'), ('failed', 'Failed')], db_index=True, default='created', max_length=20),
+            model_name="payment",
+            name="status",
+            field=models.CharField(
+                choices=[
+                    ("created", "Order created"),
+                    ("captured", "Payment captured"),
+                    ("payout_processing", "Payout processing"),
+                    ("payout_failed", "Payout failed"),
+                    ("released", "Released to performer"),
+                    ("refunded", "Refunded to client"),
+                    ("failed", "Failed"),
+                ],
+                db_index=True,
+                default="created",
+                max_length=20,
+            ),
         ),
     ]

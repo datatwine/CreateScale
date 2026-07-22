@@ -6,7 +6,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
     dependencies = [
@@ -15,16 +14,30 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.CreateModel(
-            name='Profile',
+            name="Profile",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('profession', models.CharField(blank=True, max_length=100)),
-                ('location', models.CharField(blank=True, max_length=100)),
-                ('image', models.ImageField(blank=True, upload_to='profile_pics')),
-                ('video', models.FileField(blank=True, upload_to='profile_videos')),
-                ('caption', models.TextField(blank=True)),
-                ('upload_date', models.DateTimeField(auto_now_add=True)),
-                ('user', models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("profession", models.CharField(blank=True, max_length=100)),
+                ("location", models.CharField(blank=True, max_length=100)),
+                ("image", models.ImageField(blank=True, upload_to="profile_pics")),
+                ("video", models.FileField(blank=True, upload_to="profile_videos")),
+                ("caption", models.TextField(blank=True)),
+                ("upload_date", models.DateTimeField(auto_now_add=True)),
+                (
+                    "user",
+                    models.OneToOneField(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
             ],
         ),
     ]

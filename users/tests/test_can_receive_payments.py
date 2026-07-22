@@ -7,9 +7,7 @@ class TestCanReceivePayments(TestCase):
     """Route mode: payable iff linked account exists AND KYC approved."""
 
     def setUp(self):
-        self.user = User.objects.create_user(
-            username="pay.user", password="pass123"
-        )
+        self.user = User.objects.create_user(username="pay.user", password="pass123")
         self.profile = self.user.profile
 
     def test_false_when_no_account_id(self):
@@ -44,9 +42,7 @@ class TestCanReceivePaymentsPayoutsMode(TestCase):
     linked account / KYC status is irrelevant."""
 
     def setUp(self):
-        self.user = User.objects.create_user(
-            username="pay.user2", password="pass123"
-        )
+        self.user = User.objects.create_user(username="pay.user2", password="pass123")
         self.profile = self.user.profile
         self.profile.bank_account_holder_name = "Performer One"
         self.profile.bank_account_number = "1234567890"

@@ -41,149 +41,224 @@ PASSWORD = "ShowcasePass123!"
 SHOWCASE_USERS = [
     # --- 14 Performers ---
     {
-        "name": "Aarav Mehta", "gender": "m",
-        "prof": "Guitarist", "loc": "Mumbai", "fee": 8000,
+        "name": "Aarav Mehta",
+        "gender": "m",
+        "prof": "Guitarist",
+        "loc": "Mumbai",
+        "fee": 8000,
         "role": "performer",
         "bio": "Session guitarist & live performer. Rock, blues, jazz. 200+ gigs across India. Available for events.",
     },
     {
-        "name": "Priya Sharma", "gender": "f",
-        "prof": "Bharatanatyam Dancer", "loc": "Chennai", "fee": 12000,
+        "name": "Priya Sharma",
+        "gender": "f",
+        "prof": "Bharatanatyam Dancer",
+        "loc": "Chennai",
+        "fee": 12000,
         "role": "performer",
         "bio": "Bharatanatyam dancer with 12 years of stage experience. Trained at Kalakshetra. Weddings & cultural fests.",
     },
     {
-        "name": "Rohan Kapoor", "gender": "m",
-        "prof": "DJ", "loc": "Delhi", "fee": 10000,
+        "name": "Rohan Kapoor",
+        "gender": "m",
+        "prof": "DJ",
+        "loc": "Delhi",
+        "fee": 10000,
         "role": "performer",
         "bio": "Club DJ & wedding specialist. Bollywood, EDM & retro mixes. Own sound system available. Book early!",
     },
     {
-        "name": "Ananya Nair", "gender": "f",
-        "prof": "Vocalist", "loc": "Kochi", "fee": 7000,
+        "name": "Ananya Nair",
+        "gender": "f",
+        "prof": "Vocalist",
+        "loc": "Kochi",
+        "fee": 7000,
         "role": "performer",
         "bio": "Carnatic vocalist & playback singer. 10 years trained. Weddings, temples, corporate shows, private concerts.",
     },
     {
-        "name": "Kabir Malhotra", "gender": "m",
-        "prof": "Stand-up Comedian", "loc": "Bangalore", "fee": 15000,
+        "name": "Kabir Malhotra",
+        "gender": "m",
+        "prof": "Stand-up Comedian",
+        "loc": "Bangalore",
+        "fee": 15000,
         "role": "performer",
         "bio": "Professional stand-up comedian. 5 years on the circuit. Corporate shows, open mics & college tours.",
     },
     {
-        "name": "Meera Iyer", "gender": "f",
-        "prof": "Kathak Dancer", "loc": "Jaipur", "fee": 9000,
+        "name": "Meera Iyer",
+        "gender": "f",
+        "prof": "Kathak Dancer",
+        "loc": "Jaipur",
+        "fee": 9000,
         "role": "performer",
         "bio": "Jaipur gharana Kathak. 15 years of performance experience. Dance workshops & live shows across Rajasthan.",
     },
     {
-        "name": "Arjun Reddy", "gender": "m",
-        "prof": "Photographer", "loc": "Hyderabad", "fee": 6000,
+        "name": "Arjun Reddy",
+        "gender": "m",
+        "prof": "Photographer",
+        "loc": "Hyderabad",
+        "fee": 6000,
         "role": "performer",
         "bio": "Event & concert photographer. Low-light specialist. 1000+ events captured. Fast delivery guaranteed.",
     },
     {
-        "name": "Zara Khan", "gender": "f",
-        "prof": "Muralist", "loc": "Mumbai", "fee": 11000,
+        "name": "Zara Khan",
+        "gender": "f",
+        "prof": "Muralist",
+        "loc": "Mumbai",
+        "fee": 11000,
         "role": "performer",
         "bio": "Large-scale muralist. Transformed 50+ walls across Mumbai. Commercial & residential projects.",
     },
     {
-        "name": "Siddharth Patel", "gender": "m",
-        "prof": "Tabla Player", "loc": "Ahmedabad", "fee": 5000,
+        "name": "Siddharth Patel",
+        "gender": "m",
+        "prof": "Tabla Player",
+        "loc": "Ahmedabad",
+        "fee": 5000,
         "role": "performer",
         "bio": "Classical tabla artist. Accompanist for concerts & recordings. 8 years with leading Hindustani musicians.",
     },
     {
-        "name": "Ishita Das", "gender": "f",
-        "prof": "Mehendi Artist", "loc": "Kolkata", "fee": 4000,
+        "name": "Ishita Das",
+        "gender": "f",
+        "prof": "Mehendi Artist",
+        "loc": "Kolkata",
+        "fee": 4000,
         "role": "performer",
         "bio": "Bridal mehendi specialist. Arabic, Indian & Indo-fusion styles. 500+ brides served. Natural henna only.",
     },
     {
-        "name": "Vikram Joshi", "gender": "m",
-        "prof": "Emcee", "loc": "Pune", "fee": 8500,
+        "name": "Vikram Joshi",
+        "gender": "m",
+        "prof": "Emcee",
+        "loc": "Pune",
+        "fee": 8500,
         "role": "performer",
         "bio": "High-energy emcee & entertainer. Weddings, sangeets, receptions. Trilingual: Hindi, English, Marathi.",
     },
     {
-        "name": "Neha Gupta", "gender": "f",
-        "prof": "Flautist", "loc": "Lucknow", "fee": 6500,
+        "name": "Neha Gupta",
+        "gender": "f",
+        "prof": "Flautist",
+        "loc": "Lucknow",
+        "fee": 6500,
         "role": "performer",
         "bio": "Bamboo flute artist. Carnatic & Hindustani styles. Perfect for intimate events, weddings & meditation.",
     },
     {
-        "name": "Dev Saxena", "gender": "m",
-        "prof": "Magician", "loc": "Chandigarh", "fee": 7500,
+        "name": "Dev Saxena",
+        "gender": "m",
+        "prof": "Magician",
+        "loc": "Chandigarh",
+        "fee": 7500,
         "role": "performer",
         "bio": "Close-up & stage magician. 12 years of wonder. Birthday parties, corporate shows & TV appearances.",
     },
     {
-        "name": "Kavya Menon", "gender": "f",
-        "prof": "Painter", "loc": "Mysore", "fee": 5500,
+        "name": "Kavya Menon",
+        "gender": "f",
+        "prof": "Painter",
+        "loc": "Mysore",
+        "fee": 5500,
         "role": "performer",
         "bio": "Oil & watercolor artist. Commissioned portraits, murals, live painting at events. Gallery exhibitions.",
     },
-
     # --- 4 Pure Clients ---
     {
-        "name": "Rajiv Kapoor", "gender": "m",
-        "prof": "", "loc": "Delhi", "fee": None,
+        "name": "Rajiv Kapoor",
+        "gender": "m",
+        "prof": "",
+        "loc": "Delhi",
+        "fee": None,
         "role": "client",
         "bio": "Corporate event manager. Always looking for fresh talent to book for product launches & galas.",
     },
     {
-        "name": "Sunita Deshmukh", "gender": "f",
-        "prof": "", "loc": "Pune", "fee": None,
+        "name": "Sunita Deshmukh",
+        "gender": "f",
+        "prof": "",
+        "loc": "Pune",
+        "fee": None,
         "role": "client",
         "bio": "Wedding planner based in Pune. Curating the best performers for destination weddings across India.",
     },
     {
-        "name": "Amit Choudhury", "gender": "m",
-        "prof": "", "loc": "Kolkata", "fee": None,
+        "name": "Amit Choudhury",
+        "gender": "m",
+        "prof": "",
+        "loc": "Kolkata",
+        "fee": None,
         "role": "client",
         "bio": "Art gallery curator & cultural events organizer. Hosting exhibitions, concerts & literary festivals.",
     },
     {
-        "name": "Deepika Nambiar", "gender": "f",
-        "prof": "", "loc": "Bangalore", "fee": None,
+        "name": "Deepika Nambiar",
+        "gender": "f",
+        "prof": "",
+        "loc": "Bangalore",
+        "fee": None,
         "role": "client",
         "bio": "Cultural festival organizer in Bangalore. Connecting artists with audiences at large-scale public events.",
     },
-
     # --- 2 Dual-role (performer + client) ---
     {
-        "name": "Farhan Ali", "gender": "m",
-        "prof": "DJ", "loc": "Goa", "fee": 9500,
+        "name": "Farhan Ali",
+        "gender": "m",
+        "prof": "DJ",
+        "loc": "Goa",
+        "fee": 9500,
         "role": "dual",
         "bio": "Techno & house DJ. Underground scene veteran. Also hire performers for my own beach festival events.",
     },
     {
-        "name": "Simran Kaur", "gender": "f",
-        "prof": "Event Host", "loc": "Chandigarh", "fee": 7000,
+        "name": "Simran Kaur",
+        "gender": "f",
+        "prof": "Event Host",
+        "loc": "Chandigarh",
+        "fee": 7000,
         "role": "dual",
         "bio": "Professional anchor & moderator. I also organize college fests and need great performers every season.",
     },
 ]
 
 VENUES = [
-    "The Jazz Lounge", "Blue Note Club", "Grand Ballroom",
-    "City Park Amphitheater", "Sunset Terrace", "Hotel Majestic",
-    "Convention Center Hall A", "Rooftop Garden Bar", "Beach Resort Stage",
-    "Heritage Palace Courtyard", "The Art Gallery", "Community Hall",
+    "The Jazz Lounge",
+    "Blue Note Club",
+    "Grand Ballroom",
+    "City Park Amphitheater",
+    "Sunset Terrace",
+    "Hotel Majestic",
+    "Convention Center Hall A",
+    "Rooftop Garden Bar",
+    "Beach Resort Stage",
+    "Heritage Palace Courtyard",
+    "The Art Gallery",
+    "Community Hall",
 ]
 
 OCCASIONS = [
-    "Birthday Party", "Corporate Event", "Wedding Reception",
-    "Private Dinner", "Club Night", "Festival", "College Fest",
-    "Product Launch", "Charity Gala", "House Party",
-    "New Year Eve Party", "Anniversary Celebration",
+    "Birthday Party",
+    "Corporate Event",
+    "Wedding Reception",
+    "Private Dinner",
+    "Club Night",
+    "Festival",
+    "College Fest",
+    "Product Launch",
+    "Charity Gala",
+    "House Party",
+    "New Year Eve Party",
+    "Anniversary Celebration",
 ]
 
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _download_image(url, timeout=10):
     """Download an image from a URL. Returns bytes or None on failure."""
@@ -197,11 +272,15 @@ def _download_image(url, timeout=10):
 
 def _make_colored_square(width=400, height=400):
     """Generate a random colored JPEG in memory. Fallback for network errors."""
-    img = Image.new("RGB", (width, height), color=(
-        random.randint(30, 220),
-        random.randint(30, 220),
-        random.randint(30, 220),
-    ))
+    img = Image.new(
+        "RGB",
+        (width, height),
+        color=(
+            random.randint(30, 220),
+            random.randint(30, 220),
+            random.randint(30, 220),
+        ),
+    )
     buf = BytesIO()
     img.save(buf, format="JPEG", quality=85)
     return buf.getvalue()
@@ -237,32 +316,39 @@ def _random_time():
 # Command
 # ---------------------------------------------------------------------------
 
+
 class Command(BaseCommand):
     help = "Seed 20 showcase users + engagement scenarios for investor demos."
 
     def add_arguments(self, parser):
         parser.add_argument(
-            "--admin-username", type=str, default="",
+            "--admin-username",
+            type=str,
+            default="",
             help="Superuser username to configure as client. "
-                 "If empty, auto-detects the first superuser.",
+            "If empty, auto-detects the first superuser.",
         )
         parser.add_argument(
-            "--skip-cleanup", action="store_true",
+            "--skip-cleanup",
+            action="store_true",
             help="Skip nuking old load-test users (useful for re-runs).",
         )
         parser.add_argument(
-            "--dry-run", action="store_true",
+            "--dry-run",
+            action="store_true",
             help="Print what would happen without making changes.",
         )
 
     def handle(self, *args, **options):
         dry_run = options["dry_run"]
 
-        self.stdout.write(self.style.MIGRATE_HEADING(
-            "\n========================================\n"
-            "  Showcase Seeder for Investor Demo\n"
-            "========================================\n"
-        ))
+        self.stdout.write(
+            self.style.MIGRATE_HEADING(
+                "\n========================================\n"
+                "  Showcase Seeder for Investor Demo\n"
+                "========================================\n"
+            )
+        )
 
         if dry_run:
             self.stdout.write(self.style.WARNING("  *** DRY RUN — no changes ***\n"))
@@ -283,18 +369,22 @@ class Command(BaseCommand):
         if not dry_run:
             self._seed_engagements(user_map, admin_user)
 
-        self.stdout.write(self.style.SUCCESS(
-            "\n========================================\n"
-            "  SEED SHOWCASE COMPLETE\n"
-            "========================================\n"
-        ))
+        self.stdout.write(
+            self.style.SUCCESS(
+                "\n========================================\n"
+                "  SEED SHOWCASE COMPLETE\n"
+                "========================================\n"
+            )
+        )
 
     # ------------------------------------------------------------------
     # Phase 0
     # ------------------------------------------------------------------
 
     def _nuke_old_users(self, dry_run):
-        self.stdout.write(self.style.MIGRATE_HEADING("\n--- Phase 0: Nuke old load-test users ---"))
+        self.stdout.write(
+            self.style.MIGRATE_HEADING("\n--- Phase 0: Nuke old load-test users ---")
+        )
 
         old_users = User.objects.filter(
             Q(username__startswith="loadtest_user_")
@@ -310,7 +400,9 @@ class Command(BaseCommand):
         self.stdout.write(f"  Found {count} old users to delete.")
 
         if dry_run:
-            self.stdout.write(f"  [DRY RUN] Would delete {count} users + their storage files.")
+            self.stdout.write(
+                f"  [DRY RUN] Would delete {count} users + their storage files."
+            )
             return
 
         # Clean up storage files BEFORE cascade-deleting the DB rows
@@ -352,24 +444,28 @@ class Command(BaseCommand):
         # Now cascade-delete the users (Profile, Upload, Engagement, Token rows)
         deleted_count, _ = old_users.delete()
 
-        self.stdout.write(self.style.SUCCESS(
-            f"  Nuked {deleted_count} DB objects, "
-            f"{storage_deleted} storage files deleted."
-        ))
+        self.stdout.write(
+            self.style.SUCCESS(
+                f"  Nuked {deleted_count} DB objects, "
+                f"{storage_deleted} storage files deleted."
+            )
+        )
 
     # ------------------------------------------------------------------
     # Phase 1
     # ------------------------------------------------------------------
 
     def _create_showcase_users(self, dry_run):
-        self.stdout.write(self.style.MIGRATE_HEADING(
-            "\n--- Phase 1: Create 20 showcase users ---"
-        ))
+        self.stdout.write(
+            self.style.MIGRATE_HEADING("\n--- Phase 1: Create 20 showcase users ---")
+        )
 
         if dry_run:
             for d in SHOWCASE_USERS:
                 safe = d["name"].lower().replace(" ", "_")
-                self.stdout.write(f"  [DRY RUN] Would create demo_{safe} — {d['prof'] or d['role']}")
+                self.stdout.write(
+                    f"  [DRY RUN] Would create demo_{safe} — {d['prof'] or d['role']}"
+                )
             return {}
 
         user_map = {}  # username → User object
@@ -381,7 +477,9 @@ class Command(BaseCommand):
             first_name = parts[0]
             last_name = " ".join(parts[1:])
 
-            self.stdout.write(f"  [{idx + 1}/20] {username} — {d['prof'] or d['role']}...")
+            self.stdout.write(
+                f"  [{idx + 1}/20] {username} — {d['prof'] or d['role']}..."
+            )
 
             # Create user
             user, created = User.objects.get_or_create(
@@ -423,9 +521,7 @@ class Command(BaseCommand):
             profile.profile_picture = ContentFile(
                 avatar_bytes, name=f"{username}_avatar.jpg"
             )
-            profile.cover_photo = ContentFile(
-                cover_bytes, name=f"{username}_cover.jpg"
-            )
+            profile.cover_photo = ContentFile(cover_bytes, name=f"{username}_cover.jpg")
             profile.save()
 
             # Gallery uploads (3-5 colored squares per performer)
@@ -448,15 +544,23 @@ class Command(BaseCommand):
 
             user_map[username] = user
 
-        performers = [u for d, u in zip(SHOWCASE_USERS, user_map.values())
-                      if d["role"] in ("performer", "dual")]
-        clients = [u for d, u in zip(SHOWCASE_USERS, user_map.values())
-                   if d["role"] in ("client", "dual")]
+        performers = [
+            u
+            for d, u in zip(SHOWCASE_USERS, user_map.values())
+            if d["role"] in ("performer", "dual")
+        ]
+        clients = [
+            u
+            for d, u in zip(SHOWCASE_USERS, user_map.values())
+            if d["role"] in ("client", "dual")
+        ]
 
-        self.stdout.write(self.style.SUCCESS(
-            f"  20 showcase users created "
-            f"({len(performers)} performers, {len(clients)} clients)"
-        ))
+        self.stdout.write(
+            self.style.SUCCESS(
+                f"  20 showcase users created "
+                f"({len(performers)} performers, {len(clients)} clients)"
+            )
+        )
         return user_map
 
     # ------------------------------------------------------------------
@@ -464,9 +568,9 @@ class Command(BaseCommand):
     # ------------------------------------------------------------------
 
     def _configure_admin(self, admin_username, dry_run):
-        self.stdout.write(self.style.MIGRATE_HEADING(
-            "\n--- Phase 2: Configure admin account ---"
-        ))
+        self.stdout.write(
+            self.style.MIGRATE_HEADING("\n--- Phase 2: Configure admin account ---")
+        )
 
         if admin_username:
             admin_user = User.objects.filter(username=admin_username).first()
@@ -474,10 +578,12 @@ class Command(BaseCommand):
             admin_user = User.objects.filter(is_superuser=True).first()
 
         if not admin_user:
-            self.stdout.write(self.style.WARNING(
-                "  No superuser found! Skipping admin configuration.\n"
-                "  Create one with: python manage.py createsuperuser"
-            ))
+            self.stdout.write(
+                self.style.WARNING(
+                    "  No superuser found! Skipping admin configuration.\n"
+                    "  Create one with: python manage.py createsuperuser"
+                )
+            )
             return None
 
         self.stdout.write(f"  Found admin: {admin_user.username}")
@@ -497,15 +603,21 @@ class Command(BaseCommand):
         profile.is_potential_client = True
         profile.client_approved = True
         profile.client_blacklisted = False
-        profile.save(update_fields=[
-            "is_potential_client", "client_approved", "client_blacklisted",
-        ])
+        profile.save(
+            update_fields=[
+                "is_potential_client",
+                "client_approved",
+                "client_blacklisted",
+            ]
+        )
 
-        self.stdout.write(self.style.SUCCESS(
-            f"  Admin username:  {admin_user.username}\n"
-            f"  Password reset:  {PASSWORD}\n"
-            f"  client_approved: True"
-        ))
+        self.stdout.write(
+            self.style.SUCCESS(
+                f"  Admin username:  {admin_user.username}\n"
+                f"  Password reset:  {PASSWORD}\n"
+                f"  client_approved: True"
+            )
+        )
         return admin_user
 
     # ------------------------------------------------------------------
@@ -513,14 +625,14 @@ class Command(BaseCommand):
     # ------------------------------------------------------------------
 
     def _seed_engagements(self, user_map, admin_user):
-        self.stdout.write(self.style.MIGRATE_HEADING(
-            "\n--- Phase 3: Seed engagement scenarios ---"
-        ))
+        self.stdout.write(
+            self.style.MIGRATE_HEADING("\n--- Phase 3: Seed engagement scenarios ---")
+        )
 
         if not user_map:
-            self.stdout.write(self.style.WARNING(
-                "  No showcase users found. Skipping engagements."
-            ))
+            self.stdout.write(
+                self.style.WARNING("  No showcase users found. Skipping engagements.")
+            )
             return
 
         # Helper to look up a user by short key
@@ -537,66 +649,134 @@ class Command(BaseCommand):
 
         # --- Scenario A: Admin's hiring dashboard ---
         if admin_user:
-            scenarios.extend([
-                (admin_user, "priya_sharma", 25, Engagement.STATUS_ACCEPTED,
-                 {"accepted_at": timezone.now()}),
-                (admin_user, "aarav_mehta", 30, Engagement.STATUS_PENDING, {}),
-                (admin_user, "kabir_malhotra", 35, Engagement.STATUS_DECLINED, {}),
-            ])
+            scenarios.extend(
+                [
+                    (
+                        admin_user,
+                        "priya_sharma",
+                        25,
+                        Engagement.STATUS_ACCEPTED,
+                        {"accepted_at": timezone.now()},
+                    ),
+                    (admin_user, "aarav_mehta", 30, Engagement.STATUS_PENDING, {}),
+                    (admin_user, "kabir_malhotra", 35, Engagement.STATUS_DECLINED, {}),
+                ]
+            )
 
         # --- Scenario B: One-per-day auto-cancel (Rohan Kapoor, day +28) ---
-        scenarios.extend([
-            (u("rajiv_kapoor"), "rohan_kapoor", 28, Engagement.STATUS_ACCEPTED,
-             {"accepted_at": timezone.now()}),
-            (u("sunita_deshmukh"), "rohan_kapoor", 28,
-             Engagement.STATUS_CANCELLED_PERFORMER, {}),
-            (u("amit_choudhury"), "rohan_kapoor", 28,
-             Engagement.STATUS_CANCELLED_PERFORMER, {}),
-        ])
+        scenarios.extend(
+            [
+                (
+                    u("rajiv_kapoor"),
+                    "rohan_kapoor",
+                    28,
+                    Engagement.STATUS_ACCEPTED,
+                    {"accepted_at": timezone.now()},
+                ),
+                (
+                    u("sunita_deshmukh"),
+                    "rohan_kapoor",
+                    28,
+                    Engagement.STATUS_CANCELLED_PERFORMER,
+                    {},
+                ),
+                (
+                    u("amit_choudhury"),
+                    "rohan_kapoor",
+                    28,
+                    Engagement.STATUS_CANCELLED_PERFORMER,
+                    {},
+                ),
+            ]
+        )
 
         # --- Scenario C: Performer declines ---
-        scenarios.extend([
-            (u("deepika_nambiar"), "meera_iyer", 32,
-             Engagement.STATUS_DECLINED, {}),
-            (u("rajiv_kapoor"), "ananya_nair", 40,
-             Engagement.STATUS_DECLINED, {}),
-        ])
+        scenarios.extend(
+            [
+                (
+                    u("deepika_nambiar"),
+                    "meera_iyer",
+                    32,
+                    Engagement.STATUS_DECLINED,
+                    {},
+                ),
+                (u("rajiv_kapoor"), "ananya_nair", 40, Engagement.STATUS_DECLINED, {}),
+            ]
+        )
 
         # --- Scenario D: Client's pending queue (Sunita) ---
-        scenarios.extend([
-            (u("sunita_deshmukh"), "siddharth_patel", 35,
-             Engagement.STATUS_PENDING, {}),
-            (u("sunita_deshmukh"), "neha_gupta", 38,
-             Engagement.STATUS_PENDING, {}),
-            (u("sunita_deshmukh"), "vikram_joshi", 42,
-             Engagement.STATUS_PENDING, {}),
-        ])
+        scenarios.extend(
+            [
+                (
+                    u("sunita_deshmukh"),
+                    "siddharth_patel",
+                    35,
+                    Engagement.STATUS_PENDING,
+                    {},
+                ),
+                (u("sunita_deshmukh"), "neha_gupta", 38, Engagement.STATUS_PENDING, {}),
+                (
+                    u("sunita_deshmukh"),
+                    "vikram_joshi",
+                    42,
+                    Engagement.STATUS_PENDING,
+                    {},
+                ),
+            ]
+        )
 
         # --- Scenario E: Client cancellation ---
-        scenarios.extend([
-            (u("amit_choudhury"), "zara_khan", 45,
-             Engagement.STATUS_CANCELLED_CLIENT,
-             {"cancellation_reason": "Event venue changed, need to reschedule",
-              "cancelled_by": "client"}),
-        ])
+        scenarios.extend(
+            [
+                (
+                    u("amit_choudhury"),
+                    "zara_khan",
+                    45,
+                    Engagement.STATUS_CANCELLED_CLIENT,
+                    {
+                        "cancellation_reason": "Event venue changed, need to reschedule",
+                        "cancelled_by": "client",
+                    },
+                ),
+            ]
+        )
 
         # --- Scenario F: Healthy accepted bookings ---
-        scenarios.extend([
-            (u("deepika_nambiar"), "farhan_ali", 33,
-             Engagement.STATUS_ACCEPTED, {"accepted_at": timezone.now()}),
-            (u("rajiv_kapoor"), "dev_saxena", 50,
-             Engagement.STATUS_ACCEPTED, {"accepted_at": timezone.now()}),
-            (u("sunita_deshmukh"), "kavya_menon", 55,
-             Engagement.STATUS_ACCEPTED, {"accepted_at": timezone.now()}),
-        ])
+        scenarios.extend(
+            [
+                (
+                    u("deepika_nambiar"),
+                    "farhan_ali",
+                    33,
+                    Engagement.STATUS_ACCEPTED,
+                    {"accepted_at": timezone.now()},
+                ),
+                (
+                    u("rajiv_kapoor"),
+                    "dev_saxena",
+                    50,
+                    Engagement.STATUS_ACCEPTED,
+                    {"accepted_at": timezone.now()},
+                ),
+                (
+                    u("sunita_deshmukh"),
+                    "kavya_menon",
+                    55,
+                    Engagement.STATUS_ACCEPTED,
+                    {"accepted_at": timezone.now()},
+                ),
+            ]
+        )
 
         for client, perf_key, day_offset, target_status, extras in scenarios:
             performer = u(perf_key)
             if not client or not performer:
-                self.stdout.write(self.style.WARNING(
-                    f"  Skipping engagement: client or performer not found "
-                    f"(perf_key={perf_key})"
-                ))
+                self.stdout.write(
+                    self.style.WARNING(
+                        f"  Skipping engagement: client or performer not found "
+                        f"(perf_key={perf_key})"
+                    )
+                )
                 continue
 
             event_date = base + timedelta(days=day_offset)
@@ -629,9 +809,11 @@ class Command(BaseCommand):
                 )
                 created += 1
             except Exception as exc:
-                self.stdout.write(self.style.WARNING(
-                    f"  Failed: {client.username} -> {performer.username}: {exc}"
-                ))
+                self.stdout.write(
+                    self.style.WARNING(
+                        f"  Failed: {client.username} -> {performer.username}: {exc}"
+                    )
+                )
 
         # Summary by status
         status_counts = {}
@@ -640,6 +822,6 @@ class Command(BaseCommand):
             status_counts[label] = status_counts.get(label, 0) + 1
 
         breakdown = ", ".join(f"{v} {k}" for k, v in status_counts.items())
-        self.stdout.write(self.style.SUCCESS(
-            f"  {created} engagements seeded ({breakdown})"
-        ))
+        self.stdout.write(
+            self.style.SUCCESS(f"  {created} engagements seeded ({breakdown})")
+        )

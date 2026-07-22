@@ -44,6 +44,7 @@ def _cached(key, timeout, compute_fn):
 # AUTH (Token) — required for Expo. Leanest solution: DRF authtoken.
 # -------------------------------------------------------------------
 
+
 class TokenLoginAPIView(APIView):
     permission_classes = [AllowAny]
 
@@ -58,14 +59,21 @@ class TokenLoginAPIView(APIView):
         password = request.data.get("password") or ""
 
         if not username or not password:
-            return Response({"detail": "username and password are required."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"detail": "username and password are required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         user = authenticate(username=username, password=password)
         if user is None:
-            return Response({"detail": "Invalid credentials."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"detail": "Invalid credentials."}, status=status.HTTP_400_BAD_REQUEST
+            )
 
         token, _ = Token.objects.get_or_create(user=user)
-        return Response({"token": token.key, "user_id": user.id, "username": user.username})
+        return Response(
+            {"token": token.key, "user_id": user.id, "username": user.username}
+        )
 
 
 class TokenLogoutAPIView(APIView):
@@ -91,11 +99,15 @@ class TokenMeAPIView(APIView):
         A tiny 'who am I' endpoint used by mobile apps to confirm auth state.
         """
         profile = request.user.profile
-        return Response({
-            "user_id": request.user.id,
-            "username": request.user.username,
-            "profile": MeProfileSerializer(profile, context={"request": request}).data,
-        })
+        return Response(
+            {
+                "user_id": request.user.id,
+                "username": request.user.username,
+                "profile": MeProfileSerializer(
+                    profile, context={"request": request}
+                ).data,
+            }
+        )
 
 
 class SignupAPIView(APIView):
@@ -107,6 +119,7 @@ class SignupAPIView(APIView):
     Mirrors the web signup view in users.views.signup but returns JSON + token
     so the Expo app can auto-login immediately after registration.
     """
+
     permission_classes = [AllowAny]
 
     @method_decorator(cache_control(no_store=True))
@@ -125,16 +138,21 @@ class SignupAPIView(APIView):
             status=status.HTTP_201_CREATED,
         )
 
+
 # -------------------------------------------------------------------
 # USERS API
 # -------------------------------------------------------------------
+
 
 class _LenientPaginatorMixin:
     """
     Your HTML global_feed uses paginator.get_page(), which never 404s on bad page values.
     We preserve that “won’t crash” behavior for the API too.
     """
-    page_size = 20  # matches users.views.global_feed :contentReference[oaicite:11]{index=11}
+
+    page_size = (
+        20  # matches users.views.global_feed :contentReference[oaicite:11]{index=11}
+    )
 
     def paginate_lenient(self, queryset, request):
         page_number = request.query_params.get("page")
@@ -148,13 +166,16 @@ class MeProfileAPIView(generics.RetrieveUpdateAPIView):
     GET/PATCH /api/users/me/
     Mirrors your /users/profile/ edit behavior, but JSON-based.
     """
+
     permission_classes = [IsAuthenticated]
     serializer_class = MeProfileSerializer
     parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     def get_object(self):
         # Ensure profile exists even if middleware changes.
-        profile, _ = Profile.objects.select_related("user").get_or_create(user=self.request.user)
+        profile, _ = Profile.objects.select_related("user").get_or_create(
+            user=self.request.user
+        )
         return profile
 
     @method_decorator(cache_control(private=True, max_age=15))
@@ -179,6 +200,7 @@ class MeProfileAPIView(generics.RetrieveUpdateAPIView):
 
 class PresignUploadAPIView(APIView):
     """POST /api/users/me/uploads/presign/ — returns presigned POST data for R2."""
+
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
@@ -208,6 +230,7 @@ class MyUploadsAPIView(generics.ListCreateAPIView):
     - newest first
     - hide avatar file if it exists among uploads
     """
+
     permission_classes = [IsAuthenticated]
     serializer_class = UploadSerializer
     parser_classes = [MultiPartParser, FormParser, JSONParser]
@@ -234,7 +257,11 @@ class MyUploadsAPIView(generics.ListCreateAPIView):
 
     def create(self, request, *args, **kwargs):
         # --- Presigned flow: JSON body with { key, caption } ---
-        if "key" in request.data and "image" not in request.FILES and "video" not in request.FILES:
+        if (
+            "key" in request.data
+            and "image" not in request.FILES
+            and "video" not in request.FILES
+        ):
             ser = PresignedUploadSerializer(data=request.data)
             ser.is_valid(raise_exception=True)
 
@@ -246,14 +273,16 @@ class MyUploadsAPIView(generics.ListCreateAPIView):
             is_video = key.endswith(".mp4")
 
             if is_video:
-                upload.video.name = key    # points django-storages at the R2 object
+                upload.video.name = key  # points django-storages at the R2 object
             else:
-                upload.image.name = key    # same — no re-upload, no Pillow in save()
+                upload.image.name = key  # same — no re-upload, no Pillow in save()
 
             try:
                 upload.save()  # is_fresh_upload() returns False (name is already committed)
             except ValidationError as e:
-                return Response({"detail": e.message}, status=status.HTTP_400_BAD_REQUEST)
+                return Response(
+                    {"detail": e.message}, status=status.HTTP_400_BAD_REQUEST
+                )
 
             cache.delete(f"uploads:{request.user.id}")
             cache.delete(f"profile:{request.user.id}")
@@ -262,9 +291,11 @@ class MyUploadsAPIView(generics.ListCreateAPIView):
             # Background tasks
             if is_video:
                 from users.tasks import compress_upload_video
+
                 compress_upload_video.delay(upload.id)
             else:
                 from users.tasks import process_uploaded_image
+
                 process_uploaded_image.delay(upload.id)
 
             out = UploadSerializer(upload, context={"request": request})
@@ -287,6 +318,7 @@ class MyUploadsAPIView(generics.ListCreateAPIView):
         # If the worker is offline, the message queues in Redis silently.
         if upload.video:
             from users.tasks import compress_upload_video
+
             compress_upload_video.delay(upload.id)
 
 
@@ -296,6 +328,7 @@ class MyUploadDeleteAPIView(generics.UpdateAPIView, generics.DestroyAPIView):
     DELETE /api/users/me/uploads/<upload_id>/ — delete upload
     Strictly scoped: user can only modify their own uploads.
     """
+
     permission_classes = [IsAuthenticated]
     serializer_class = UploadSerializer
     lookup_url_kwarg = "upload_id"
@@ -324,6 +357,7 @@ class GlobalFeedAPIView(_LenientPaginatorMixin, generics.GenericAPIView):
     Self-exclusion happens after cache retrieval — a microsecond list filter
     instead of a per-user DB query + serialization.
     """
+
     permission_classes = [IsAuthenticated]
     serializer_class = GlobalFeedProfileSerializer
 
@@ -335,9 +369,15 @@ class GlobalFeedAPIView(_LenientPaginatorMixin, generics.GenericAPIView):
 
         def compute():
             qs = (
-                Profile.objects
-                .select_related("user")
-                .only("user__id", "user__username", "profession", "profile_picture", "is_performer")
+                Profile.objects.select_related("user")
+                .only(
+                    "user__id",
+                    "user__username",
+                    "profession",
+                    "profile_picture",
+                    "is_performer",
+                )
+                .order_by("id")
             )
 
             professions = [p for p in request.query_params.getlist("profession") if p]
@@ -345,7 +385,9 @@ class GlobalFeedAPIView(_LenientPaginatorMixin, generics.GenericAPIView):
                 qs = qs.filter(profession__in=professions)
 
             paginator, page_obj = self.paginate_lenient(qs, request)
-            ser = self.get_serializer(page_obj.object_list, many=True, context={"request": request})
+            ser = self.get_serializer(
+                page_obj.object_list, many=True, context={"request": request}
+            )
 
             return {
                 "count": paginator.count,
@@ -361,14 +403,16 @@ class GlobalFeedAPIView(_LenientPaginatorMixin, generics.GenericAPIView):
         # Post-cache: strip the requesting user from results
         filtered = [p for p in data["results"] if p["user_id"] != request.user.id]
 
-        return Response({
-            "count":        max(data["count"] - 1, 0),
-            "num_pages":    data["num_pages"],
-            "page":         data["page"],
-            "has_next":     data["has_next"],
-            "has_previous": data["has_previous"],
-            "results":      filtered,
-        })
+        return Response(
+            {
+                "count": max(data["count"] - 1, 0),
+                "num_pages": data["num_pages"],
+                "page": data["page"],
+                "has_next": data["has_next"],
+                "has_previous": data["has_previous"],
+                "results": filtered,
+            }
+        )
 
 
 class ProfileDetailAPIView(generics.RetrieveAPIView):
@@ -376,11 +420,14 @@ class ProfileDetailAPIView(generics.RetrieveAPIView):
     GET /api/users/profiles/<user_id>/
     Mirrors users.views.profile_detail: other user's profile + uploads.
     """
+
     permission_classes = [IsAuthenticated]
     serializer_class = PublicProfileDetailSerializer
 
     def get_object(self):
-        return get_object_or_404(Profile.objects.select_related("user"), user__id=self.kwargs["user_id"])
+        return get_object_or_404(
+            Profile.objects.select_related("user"), user__id=self.kwargs["user_id"]
+        )
 
     @method_decorator(cache_control(private=True, max_age=60))
     def retrieve(self, request, *args, **kwargs):
@@ -401,14 +448,14 @@ class ProfessionsAPIView(APIView):
     Helps frontend build the same filter options as your ProfessionFilterForm.
     Cached for 5 minutes — profession list changes very rarely.
     """
+
     permission_classes = [IsAuthenticated]
 
     @method_decorator(cache_control(private=True, max_age=300))
     def get(self, request):
         def compute():
             return list(
-                Profile.objects
-                .exclude(profession__isnull=True)
+                Profile.objects.exclude(profession__isnull=True)
                 .exclude(profession__exact="")
                 .values_list("profession", flat=True)
                 .distinct()
@@ -423,6 +470,7 @@ class LiveEventsAPIView(_LenientPaginatorMixin, APIView):
     GET /api/users/live-events/?page=1
     Mirrors users.views.live_events: accepted upcoming engagements, paginated.
     """
+
     permission_classes = [IsAuthenticated]
     page_size = 10  # matches users.views.live_events page size
 
@@ -456,16 +504,22 @@ class LiveEventsAPIView(_LenientPaginatorMixin, APIView):
 
             paginator, page_obj = self.paginate_lenient(qs, request)
 
-            results = [{
-                "id": e.id,
-                "date": e.date,
-                "time": e.time,
-                "venue": e.venue,
-                "occasion": e.occasion,
-                "status": e.status,
-                "client": {"id": e.client.id, "username": e.client.username},
-                "performer": {"id": e.performer.id, "username": e.performer.username},
-            } for e in page_obj.object_list]
+            results = [
+                {
+                    "id": e.id,
+                    "date": e.date,
+                    "time": e.time,
+                    "venue": e.venue,
+                    "occasion": e.occasion,
+                    "status": e.status,
+                    "client": {"id": e.client.id, "username": e.client.username},
+                    "performer": {
+                        "id": e.performer.id,
+                        "username": e.performer.username,
+                    },
+                }
+                for e in page_obj.object_list
+            ]
 
             return {
                 "count": paginator.count,

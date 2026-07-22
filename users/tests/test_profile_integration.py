@@ -46,22 +46,28 @@ class TestProfileWebIntegration(TestCase):
         }
 
     def test_update_bio_only(self):
-        resp = self.client.post("/users/profile/", {
-            **self._base_payload(),
-            "bio": "Wildlife photographer based in Pune",
-        })
+        resp = self.client.post(
+            "/users/profile/",
+            {
+                **self._base_payload(),
+                "bio": "Wildlife photographer based in Pune",
+            },
+        )
         self.assertEqual(resp.status_code, 302)
         self.profile.refresh_from_db()
         self.assertEqual(self.profile.bio, "Wildlife photographer based in Pune")
         self.assertEqual(self.profile.profession, "Photographer")
 
     def test_update_multiple_fields(self):
-        resp = self.client.post("/users/profile/", {
-            **self._base_payload(),
-            "bio": "Portrait & wedding photographer",
-            "profession": "Photographer & Editor",
-            "location": "Delhi",
-        })
+        resp = self.client.post(
+            "/users/profile/",
+            {
+                **self._base_payload(),
+                "bio": "Portrait & wedding photographer",
+                "profession": "Photographer & Editor",
+                "location": "Delhi",
+            },
+        )
         self.assertEqual(resp.status_code, 302)
         self.profile.refresh_from_db()
         self.assertEqual(self.profile.bio, "Portrait & wedding photographer")
@@ -69,51 +75,69 @@ class TestProfileWebIntegration(TestCase):
         self.assertEqual(self.profile.location, "Delhi")
 
     def test_profile_picture_upload(self):
-        resp = self.client.post("/users/profile/", {
-            **self._base_payload(),
-            "profile_picture": self._fake_image(),
-        })
+        resp = self.client.post(
+            "/users/profile/",
+            {
+                **self._base_payload(),
+                "profile_picture": self._fake_image(),
+            },
+        )
         self.assertEqual(resp.status_code, 302)
         self.profile.refresh_from_db()
         self.assertTrue(self.profile.profile_picture)
 
     def test_cover_photo_upload(self):
-        resp = self.client.post("/users/profile/", {
-            **self._base_payload(),
-            "cover_photo": self._fake_image(),
-        })
+        resp = self.client.post(
+            "/users/profile/",
+            {
+                **self._base_payload(),
+                "cover_photo": self._fake_image(),
+            },
+        )
         self.assertEqual(resp.status_code, 302)
         self.profile.refresh_from_db()
         self.assertTrue(self.profile.cover_photo)
 
     def test_toggle_is_performer(self):
-        resp = self.client.post("/users/profile/", {
-            **self._base_payload(),
-            "is_performer": "on",
-        })
+        resp = self.client.post(
+            "/users/profile/",
+            {
+                **self._base_payload(),
+                "is_performer": "on",
+            },
+        )
         self.assertEqual(resp.status_code, 302)
         self.profile.refresh_from_db()
         self.assertTrue(self.profile.is_performer)
 
-        resp = self.client.post("/users/profile/", {
-            **self._base_payload(),
-        })
+        resp = self.client.post(
+            "/users/profile/",
+            {
+                **self._base_payload(),
+            },
+        )
         self.assertEqual(resp.status_code, 302)
         self.profile.refresh_from_db()
         self.assertFalse(self.profile.is_performer)
 
     def test_toggle_is_potential_client(self):
-        resp = self.client.post("/users/profile/", {
-            **self._base_payload(),
-            "is_potential_client": "on",
-        })
+        resp = self.client.post(
+            "/users/profile/",
+            {
+                **self._base_payload(),
+                "is_potential_client": "on",
+            },
+        )
         self.assertEqual(resp.status_code, 302)
         self.profile.refresh_from_db()
         self.assertTrue(self.profile.is_potential_client)
 
-        resp = self.client.post("/users/profile/", {
-            **self._base_payload(),
-        })
+        resp = self.client.post(
+            "/users/profile/",
+            {
+                **self._base_payload(),
+            },
+        )
         self.assertEqual(resp.status_code, 302)
         self.profile.refresh_from_db()
         self.assertFalse(self.profile.is_potential_client)
@@ -127,10 +151,14 @@ class TestProfileWebIntegration(TestCase):
         self.assertEqual(self.profile.profession, "")
 
     def test_updated_data_appears_on_page(self):
-        resp = self.client.post("/users/profile/", {
-            **self._base_payload(),
-            "bio": "New bio visible on page",
-        }, follow=True)
+        resp = self.client.post(
+            "/users/profile/",
+            {
+                **self._base_payload(),
+                "bio": "New bio visible on page",
+            },
+            follow=True,
+        )
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, "New bio visible on page")
 

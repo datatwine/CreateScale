@@ -10,8 +10,9 @@ class TestHireAPIIntegration(TestCase):
     def setUp(self):
         self.client = APIClient()
 
-    def _create_client(self, username="client_jazz", profession="Event Planner",
-                       location="Mumbai"):
+    def _create_client(
+        self, username="client_jazz", profession="Event Planner", location="Mumbai"
+    ):
         user = User.objects.create_user(
             username=username, email=f"{username}@example.com", password="pass123"
         )
@@ -24,8 +25,13 @@ class TestHireAPIIntegration(TestCase):
         token = Token.objects.create(user=user)
         return user, token
 
-    def _create_performer(self, username="performer.sax", profession="Saxophonist",
-                          location="Mumbai", performer_fee=5000.00):
+    def _create_performer(
+        self,
+        username="performer.sax",
+        profession="Saxophonist",
+        location="Mumbai",
+        performer_fee=5000.00,
+    ):
         user = User.objects.create_user(
             username=username, email=f"{username}@example.com", password="pass123"
         )
@@ -47,12 +53,16 @@ class TestHireAPIIntegration(TestCase):
 
         self.client.credentials(HTTP_AUTHORIZATION=f"Token {client_token.key}")
 
-        resp = self.client.post(f"/api/bookings/hire/{performer.id}/", {
-            "occasion": "Saxophonist for wedding",
-            "date": str(date.today() + timedelta(days=30)),
-            "time": "18:00",
-            "venue": "Mumbai",
-        }, format="json")
+        resp = self.client.post(
+            f"/api/bookings/hire/{performer.id}/",
+            {
+                "occasion": "Saxophonist for wedding",
+                "date": str(date.today() + timedelta(days=30)),
+                "time": "18:00",
+                "venue": "Mumbai",
+            },
+            format="json",
+        )
 
         self.assertEqual(resp.status_code, 201)
         self.assertEqual(resp.data["status"], "pending")
@@ -73,12 +83,16 @@ class TestHireAPIIntegration(TestCase):
         _, client_token = self._create_client()
         self.client.credentials(HTTP_AUTHORIZATION=f"Token {client_token.key}")
 
-        resp = self.client.post(f"/api/bookings/hire/{performer.id}/", {
-            "occasion": "Saxophonist for event",
-            "date": str(date.today() + timedelta(days=14)),
-            "time": "18:00",
-            "venue": "Pune",
-        }, format="json")
+        resp = self.client.post(
+            f"/api/bookings/hire/{performer.id}/",
+            {
+                "occasion": "Saxophonist for event",
+                "date": str(date.today() + timedelta(days=14)),
+                "time": "18:00",
+                "venue": "Pune",
+            },
+            format="json",
+        )
 
         self.assertEqual(resp.status_code, 201)
         eng = Engagement.objects.get(id=resp.data["id"])
@@ -88,12 +102,16 @@ class TestHireAPIIntegration(TestCase):
         performer, performer_token = self._create_performer()
         self.client.credentials(HTTP_AUTHORIZATION=f"Token {performer_token.key}")
 
-        resp = self.client.post(f"/api/bookings/hire/{performer.id}/", {
-            "occasion": "Hire myself",
-            "date": str(date.today() + timedelta(days=10)),
-            "time": "18:00",
-            "venue": "Delhi",
-        }, format="json")
+        resp = self.client.post(
+            f"/api/bookings/hire/{performer.id}/",
+            {
+                "occasion": "Hire myself",
+                "date": str(date.today() + timedelta(days=10)),
+                "time": "18:00",
+                "venue": "Delhi",
+            },
+            format="json",
+        )
 
         self.assertEqual(resp.status_code, 400)
 
@@ -112,12 +130,16 @@ class TestHireAPIIntegration(TestCase):
         token = Token.objects.create(user=user)
         self.client.credentials(HTTP_AUTHORIZATION=f"Token {token.key}")
 
-        resp = self.client.post(f"/api/bookings/hire/{user.id}/", {
-            "occasion": "Hire myself as dual-role",
-            "date": str(date.today() + timedelta(days=10)),
-            "time": "18:00",
-            "venue": "Mumbai",
-        }, format="json")
+        resp = self.client.post(
+            f"/api/bookings/hire/{user.id}/",
+            {
+                "occasion": "Hire myself as dual-role",
+                "date": str(date.today() + timedelta(days=10)),
+                "time": "18:00",
+                "venue": "Mumbai",
+            },
+            format="json",
+        )
 
         self.assertEqual(resp.status_code, 400)
 
@@ -125,13 +147,17 @@ class TestHireAPIIntegration(TestCase):
         _, client_token = self._create_client()
         self.client.credentials(HTTP_AUTHORIZATION=f"Token {client_token.key}")
 
-        resp = self.client.post("/api/bookings/hire/99999/", {
-            "role_name": "Ghost performer",
-            "date": str(date.today() + timedelta(days=10)),
-            "location": "Nowhere",
-            "message": "Does not exist",
-            "budget": 1000,
-        }, format="json")
+        resp = self.client.post(
+            "/api/bookings/hire/99999/",
+            {
+                "role_name": "Ghost performer",
+                "date": str(date.today() + timedelta(days=10)),
+                "location": "Nowhere",
+                "message": "Does not exist",
+                "budget": 1000,
+            },
+            format="json",
+        )
 
         self.assertEqual(resp.status_code, 404)
 
@@ -140,12 +166,16 @@ class TestHireAPIIntegration(TestCase):
         _, client_token = self._create_client()
         self.client.credentials(HTTP_AUTHORIZATION=f"Token {client_token.key}")
 
-        resp = self.client.post(f"/api/bookings/hire/{performer.id}/", {
-            "occasion": "Past gig",
-            "date": str(date.today() - timedelta(days=1)),
-            "time": "18:00",
-            "venue": "History",
-        }, format="json")
+        resp = self.client.post(
+            f"/api/bookings/hire/{performer.id}/",
+            {
+                "occasion": "Past gig",
+                "date": str(date.today() - timedelta(days=1)),
+                "time": "18:00",
+                "venue": "History",
+            },
+            format="json",
+        )
 
         self.assertEqual(resp.status_code, 400)
 
@@ -161,10 +191,14 @@ class TestHireAPIIntegration(TestCase):
             "venue": "Mumbai",
         }
 
-        resp = self.client.post(f"/api/bookings/hire/{performer.id}/", payload, format="json")
+        resp = self.client.post(
+            f"/api/bookings/hire/{performer.id}/", payload, format="json"
+        )
         self.assertEqual(resp.status_code, 201)
 
-        resp = self.client.post(f"/api/bookings/hire/{performer.id}/", payload, format="json")
+        resp = self.client.post(
+            f"/api/bookings/hire/{performer.id}/", payload, format="json"
+        )
         self.assertEqual(resp.status_code, 400)
 
     def test_duplicate_allowed_for_different_date(self):
@@ -172,20 +206,28 @@ class TestHireAPIIntegration(TestCase):
         _, client_token = self._create_client()
         self.client.credentials(HTTP_AUTHORIZATION=f"Token {client_token.key}")
 
-        resp = self.client.post(f"/api/bookings/hire/{performer.id}/", {
-            "occasion": "First date",
-            "date": str(date.today() + timedelta(days=30)),
-            "time": "18:00",
-            "venue": "Mumbai",
-        }, format="json")
+        resp = self.client.post(
+            f"/api/bookings/hire/{performer.id}/",
+            {
+                "occasion": "First date",
+                "date": str(date.today() + timedelta(days=30)),
+                "time": "18:00",
+                "venue": "Mumbai",
+            },
+            format="json",
+        )
         self.assertEqual(resp.status_code, 201)
 
-        resp = self.client.post(f"/api/bookings/hire/{performer.id}/", {
-            "occasion": "Different date",
-            "date": str(date.today() + timedelta(days=31)),
-            "time": "18:00",
-            "venue": "Mumbai",
-        }, format="json")
+        resp = self.client.post(
+            f"/api/bookings/hire/{performer.id}/",
+            {
+                "occasion": "Different date",
+                "date": str(date.today() + timedelta(days=31)),
+                "time": "18:00",
+                "venue": "Mumbai",
+            },
+            format="json",
+        )
         self.assertEqual(resp.status_code, 201)
 
     def test_duplicate_allowed_for_different_performer(self):
@@ -201,10 +243,14 @@ class TestHireAPIIntegration(TestCase):
             "venue": "Mumbai",
         }
 
-        resp = self.client.post(f"/api/bookings/hire/{performer_a.id}/", payload, format="json")
+        resp = self.client.post(
+            f"/api/bookings/hire/{performer_a.id}/", payload, format="json"
+        )
         self.assertEqual(resp.status_code, 201)
 
-        resp = self.client.post(f"/api/bookings/hire/{performer_b.id}/", payload, format="json")
+        resp = self.client.post(
+            f"/api/bookings/hire/{performer_b.id}/", payload, format="json"
+        )
         self.assertEqual(resp.status_code, 201)
 
     def test_hire_capped_at_three_pending_engagements(self):
@@ -214,18 +260,26 @@ class TestHireAPIIntegration(TestCase):
 
         dates = self._booked_dates(date.today() + timedelta(days=60), count=3)
         for i, d in enumerate(dates):
-            resp = self.client.post(f"/api/bookings/hire/{performer.id}/", {
-                "occasion": f"Gig {i+1}",
-                "date": str(d),
-                "time": "18:00",
-                "venue": "Mumbai",
-            }, format="json")
+            resp = self.client.post(
+                f"/api/bookings/hire/{performer.id}/",
+                {
+                    "occasion": f"Gig {i + 1}",
+                    "date": str(d),
+                    "time": "18:00",
+                    "venue": "Mumbai",
+                },
+                format="json",
+            )
             self.assertEqual(resp.status_code, 201)
 
-        resp = self.client.post(f"/api/bookings/hire/{performer.id}/", {
-            "occasion": "Gig 4 — over limit",
-            "date": str(date.today() + timedelta(days=90)),
-            "time": "18:00",
-            "venue": "Mumbai",
-        }, format="json")
+        resp = self.client.post(
+            f"/api/bookings/hire/{performer.id}/",
+            {
+                "occasion": "Gig 4 — over limit",
+                "date": str(date.today() + timedelta(days=90)),
+                "time": "18:00",
+                "venue": "Mumbai",
+            },
+            format="json",
+        )
         self.assertEqual(resp.status_code, 400)

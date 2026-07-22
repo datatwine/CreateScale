@@ -14,8 +14,14 @@ class TestCancelAPIIntegration(TestCase):
     def setUp(self):
         self.client = APIClient()
 
-    def _create_user(self, username, role="performer", profession="Saxophonist",
-                     location="Mumbai", performer_fee=5000.00):
+    def _create_user(
+        self,
+        username,
+        role="performer",
+        profession="Saxophonist",
+        location="Mumbai",
+        performer_fee=5000.00,
+    ):
         user = User.objects.create_user(
             username=username, email=f"{username}@example.com", password="pass123"
         )
@@ -34,12 +40,16 @@ class TestCancelAPIIntegration(TestCase):
 
     def _hire(self, performer, performer_token, client_token):
         self.client.credentials(HTTP_AUTHORIZATION=f"Token {client_token.key}")
-        resp = self.client.post(f"/api/bookings/hire/{performer.id}/", {
-            "occasion": "Jazz gig",
-            "date": str(date.today() + timedelta(days=30)),
-            "time": "18:00",
-            "venue": "Mumbai",
-        }, format="json")
+        resp = self.client.post(
+            f"/api/bookings/hire/{performer.id}/",
+            {
+                "occasion": "Jazz gig",
+                "date": str(date.today() + timedelta(days=30)),
+                "time": "18:00",
+                "venue": "Mumbai",
+            },
+            format="json",
+        )
         self.assertEqual(resp.status_code, 201)
         return resp.data["id"]
 
@@ -61,8 +71,12 @@ class TestCancelAPIIntegration(TestCase):
         client_user, client_token = self._create_user("client.cancel", role="client")
         eng_id = self._hire(performer, performer_token, client_token)
 
-        resp = self._action(eng_id, "cancel_client", client_token,
-                            reason="I found another performer for the event.")
+        resp = self._action(
+            eng_id,
+            "cancel_client",
+            client_token,
+            reason="I found another performer for the event.",
+        )
         self.assertEqual(resp.status_code, 200)
 
         eng = Engagement.objects.get(id=eng_id)
@@ -74,8 +88,12 @@ class TestCancelAPIIntegration(TestCase):
         client_user, client_token = self._create_user("client.cancel2", role="client")
         eng_id = self._hire(performer, performer_token, client_token)
 
-        resp = self._action(eng_id, "cancel_performer", performer_token,
-                            reason="I am no longer available on that date.")
+        resp = self._action(
+            eng_id,
+            "cancel_performer",
+            performer_token,
+            reason="I am no longer available on that date.",
+        )
         self.assertEqual(resp.status_code, 200)
 
         eng = Engagement.objects.get(id=eng_id)
@@ -97,8 +115,7 @@ class TestCancelAPIIntegration(TestCase):
         client_user, client_token = self._create_user("client.long", role="client")
         eng_id = self._hire(performer, performer_token, client_token)
 
-        resp = self._action(eng_id, "cancel_client", client_token,
-                            reason="x" * 501)
+        resp = self._action(eng_id, "cancel_client", client_token, reason="x" * 501)
         self.assertEqual(resp.status_code, 400)
 
     def test_cancel_reason_empty_returns_400(self):
@@ -119,8 +136,12 @@ class TestCancelAPIIntegration(TestCase):
         soon = date.today()
         Engagement.objects.filter(id=eng_id).update(date=soon)
 
-        resp = self._action(eng_id, "cancel_client", client_token,
-                            reason="Changed my mind, sorry about that.")
+        resp = self._action(
+            eng_id,
+            "cancel_client",
+            client_token,
+            reason="Changed my mind, sorry about that.",
+        )
         self.assertEqual(resp.status_code, 400)
 
     # --- Wrong party ---
@@ -130,8 +151,12 @@ class TestCancelAPIIntegration(TestCase):
         client_user, client_token = self._create_user("client.wrong", role="client")
         eng_id = self._hire(performer, performer_token, client_token)
 
-        resp = self._action(eng_id, "cancel_client", performer_token,
-                            reason="Performer trying to use client cancel.")
+        resp = self._action(
+            eng_id,
+            "cancel_client",
+            performer_token,
+            reason="Performer trying to use client cancel.",
+        )
         self.assertEqual(resp.status_code, 403)
 
     def test_client_cannot_cancel_as_performer(self):
@@ -139,8 +164,12 @@ class TestCancelAPIIntegration(TestCase):
         client_user, client_token = self._create_user("client.wrong2", role="client")
         eng_id = self._hire(performer, performer_token, client_token)
 
-        resp = self._action(eng_id, "cancel_performer", client_token,
-                            reason="Client trying to use performer cancel.")
+        resp = self._action(
+            eng_id,
+            "cancel_performer",
+            client_token,
+            reason="Client trying to use performer cancel.",
+        )
         self.assertEqual(resp.status_code, 403)
 
     # --- Terminal state ---
@@ -150,10 +179,18 @@ class TestCancelAPIIntegration(TestCase):
         client_user, client_token = self._create_user("client.done", role="client")
         eng_id = self._hire(performer, performer_token, client_token)
 
-        self._action(eng_id, "cancel_client", client_token,
-                     reason="First cancellation with a valid reason.")
-        resp = self._action(eng_id, "cancel_client", client_token,
-                            reason="Trying to cancel again, still valid.")
+        self._action(
+            eng_id,
+            "cancel_client",
+            client_token,
+            reason="First cancellation with a valid reason.",
+        )
+        resp = self._action(
+            eng_id,
+            "cancel_client",
+            client_token,
+            reason="Trying to cancel again, still valid.",
+        )
         self.assertEqual(resp.status_code, 400)
 
     # --- Refund on paid engagement ---
@@ -178,8 +215,12 @@ class TestCancelAPIIntegration(TestCase):
             status="captured",
         )
 
-        resp = self._action(eng_id, "cancel_client", client_token,
-                            reason="Client cancelled with a legitimate reason.")
+        resp = self._action(
+            eng_id,
+            "cancel_client",
+            client_token,
+            reason="Client cancelled with a legitimate reason.",
+        )
         self.assertEqual(resp.status_code, 200)
 
         eng = Engagement.objects.get(id=eng_id)
@@ -207,8 +248,12 @@ class TestCancelAPIIntegration(TestCase):
             status="captured",
         )
 
-        resp = self._action(eng_id, "cancel_performer", performer_token,
-                            reason="Performer cancelled with a valid reason.")
+        resp = self._action(
+            eng_id,
+            "cancel_performer",
+            performer_token,
+            reason="Performer cancelled with a valid reason.",
+        )
         self.assertEqual(resp.status_code, 200)
 
         eng = Engagement.objects.get(id=eng_id)
@@ -224,8 +269,12 @@ class TestCancelAPIIntegration(TestCase):
         client_user, client_token = self._create_user("client.unpaid", role="client")
         eng_id = self._hire(performer, performer_token, client_token)
 
-        resp = self._action(eng_id, "cancel_client", client_token,
-                            reason="Cancelling before payment, no refund needed.")
+        resp = self._action(
+            eng_id,
+            "cancel_client",
+            client_token,
+            reason="Cancelling before payment, no refund needed.",
+        )
         self.assertEqual(resp.status_code, 200)
 
         eng = Engagement.objects.get(id=eng_id)
