@@ -38,7 +38,7 @@ class TestCancelWithin24h:
         engagement.save()
 
         with pytest.raises(ValidationError, match="within 24 hours"):
-            engagement.cancel_by_performer(reason="I am sick")
+            engagement.cancel_by_performer(reason="I am very sick")
 
     def test_allowed_well_outside_24h(self, engagement):
         # Default fixture: event in 10 days, status pending
