@@ -374,7 +374,7 @@ class GlobalFeedAPIView(_LenientPaginatorMixin, generics.GenericAPIView):
                 "profession",
                 "profile_picture",
                 "is_performer",
-            )
+            ).order_by("id")
 
             professions = [p for p in request.query_params.getlist("profession") if p]
             if professions:

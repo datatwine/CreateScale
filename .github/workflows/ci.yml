@@ -119,6 +119,8 @@ jobs:
           USE_S3: "0"
         run: python manage.py makemigrations --check --dry-run
 
+      - run: sudo apt-get update && sudo apt-get install -y ffmpeg
+
       - name: "Run all tests"
         env:
           DB_NAME: testdb
@@ -131,7 +133,7 @@ jobs:
           DJANGO_ALLOWED_HOSTS: "localhost"
           USE_S3: "0"
           REDIS_URL: redis://localhost:6379/0
-          DJANGO_SETTINGS_MODULE: myproject.settings
+          DJANGO_SETTINGS_MODULE: myproject.settings_ci
         run: pytest -v
 
   # ===========================================================================
