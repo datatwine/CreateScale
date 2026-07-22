@@ -368,13 +368,17 @@ class GlobalFeedAPIView(_LenientPaginatorMixin, generics.GenericAPIView):
         key = f"feed:{page}:{profs}"
 
         def compute():
-            qs = Profile.objects.select_related("user").only(
-                "user__id",
-                "user__username",
-                "profession",
-                "profile_picture",
-                "is_performer",
-            ).order_by("id")
+            qs = (
+                Profile.objects.select_related("user")
+                .only(
+                    "user__id",
+                    "user__username",
+                    "profession",
+                    "profile_picture",
+                    "is_performer",
+                )
+                .order_by("id")
+            )
 
             professions = [p for p in request.query_params.getlist("profession") if p]
             if professions:
