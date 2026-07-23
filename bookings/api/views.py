@@ -15,6 +15,29 @@ from bookings.services.payments import PaymentService
 from .serializers import EngagementSerializer, EngagementCreateSerializer, EngagementActionSerializer, PaymentHistorySerializer
 
 
+class ClientEngagementsAPIView(APIView):
+    """GET /api/bookings/engagements/client/"""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        qs = (Engagement.objects
+              .filter(client=request.user)
+              .select_related("client", "performer")
+              .order_by("date", "time"))
+        return Response(EngagementSerializer(qs, many=True).data)
+
+
+class PerformerEngagementsAPIView(APIView):
+    """GET /api/bookings/engagements/performer/"""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        qs = (Engagement.objects
+              .filter(performer=request.user)
+              .select_related("client", "performer")
+              .order_by("date", "time"))
+        return Response(EngagementSerializer(qs, many=True).data)
+
 class CreateHireRequestAPIView(APIView):
     """
     POST /api/bookings/hire/<performer_id>/
@@ -175,30 +198,12 @@ class EngagementViewSet(viewsets.ViewSet):
             raise PermissionDenied("You are not allowed to view this booking.")
         return Response(EngagementSerializer(engagement).data)
 
-    @action(detail=False, methods=["get"], url_path="client")
-    def client(self, request):
-        """
-        GET /api/bookings/engagements/client/
-        Mirrors bookings.views.client_engagement_list. :contentReference[oaicite:18]{index=18}
-        """
-        qs = Engagement.objects.filter(client=request.user).select_related("client", "performer")
-        return Response(EngagementSerializer(qs, many=True).data)
-
-    @action(detail=False, methods=["get"], url_path="performer")
-    def performer(self, request):
-        """
-        GET /api/bookings/engagements/performer/
-        Mirrors bookings.views.performer_engagement_list. :contentReference[oaicite:19]{index=19}
-        """
-        qs = Engagement.objects.filter(performer=request.user).select_related("client", "performer")
-        return Response(EngagementSerializer(qs, many=True).data)
-
     @action(detail=True, methods=["post"], url_path="action")
     def action(self, request, pk=None):
         """
         POST /api/bookings/engagements/<pk>/action/
         Body: {"action": "...", "emergency_reason": "..."}
-        Uses model methods only. :contentReference[oaicite:20]{index=20}
+        Uses model methods only.
         """
         engagement = get_object_or_404(Engagement.objects.select_related("client", "performer"), pk=pk)
         is_client = engagement.client_id == request.user.id
