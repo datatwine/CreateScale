@@ -36,6 +36,8 @@ import {
     TextInput,
     TouchableOpacity,
     View,
+    Platform,
+    StatusBar,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
@@ -76,6 +78,8 @@ const COLORS = {
     acceptGreen: "#388E3C",
     declineRed: "#C62828",
     cancelOrange: "#E65100",
+    tabActive: "#E68A00",
+    tabInactive: "#20283E",
 };
 
 // ---------------------------------------------------------------------------
@@ -373,27 +377,41 @@ export default function BookingsScreen({ navigation }) {
     // { user_id, username, profile: {...} } — note: field is "user_id" not "id"
     const myUserId = user?.user_id ?? user?.id;
 
-    const [engagements, setEngagements] = useState([]);
+    const [clientEngagements, setClientEngagements] = useState([]);
+    const [performerEngagements, setPerformerEngagements] = useState([]);
+    const [activeTab, setActiveTab] = useState("performer"); // "performer" or "client"
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
 
-    // --- Fetch all engagements (union of client + performer) ---
-    const fetchEngagements = useCallback(async () => {
+    // --- Fetch client and performer bookings concurrently ---
+    const fetchBookings = useCallback(async () => {
         if (!token) return;
         try {
-            const res = await fetch(buildApiUrl("/bookings/engagements/"), {
-                headers: {
-                    Authorization: `Token ${token}`,
-                    Accept: "application/json",
-                },
-            });
-            if (!res.ok) {
-                const text = await res.text();
-                console.warn("Bookings fetch failed:", res.status, text);
+            const [clientRes, performerRes] = await Promise.all([
+                fetch(buildApiUrl("/bookings/engagements/client/"), {
+                    headers: {
+                        Authorization: `Token ${token}`,
+                        Accept: "application/json",
+                    },
+                }),
+                fetch(buildApiUrl("/bookings/engagements/performer/"), {
+                    headers: {
+                        Authorization: `Token ${token}`,
+                        Accept: "application/json",
+                    },
+                }),
+            ]);
+
+            if (!clientRes.ok || !performerRes.ok) {
+                console.warn("Bookings fetch failed:", clientRes.status, performerRes.status);
                 return;
             }
-            const data = await res.json();
-            setEngagements(data);
+
+            const clientData = await clientRes.json();
+            const performerData = await performerRes.json();
+
+            setClientEngagements(clientData);
+            setPerformerEngagements(performerData);
         } catch (err) {
             console.error("Error loading bookings:", err);
             Alert.alert("Error", "Couldn't load bookings. Please try again.");
@@ -403,19 +421,19 @@ export default function BookingsScreen({ navigation }) {
     // Initial load
     useEffect(() => {
         setLoading(true);
-        fetchEngagements().finally(() => setLoading(false));
-    }, [fetchEngagements]);
+        fetchBookings().finally(() => setLoading(false));
+    }, [fetchBookings]);
 
     // Pull-to-refresh
     const handleRefresh = async () => {
         setRefreshing(true);
-        await fetchEngagements();
+        await fetchBookings();
         setRefreshing(false);
     };
 
-    // After an action (accept/decline/cancel) — re-fetch the list
+    // After an action (accept/decline/cancel) — re-fetch both lists
     const handleActionDone = () => {
-        fetchEngagements();
+        fetchBookings();
     };
 
     // --- Render ---
@@ -430,12 +448,81 @@ export default function BookingsScreen({ navigation }) {
                 >
                     <Ionicons name="arrow-back" size={24} color={COLORS.textPrimary} />
                 </TouchableOpacity>
-                <View>
+                <View style={{ flex: 1 }}>
                     <Text style={styles.headerTitle}>Bookings</Text>
                     <Text style={styles.headerSubtitle}>
                         Your hire requests & engagements
                     </Text>
                 </View>
+            </View>
+
+            {/* Role tab bar */}
+            <View style={styles.tabBar}>
+                <TouchableOpacity
+                    onPress={() => setActiveTab("performer")}
+                    style={[
+                        styles.tab,
+                        activeTab === "performer" && styles.tabActive,
+                    ]}
+                    activeOpacity={0.8}
+                >
+                    <Ionicons
+                        name="mic-outline"
+                        size={14}
+                        color={activeTab === "performer" ? COLORS.textPrimary : COLORS.textMuted}
+                    />
+                    <Text
+                        style={[
+                            styles.tabText,
+                            activeTab === "performer" && styles.tabTextActive,
+                        ]}
+                    >
+                        Hire requests for me
+                    </Text>
+                    {performerEngagements.length > 0 && (
+                        <View style={[
+                            styles.countBadge,
+                            activeTab === "performer"
+                                ? { backgroundColor: COLORS.statusAccepted }
+                                : { backgroundColor: COLORS.tabInactive },
+                        ]}>
+                            <Text style={styles.countBadgeText}>{performerEngagements.length}</Text>
+                        </View>
+                    )}
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                    onPress={() => setActiveTab("client")}
+                    style={[
+                        styles.tab,
+                        activeTab === "client" && styles.tabActive,
+                    ]}
+                    activeOpacity={0.8}
+                >
+                    <Ionicons
+                        name="person-outline"
+                        size={14}
+                        color={activeTab === "client" ? COLORS.textPrimary : COLORS.textMuted}
+                    />
+                    <Text
+                        style={[
+                            styles.tabText,
+                            activeTab === "client" && styles.tabTextActive,
+                        ]}
+                    >
+                        My hiring demands
+                    </Text>
+                    {clientEngagements.length > 0 && (
+                        <View style={[
+                            styles.countBadge,
+                            activeTab === "client"
+                                ? { backgroundColor: COLORS.statusAccepted }
+                                : { backgroundColor: COLORS.tabInactive },
+                        ]}>
+                            <Text style={styles.countBadgeText}>{clientEngagements.length}</Text>
+                        </View>
+                    )}
+                </TouchableOpacity>
             </View>
 
             {/* List */}
@@ -446,7 +533,7 @@ export default function BookingsScreen({ navigation }) {
                 </View>
             ) : (
                 <FlatList
-                    data={engagements}
+                    data={activeTab === "performer" ? performerEngagements : clientEngagements}
                     keyExtractor={(item) => String(item.id)}
                     renderItem={({ item }) => (
                         <EngagementCard
@@ -461,13 +548,23 @@ export default function BookingsScreen({ navigation }) {
                     refreshing={refreshing}
                     onRefresh={handleRefresh}
                     ListEmptyComponent={
-                        <View style={styles.emptyState}>
-                            <Ionicons name="calendar-outline" size={48} color={COLORS.textMuted} />
-                            <Text style={styles.emptyTitle}>No bookings yet</Text>
-                            <Text style={styles.emptySubtitle}>
-                                Hire a performer from the Global Feed, or wait for clients to find you!
-                            </Text>
-                        </View>
+                        activeTab === "performer" ? (
+                            <View style={styles.emptyState}>
+                                <Ionicons name="mic-outline" size={48} color={COLORS.textMuted} />
+                                <Text style={styles.emptyTitle}>No hire requests yet</Text>
+                                <Text style={styles.emptySubtitle}>
+                                    Complete your profile and mark yourself as available — clients will start sending requests.
+                                </Text>
+                            </View>
+                        ) : (
+                            <View style={styles.emptyState}>
+                                <Ionicons name="person-outline" size={48} color={COLORS.textMuted} />
+                                <Text style={styles.emptyTitle}>No requests sent yet</Text>
+                                <Text style={styles.emptySubtitle}>
+                                    Browse the feed to find a performer and send your first request!
+                                </Text>
+                            </View>
+                        )
                     }
                 />
             )}
@@ -490,7 +587,7 @@ const styles = StyleSheet.create({
         flexDirection: "row",
         alignItems: "center",
         paddingHorizontal: 16,
-        paddingTop: 8,
+        paddingTop: Platform.OS === "android" ? (StatusBar.currentHeight || 24) + 20 : 20,
         paddingBottom: 12,
     },
     backButton: {
@@ -684,5 +781,47 @@ const styles = StyleSheet.create({
         textAlign: "center",
         marginTop: 6,
         lineHeight: 20,
+    },
+
+    // --- Tab bar ---
+    tabBar: {
+        flexDirection: "row",
+        marginHorizontal: 16,
+        marginBottom: 12,
+        backgroundColor: COLORS.card,
+        borderRadius: 12,
+        padding: 3,
+    },
+    tab: {
+        flex: 1,
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 6,
+        paddingVertical: 10,
+        borderRadius: 10,
+    },
+    tabActive: {
+        backgroundColor: COLORS.tabActive,
+    },
+    tabText: {
+        fontSize: 14,
+        fontWeight: "500",
+        color: COLORS.textMuted,
+    },
+    tabTextActive: {
+        color: COLORS.textPrimary,
+        fontWeight: "600",
+    },
+    countBadge: {
+        paddingHorizontal: 7,
+        paddingVertical: 1,
+        borderRadius: 999,
+        marginLeft: 2,
+    },
+    countBadgeText: {
+        fontSize: 11,
+        fontWeight: "700",
+        color: COLORS.textPrimary,
     },
 });

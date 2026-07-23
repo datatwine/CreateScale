@@ -48,7 +48,8 @@ if not SECRET_KEY:
 
 
 ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", default=["localhost", "127.0.0.1"])
-ALLOWED_HOSTS.append("192.168.1.6")
+ALLOWED_HOSTS.append("192.168.29.139")
+ALLOWED_HOSTS.append("192.168.29.104")
 
 # ---------------------------------------------------------------------------
 # Behind Cloudflare (Flexible SSL) → Nginx → Django, the real scheme is HTTPS
