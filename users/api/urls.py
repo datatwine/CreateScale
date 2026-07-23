@@ -6,6 +6,8 @@ from bookings.api.views import (
     EngagementViewSet,
     PerformerPayoutsAPIView,
     ClientPaymentsAPIView,
+    ClientEngagementsAPIView,
+    PerformerEngagementsAPIView,
 )
 from users.oauth_views import SocialLoginAPIView
 from .views import (
@@ -86,6 +88,9 @@ urlpatterns = [
         ClientPaymentsAPIView.as_view(),
         name="api-bookings-client-payments",
     ),
+    # Bookings list endpoints
+    path("bookings/engagements/client/", ClientEngagementsAPIView.as_view(), name="api-bookings-client-engagements"),
+    path("bookings/engagements/performer/", PerformerEngagementsAPIView.as_view(), name="api-bookings-performer-engagements"),
 ]
 
 urlpatterns += router.urls
