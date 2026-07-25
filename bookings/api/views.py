@@ -76,6 +76,8 @@ class CreateHireRequestAPIView(APIView):
 
 _PAID_STATUSES = [
     Engagement.PAYMENT_PAID,
+    Engagement.PAYMENT_PAYOUT_PROCESSING,
+    Engagement.PAYMENT_PAYOUT_FAILED,
     Engagement.PAYMENT_RELEASED,
     Engagement.PAYMENT_REFUNDED,
 ]

@@ -101,6 +101,27 @@ class TestPerformerPayoutsAPI:
         assert len(r.data["results"]) == 3
         assert r.data["count"] == 3
 
+    def test_includes_payout_processing_and_payout_failed(self):
+        """
+        Payouts-mode engagements sit in payout_processing (payout fired,
+        awaiting webhook) or payout_failed (needs retry) between being
+        paid and released — these must stay visible, not disappear from
+        the performer's payout history while in flight.
+        """
+        performer = _make_user("perf_payoutmode", is_performer=True)
+        client_u = _make_user("cli_payoutmode", is_client=True)
+
+        _make_engagement(client_u, performer, Engagement.PAYMENT_PAYOUT_PROCESSING)
+        _make_engagement(client_u, performer, Engagement.PAYMENT_PAYOUT_FAILED)
+
+        self.api.force_authenticate(user=performer)
+        r = self.api.get(PERFORMER_PAYOUTS_URL)
+
+        assert r.status_code == 200
+        assert r.data["count"] == 2
+        statuses = {item["payment_status"] for item in r.data["results"]}
+        assert statuses == {Engagement.PAYMENT_PAYOUT_PROCESSING, Engagement.PAYMENT_PAYOUT_FAILED}
+
     def test_response_shape_includes_payment_fields(self):
         performer = _make_user("perf_d", is_performer=True)
         client_u = _make_user("cli_c", is_client=True)
@@ -220,6 +241,22 @@ class TestClientPaymentsAPI:
         assert r.status_code == 200
         assert len(r.data["results"]) == 3
         assert r.data["count"] == 3
+
+    def test_includes_payout_processing_and_payout_failed(self):
+        """Same in-flight-payout visibility guarantee as the performer side."""
+        performer = _make_user("perf_payoutmode2", is_performer=True)
+        client_u = _make_user("cli_payoutmode2", is_client=True)
+
+        _make_engagement(client_u, performer, Engagement.PAYMENT_PAYOUT_PROCESSING)
+        _make_engagement(client_u, performer, Engagement.PAYMENT_PAYOUT_FAILED)
+
+        self.api.force_authenticate(user=client_u)
+        r = self.api.get(CLIENT_PAYMENTS_URL)
+
+        assert r.status_code == 200
+        assert r.data["count"] == 2
+        statuses = {item["payment_status"] for item in r.data["results"]}
+        assert statuses == {Engagement.PAYMENT_PAYOUT_PROCESSING, Engagement.PAYMENT_PAYOUT_FAILED}
 
     def test_response_shape_includes_payment_fields(self):
         performer = _make_user("perf_h", is_performer=True)
