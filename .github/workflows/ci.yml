@@ -119,6 +119,15 @@ jobs:
           USE_S3: "0"
         run: python manage.py makemigrations --check --dry-run
 
+      - name: "Collect static files"
+        env:
+          DJANGO_SECRET_KEY: "ci-test-secret-not-for-production-x7k2m9p"
+          DJANGO_DEBUG: "0"
+          DJANGO_ALLOWED_HOSTS: "localhost"
+          USE_S3: "0"
+          DJANGO_STATIC_ROOT: "/tmp/static-ci"
+        run: python manage.py collectstatic --noinput
+
       - name: "Run all tests"
         env:
           DB_NAME: testdb
@@ -132,6 +141,7 @@ jobs:
           USE_S3: "0"
           REDIS_URL: redis://localhost:6379/0
           DJANGO_SETTINGS_MODULE: myproject.settings
+          DJANGO_STATIC_ROOT: "/tmp/static-ci"
         run: pytest -v
 
   # ===========================================================================
