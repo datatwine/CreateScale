@@ -66,8 +66,11 @@ def compress_upload_video(upload_id):
                 capture_output=True,
                 timeout=270,
             )
-        except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as e:
-            # ffmpeg blew up — leave the raw file in place; upload still works
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired, OSError) as e:
+            # ffmpeg blew up, timed out, or isn't installed at all
+            # (OSError/FileNotFoundError) — leave the raw file in place;
+            # upload still works. Matches the module's non-regression
+            # contract: any failure here must not break the Upload row.
             log.warning("ffmpeg failed for upload %s: %s", upload_id, e)
             return
 

@@ -104,6 +104,9 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: "Install ffmpeg (video-compression Celery task)"
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+
       - run: pip install -r requirements.txt pytest pytest-django
 
       - name: "Migrations up to date?"
