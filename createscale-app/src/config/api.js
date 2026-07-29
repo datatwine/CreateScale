@@ -15,6 +15,7 @@ export function resolveDevApiHost(hostUri) {
 
 const DEV_NATIVE_API_URL = `http://${resolveDevApiHost(Constants.expoConfig?.hostUri)}/api`;
 
+
 // For Expo Web dev in a browser on the same machine, "localhost" is okay.
 const DEV_WEB_API_URL = "http://localhost/api";
 

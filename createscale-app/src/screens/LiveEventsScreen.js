@@ -24,9 +24,7 @@ import {
     StyleSheet,
     Text,
     TouchableOpacity,
-    View,
-    Platform,
-    StatusBar,
+    View
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -492,10 +490,10 @@ export default function LiveEventsScreen({ navigation }) {
                                 <Text style={styles.countdownLabel}>Next event in</Text>
                                 <View style={styles.countdownRow}>
                                     {[
-                                        { value: countdown.days,  unit: "Days" },
+                                        { value: countdown.days, unit: "Days" },
                                         { value: countdown.hours, unit: "Hrs" },
-                                        { value: countdown.mins,  unit: "Min" },
-                                        { value: countdown.secs,  unit: "Sec" },
+                                        { value: countdown.mins, unit: "Min" },
+                                        { value: countdown.secs, unit: "Sec" },
                                     ].map(({ value, unit }, i, arr) => (
                                         <React.Fragment key={unit}>
                                             <View style={styles.countdownUnit}>
@@ -547,7 +545,7 @@ const styles = StyleSheet.create({
         flexDirection: "row",
         alignItems: "center",
         paddingHorizontal: 16,
-        paddingTop: Platform.OS === "android" ? (StatusBar.currentHeight || 24) + 20 : 20,
+        paddingTop: 8,
         paddingBottom: 8,
     },
     headerTitle: {

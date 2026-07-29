@@ -33,8 +33,7 @@ import {
     TextInput,
     TouchableOpacity,
     View,
-    StatusBar,
-    Platform,
+    Platform
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -653,7 +652,7 @@ const styles = StyleSheet.create({
     header: {
         flexDirection: "row",
         alignItems: "center",
-        paddingTop: Platform.OS === "android" ? (StatusBar.currentHeight || 24) + 20 : 20,
+        paddingTop: 8,
         paddingBottom: 12,
     },
     backButton: {
