@@ -289,7 +289,9 @@ from pathlib import Path
 # BASE_DIR = Path(__file__).resolve().parent.parent
 
 STATIC_URL = "/static/"
-STATIC_ROOT = Path("/vol/static")
+# /vol/static is a Docker volume mount — not writable/creatable outside a
+# container (e.g. bare CI runners), so it's overridable via env var.
+STATIC_ROOT = Path(os.getenv("DJANGO_STATIC_ROOT", "/vol/static"))
 
 # 👇 add this line
 # STATICFILES_DIRS = [ BASE_DIR / "static" ]

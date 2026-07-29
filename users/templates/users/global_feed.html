@@ -71,42 +71,44 @@
 
         <!-- Profile grid -->
         <div class="profiles-grid">
-            {% for profile in profiles %}
-                {% if profile.user.id != current_user_id %}
-                {% cache 300 profile_card profile.user.id %}
-                <a href="{% url 'profile-detail' profile.user.id %}"
-                   class="performer-card"
-                   data-profession="{{ profile.profession }}">
-
-                    <span class="prof-emoji-badge" aria-hidden="true"></span>
-
-                    {% if profile.profile_picture %}
-                        <img class="card-avatar"
-                             src="{{ profile.profile_picture.url }}"
-                             alt="{{ profile.user.username }}"
-                             loading="lazy">
-                    {% else %}
-                        <img class="card-avatar"
-                             src="{% static 'users/images/default-avatar.png' %}"
-                             alt="{{ profile.user.username }}"
-                             loading="lazy">
-                    {% endif %}
-
-                    <div class="card-name">{{ profile.user.username }}</div>
-
-                    <span class="card-profession">
-                        <span class="dot"></span>{{ profile.profession }}
-                    </span>
-
-                </a>
-                {% endcache %}
-                {% endif %}
-            {% empty %}
+            {% if not has_visible_profiles %}
                 <div class="feed-empty">
                     <strong>No artists found</strong>
                     Try a different filter or check back soon.
                 </div>
-            {% endfor %}
+            {% else %}
+                {% for profile in profiles %}
+                    {% if profile.user.id != current_user_id %}
+                    {% cache 300 profile_card profile.user.id %}
+                    <a href="{% url 'profile-detail' profile.user.id %}"
+                       class="performer-card"
+                       data-profession="{{ profile.profession }}">
+
+                        <span class="prof-emoji-badge" aria-hidden="true"></span>
+
+                        {% if profile.profile_picture %}
+                            <img class="card-avatar"
+                                 src="{{ profile.profile_picture.url }}"
+                                 alt="{{ profile.user.username }}"
+                                 loading="lazy">
+                        {% else %}
+                            <img class="card-avatar"
+                                 src="{% static 'users/images/default-avatar.png' %}"
+                                 alt="{{ profile.user.username }}"
+                                 loading="lazy">
+                        {% endif %}
+
+                        <div class="card-name">{{ profile.user.username }}</div>
+
+                        <span class="card-profession">
+                            <span class="dot"></span>{{ profile.profession }}
+                        </span>
+
+                    </a>
+                    {% endcache %}
+                    {% endif %}
+                {% endfor %}
+            {% endif %}
         </div>
 
         <!-- Pagination -->

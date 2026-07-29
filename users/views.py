@@ -164,11 +164,20 @@ def global_feed(request):
         profiles_page = paginator.get_page(page_number)
         cache.set(cache_key, profiles_page, 60)
 
+    # profiles_page is cached and shared across users, so self-exclusion
+    # happens post-cache (same pattern as GlobalFeedAPIView). Django's
+    # {% empty %} tag can't see past the template's inner self-check, so
+    # compute visibility explicitly for the empty-state message.
+    has_visible_profiles = any(
+        p.user_id != request.user.id for p in profiles_page
+    )
+
     return render(request, "users/global_feed.html", {
         "profiles": profiles_page,
         "profession_filter_form": profession_filter_form,
         "selected_profession": selected_profession,
         "current_user_id": request.user.id,
+        "has_visible_profiles": has_visible_profiles,
     })
 
 from django.shortcuts import get_object_or_404
