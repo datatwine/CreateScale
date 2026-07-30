@@ -1,7 +1,7 @@
 from datetime import date
 from bookings.models import Engagement
 from rest_framework import serializers
-from users.models import Profile, Upload
+from users.models import Profile, Upload, PAN_RE, IFSC_RE, PHONE_RE
 from users.validators import validate_no_profanity
 
 
@@ -249,6 +249,53 @@ class PublicProfileDetailSerializer(serializers.ModelSerializer):
         Used for the stats strip 'Last performed' display.
         """
         return self._get_gig_data(obj)["last_engagement"]
+
+
+class PaymentDetailsSerializer(serializers.ModelSerializer):
+    """
+    PATCH /api/users/me/payment/ — mirrors users.forms.PaymentDetailsForm.
+    Same format checks as the web form (regexes imported from users.models,
+    the single source of truth also enforced by Profile.clean()).
+    """
+    performer_fee = serializers.IntegerField(
+        min_value=500, max_value=500000, required=False, allow_null=True,
+    )
+
+    class Meta:
+        model = Profile
+        fields = [
+            "performer_fee",
+            "phone_number",
+            "pan_number",
+            "bank_account_number",
+            "bank_ifsc",
+            "bank_account_holder_name",
+        ]
+        extra_kwargs = {
+            "phone_number":             {"required": False},
+            "pan_number":               {"required": False},
+            "bank_account_number":      {"required": False},
+            "bank_ifsc":                {"required": False},
+            "bank_account_holder_name": {"required": False},
+        }
+
+    def validate_phone_number(self, value):
+        value = (value or "").strip()
+        if value and not PHONE_RE.match(value):
+            raise serializers.ValidationError("Enter a valid 10-digit Indian mobile number.")
+        return value
+
+    def validate_pan_number(self, value):
+        value = (value or "").upper().strip()
+        if value and not PAN_RE.match(value):
+            raise serializers.ValidationError("Invalid PAN format. Expected: ABCDE1234F")
+        return value
+
+    def validate_bank_ifsc(self, value):
+        value = (value or "").upper().strip()
+        if value and not IFSC_RE.match(value):
+            raise serializers.ValidationError("Invalid IFSC code format.")
+        return value
 
 
 # ---------------------------------------------------------------------------
