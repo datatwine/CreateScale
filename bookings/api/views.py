@@ -1,22 +1,28 @@
 from django.core.exceptions import ValidationError, PermissionDenied
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 
 from rest_framework import status, viewsets
-from rest_framework.decorators import action
+# Aliased: EngagementViewSet has a method named `action` (its own /action/
+# URL) which shadows this import for every @action-decorated method defined
+# below it in the class body — Python class bodies bind names sequentially.
+from rest_framework.decorators import action as drf_action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from users.models import Profile
 from users.api.views import _LenientPaginatorMixin
-from bookings.models import Engagement
+from bookings.models import Engagement, Payment
 from bookings.services.payments import PaymentService
 from .serializers import (
     EngagementSerializer,
     EngagementCreateSerializer,
     EngagementActionSerializer,
     PaymentHistorySerializer,
+    VerifyPaymentSerializer,
+    DisputeSerializer,
 )
 
 
@@ -254,7 +260,7 @@ class EngagementViewSet(viewsets.ViewSet):
             raise PermissionDenied("You are not allowed to view this booking.")
         return Response(EngagementSerializer(engagement).data)
 
-    @action(detail=True, methods=["post"], url_path="action")
+    @drf_action(detail=True, methods=["post"], url_path="action")
     def action(self, request, pk=None):
         """
         POST /api/bookings/engagements/<pk>/action/
@@ -307,3 +313,71 @@ class EngagementViewSet(viewsets.ViewSet):
             return Response(
                 {"detail": " ".join(e.messages)}, status=status.HTTP_400_BAD_REQUEST
             )
+
+    @drf_action(detail=True, methods=["post"], url_path="pay")
+    def pay(self, request, pk=None):
+        """
+        POST /api/bookings/engagements/<pk>/pay/
+        Step 1 of checkout: mobile posts here when the client taps "Pay Now".
+        Mirrors bookings.views.create_payment_order — token auth instead of
+        session auth, plus an explicit "must be accepted" gate the web view
+        didn't need (Engagement.clean() enforces it via full_clean() there).
+        """
+        engagement = get_object_or_404(Engagement, pk=pk)
+        if engagement.client_id != request.user.id:
+            raise PermissionDenied
+        if engagement.status != Engagement.STATUS_ACCEPTED:
+            return Response(
+                {"error": "Only accepted bookings can be paid."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        try:
+            order_data = PaymentService.create_order(engagement)
+            return Response(order_data)
+        except (ValueError, RuntimeError) as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+    @drf_action(detail=True, methods=["post"], url_path="verify")
+    def verify(self, request, pk=None):
+        """
+        POST /api/bookings/engagements/<pk>/verify/
+        Step 2 of checkout: mobile posts here after the Razorpay checkout
+        succeeds. Mirrors bookings.views.verify_payment.
+        """
+        engagement = get_object_or_404(Engagement, pk=pk)
+        if engagement.client_id != request.user.id:
+            raise PermissionDenied
+        ser = VerifyPaymentSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        try:
+            PaymentService.verify_and_capture(
+                ser.validated_data["razorpay_order_id"],
+                ser.validated_data["razorpay_payment_id"],
+                ser.validated_data["razorpay_signature"],
+            )
+            return Response({"status": "ok"})
+        except (ValueError, Payment.DoesNotExist) as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+    @drf_action(detail=True, methods=["post"], url_path="dispute")
+    def dispute(self, request, pk=None):
+        """
+        POST /api/bookings/engagements/<pk>/dispute/
+        Client flags an issue against a paid engagement within the 24h
+        post-event dispute window. Mirrors bookings.views.raise_dispute.
+        """
+        engagement = get_object_or_404(Engagement, pk=pk)
+        if engagement.client_id != request.user.id:
+            raise PermissionDenied
+        if not engagement.can_dispute:
+            return Response(
+                {"error": "Dispute window is not open for this booking."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        ser = DisputeSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+
+        engagement.disputed_at = timezone.now()
+        engagement.dispute_reason = ser.validated_data["reason"]
+        engagement.save(update_fields=["disputed_at", "dispute_reason"])
+        return Response({"detail": "Issue raised. An admin will review and contact you within 24-48 hours."})

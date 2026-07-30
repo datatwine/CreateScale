@@ -46,6 +46,16 @@ class EngagementActionSerializer(serializers.Serializer):
     )
 
 
+class VerifyPaymentSerializer(serializers.Serializer):
+    razorpay_order_id = serializers.CharField()
+    razorpay_payment_id = serializers.CharField()
+    razorpay_signature = serializers.CharField()
+
+
+class DisputeSerializer(serializers.Serializer):
+    reason = serializers.CharField(min_length=10, max_length=1000)
+
+
 class PaymentHistorySerializer(serializers.ModelSerializer):
     """Shared serializer for performer payouts and client payment history."""
 
