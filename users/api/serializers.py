@@ -111,6 +111,7 @@ class MeProfileSerializer(serializers.ModelSerializer):
     profile_picture_url = serializers.SerializerMethodField()
     cover_photo_url = serializers.SerializerMethodField()
     bank_account_last4 = serializers.SerializerMethodField()
+    can_receive_payments = serializers.BooleanField(read_only=True)
 
     class Meta:
         model = Profile
@@ -135,6 +136,7 @@ class MeProfileSerializer(serializers.ModelSerializer):
             "bank_account_last4",
             "bank_ifsc",
             "razorpay_account_id",
+            "can_receive_payments",
         ]
         extra_kwargs = {
             "profile_picture": {"write_only": True, "required": False},
@@ -177,6 +179,7 @@ class PublicProfileDetailSerializer(serializers.ModelSerializer):
     uploads = serializers.SerializerMethodField()
     gigs_count = serializers.SerializerMethodField()
     last_engagement = serializers.SerializerMethodField()
+    can_receive_payments = serializers.BooleanField(read_only=True)
 
     class Meta:
         model = Profile
@@ -192,6 +195,7 @@ class PublicProfileDetailSerializer(serializers.ModelSerializer):
             "uploads",
             "gigs_count",
             "last_engagement",
+            "can_receive_payments",
         ]
 
     def get_profile_picture_url(self, obj):
