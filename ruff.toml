@@ -1,4 +1,9 @@
 [lint]
+# Explicit rule set — pin defaults so behavior is identical across ruff versions.
+# Ruff 0.16 promoted many preview rules to stable; without this select,
+# CI (latest ruff) and local would diverge.
+select = ["E4", "E7", "E9", "F"]
+
 # E402: module-level import not at top of file
 #       Your codebase has mid-file import blocks throughout views.py, settings.py etc.
 #       This is a structural pattern, not a bug. Cannot be auto-fixed.
