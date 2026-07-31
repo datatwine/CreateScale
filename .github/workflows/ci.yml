@@ -122,9 +122,6 @@ jobs:
           USE_S3: "0"
         run: python manage.py makemigrations --check --dry-run
 
-      - name: "Install ffmpeg (video-compression Celery task)"
-        run: sudo apt-get update && sudo apt-get install -y ffmpeg
-
       - name: "Collect static files"
         env:
           DJANGO_SECRET_KEY: "ci-test-secret-not-for-production-x7k2m9p"
