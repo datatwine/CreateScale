@@ -6,7 +6,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
     dependencies = [
@@ -15,23 +14,59 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.CreateModel(
-            name='Engagement',
+            name="Engagement",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('date', models.DateField()),
-                ('time', models.TimeField()),
-                ('venue', models.CharField(max_length=255)),
-                ('occasion', models.CharField(max_length=255)),
-                ('status', models.CharField(choices=[('pending', 'Pending'), ('accepted', 'Accepted'), ('declined', 'Declined'), ('cancelled_client', 'Cancelled by client'), ('cancelled_performer', 'Cancelled by performer'), ('auto_expired', 'Auto expired')], default='pending', max_length=20)),
-                ('client_emergency_reason', models.TextField(blank=True)),
-                ('performer_emergency_reason', models.TextField(blank=True)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('client', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='hire_requests_made', to=settings.AUTH_USER_MODEL)),
-                ('performer', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='hire_requests_received', to=settings.AUTH_USER_MODEL)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("date", models.DateField()),
+                ("time", models.TimeField()),
+                ("venue", models.CharField(max_length=255)),
+                ("occasion", models.CharField(max_length=255)),
+                (
+                    "status",
+                    models.CharField(
+                        choices=[
+                            ("pending", "Pending"),
+                            ("accepted", "Accepted"),
+                            ("declined", "Declined"),
+                            ("cancelled_client", "Cancelled by client"),
+                            ("cancelled_performer", "Cancelled by performer"),
+                            ("auto_expired", "Auto expired"),
+                        ],
+                        default="pending",
+                        max_length=20,
+                    ),
+                ),
+                ("client_emergency_reason", models.TextField(blank=True)),
+                ("performer_emergency_reason", models.TextField(blank=True)),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                (
+                    "client",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="hire_requests_made",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
+                (
+                    "performer",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="hire_requests_received",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
             ],
             options={
-                'ordering': ['date', 'time', 'performer'],
+                "ordering": ["date", "time", "performer"],
             },
         ),
     ]

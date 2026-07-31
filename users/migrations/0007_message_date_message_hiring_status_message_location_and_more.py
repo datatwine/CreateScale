@@ -4,30 +4,38 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('users', '0006_alter_message_unique_together'),
+        ("users", "0006_alter_message_unique_together"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='message',
-            name='date',
+            model_name="message",
+            name="date",
             field=models.DateField(blank=True, null=True),
         ),
         migrations.AddField(
-            model_name='message',
-            name='hiring_status',
-            field=models.CharField(choices=[('none', 'None'), ('pending', 'Pending'), ('accepted', 'Accepted'), ('declined', 'Declined')], default='none', max_length=10),
+            model_name="message",
+            name="hiring_status",
+            field=models.CharField(
+                choices=[
+                    ("none", "None"),
+                    ("pending", "Pending"),
+                    ("accepted", "Accepted"),
+                    ("declined", "Declined"),
+                ],
+                default="none",
+                max_length=10,
+            ),
         ),
         migrations.AddField(
-            model_name='message',
-            name='location',
+            model_name="message",
+            name="location",
             field=models.CharField(blank=True, max_length=255, null=True),
         ),
         migrations.AddField(
-            model_name='message',
-            name='time',
+            model_name="message",
+            name="time",
             field=models.TimeField(blank=True, null=True),
         ),
     ]

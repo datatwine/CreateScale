@@ -43,25 +43,16 @@ def create_hire_request(request, performer_id):
         return redirect("profile")
 
     if not client_profile.client_approved:
-        messages.error(
-            request,
-            "Admin has not approved you for hiring performers yet."
-        )
+        messages.error(request, "Admin has not approved you for hiring performers yet.")
         return redirect("profile")
 
     if client_profile.client_blacklisted:
-        messages.error(
-            request,
-            "You are currently blocked from hiring performers."
-        )
+        messages.error(request, "You are currently blocked from hiring performers.")
         return redirect("profile")
 
     # Performer checks (2, 15)
     if not performer_profile.is_performer or performer_profile.performer_blacklisted:
-        messages.error(
-            request,
-            "This user is not available for hire right now."
-        )
+        messages.error(request, "This user is not available for hire right now.")
         return redirect("profile-detail", user_id=performer_profile.user.id)
 
     # Stats for the hire-card footer — cached 5 min (slowly-changing data).
@@ -124,11 +115,11 @@ def create_hire_request(request, performer_id):
 # Maps Engagement.status → (CSS class, human label, front-end filter bucket).
 # Used by client_engagement_list to annotate each object for the template.
 _STATUS_DISPLAY = {
-    Engagement.STATUS_ACCEPTED:            ("status-accepted",  "Accepted",  "accepted"),
-    Engagement.STATUS_PENDING:             ("status-pending",   "Pending",   "pending"),
-    Engagement.STATUS_DECLINED:            ("status-declined",  "Declined",  "other"),
-    Engagement.STATUS_AUTO_EXPIRED:        ("status-expired",   "Expired",   "other"),
-    Engagement.STATUS_CANCELLED_CLIENT:    ("status-cancelled", "Cancelled", "other"),
+    Engagement.STATUS_ACCEPTED: ("status-accepted", "Accepted", "accepted"),
+    Engagement.STATUS_PENDING: ("status-pending", "Pending", "pending"),
+    Engagement.STATUS_DECLINED: ("status-declined", "Declined", "other"),
+    Engagement.STATUS_AUTO_EXPIRED: ("status-expired", "Expired", "other"),
+    Engagement.STATUS_CANCELLED_CLIENT: ("status-cancelled", "Cancelled", "other"),
     Engagement.STATUS_CANCELLED_PERFORMER: ("status-cancelled", "Cancelled", "other"),
 }
 
@@ -142,8 +133,7 @@ def client_engagement_list(request):
     (Rule 16)
     """
     engagements = list(
-        Engagement.objects.filter(client=request.user)
-        .select_related("performer")
+        Engagement.objects.filter(client=request.user).select_related("performer")
     )
 
     # Annotate each engagement with display metadata so the template
@@ -169,8 +159,7 @@ def performer_engagement_list(request):
     (Rule 17)
     """
     engagements = list(
-        Engagement.objects.filter(performer=request.user)
-        .select_related("client")
+        Engagement.objects.filter(performer=request.user).select_related("client")
     )
 
     # Annotate each engagement with display metadata (reuses _STATUS_DISPLAY).
@@ -180,8 +169,8 @@ def performer_engagement_list(request):
         e.badge_class = cls
         e.badge_label = lbl
         e.filter_bucket = bucket
-        e.is_pending = (bucket == "pending")
-        e.is_inactive = (bucket == "other")
+        e.is_pending = bucket == "pending"
+        e.is_inactive = bucket == "other"
 
     return render(
         request,
@@ -229,7 +218,9 @@ def engagement_detail(request, pk):
                     # even though we just changed engagement.status above.
                     if engagement.payment_status == Engagement.PAYMENT_PAID:
                         PaymentService.refund_to_client(engagement)
-                        messages.success(request, "Booking cancelled. Refund initiated.")
+                        messages.success(
+                            request, "Booking cancelled. Refund initiated."
+                        )
                     else:
                         messages.success(request, "Booking cancelled.")
                 else:
@@ -244,7 +235,9 @@ def engagement_detail(request, pk):
                     )
                     if engagement.payment_status == Engagement.PAYMENT_PAID:
                         PaymentService.refund_to_client(engagement)
-                        messages.success(request, "Booking cancelled. Client will be refunded.")
+                        messages.success(
+                            request, "Booking cancelled. Client will be refunded."
+                        )
                     else:
                         messages.success(request, "Booking cancelled.")
                 else:
@@ -282,6 +275,7 @@ def engagement_detail(request, pk):
 # Payment endpoints — these are called by JavaScript (checkout.js) and by
 # Razorpay's server (webhook). Users never see them directly.
 # ============================================================================
+
 
 @login_required
 @require_POST
@@ -405,6 +399,7 @@ def razorpayx_webhook(request):
     Idempotent downstream: safe on RazorpayX's retries.
     """
     from .services.razorpayx import verify_webhook_signature
+
     signature = request.headers.get("X-Razorpay-Signature", "")
     if not verify_webhook_signature(request.body, signature):
         return HttpResponse(status=400)
@@ -419,8 +414,8 @@ def razorpayx_webhook(request):
 @login_required
 def performer_payouts(request):
     """Performer's payments dashboard — paid/released/refunded engagements."""
-    engagements = (Engagement.objects
-        .filter(
+    engagements = (
+        Engagement.objects.filter(
             performer=request.user,
             payment_status__in=[
                 Engagement.PAYMENT_PAID,
@@ -432,7 +427,8 @@ def performer_payouts(request):
         )
         .select_related("client")
         .prefetch_related("payments")
-        .order_by("-date", "-time"))
+        .order_by("-date", "-time")
+    )
     return render(
         request,
         "bookings/performer_payouts.html",
@@ -443,8 +439,8 @@ def performer_payouts(request):
 @login_required
 def client_payments(request):
     """Client's payment history — paid/released/refunded engagements."""
-    engagements = (Engagement.objects
-        .filter(
+    engagements = (
+        Engagement.objects.filter(
             client=request.user,
             payment_status__in=[
                 Engagement.PAYMENT_PAID,
@@ -461,11 +457,12 @@ def client_payments(request):
                 queryset=Payment.objects.order_by("-created_at"),
             )
         )
-        .order_by("-paid_at"))
+        .order_by("-paid_at")
+    )
     # Annotate each row with its latest Payment so the template can show
     # Razorpay reference IDs without a query per row.
     for e in engagements:
-        prefetched = e.payments.all()   # hits prefetch cache, no DB query
+        prefetched = e.payments.all()  # hits prefetch cache, no DB query
         e.latest_payment = prefetched[0] if prefetched else None
     return render(
         request,

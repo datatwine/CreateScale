@@ -5,6 +5,7 @@ We don't actually run Celery — we call the task functions directly.
 PaymentService.release_to_performer is monkey-patched so these tests
 never touch Razorpay's API.
 """
+
 from datetime import date, time, timedelta
 from unittest.mock import patch
 
@@ -23,7 +24,6 @@ from bookings.tasks import (
 # ─────────────────────────────────────────────────────────────────────────
 @pytest.mark.django_db
 class TestExpireUnpaid:
-
     def test_expires_engagement_past_deadline(self, engagement):
         # Backdate accepted_at by 30h so payment_deadline (24h after
         # acceptance) is comfortably in the past.
@@ -84,7 +84,6 @@ class TestExpireUnpaid:
 # ─────────────────────────────────────────────────────────────────────────
 @pytest.mark.django_db
 class TestReleasePayouts:
-
     @patch("bookings.tasks.PaymentService.release_to_performer")
     def test_releases_after_dispute_window(self, mock_release, engagement):
         engagement.status = Engagement.STATUS_ACCEPTED
@@ -138,10 +137,12 @@ class TestReleasePayouts:
         engagement.save()
 
         second = Engagement.objects.create(
-            client=client_user, performer=performer_user,
+            client=client_user,
+            performer=performer_user,
             date=date.today() - timedelta(days=2),
             time=time(20, 0),
-            venue="Other venue", occasion="Other",
+            venue="Other venue",
+            occasion="Other",
             fee=3000,
             status=Engagement.STATUS_ACCEPTED,
             payment_status=Engagement.PAYMENT_PAID,

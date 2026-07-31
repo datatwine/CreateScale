@@ -5,9 +5,7 @@ from django.core.exceptions import ValidationError
 
 class TestPhoneValidation(TestCase):
     def setUp(self):
-        self.user = User.objects.create_user(
-            username="phoneuser", password="pass123"
-        )
+        self.user = User.objects.create_user(username="phoneuser", password="pass123")
         self.profile = self.user.profile
 
     def _set_phone(self, phone):

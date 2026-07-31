@@ -11,6 +11,7 @@ bookings/views.py. Both endpoints use _LenientPaginatorMixin (same
 pattern as GlobalFeedAPIView / LiveEventsAPIView) so response shape is
 {count, num_pages, page, has_next, has_previous, results}.
 """
+
 from datetime import date, time, timedelta
 
 import pytest
@@ -25,6 +26,7 @@ from users.models import Profile
 # ---------------------------------------------------------------------------
 # helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_user(username, *, is_performer=False, is_client=False):
     u = User.objects.create_user(username, password="x")
@@ -62,7 +64,6 @@ PERFORMER_PAYOUTS_URL = "/api/bookings/payouts/performer/"
 
 @pytest.mark.django_db
 class TestPerformerPayoutsAPI:
-
     def setup_method(self):
         self.api = APIClient()
 
@@ -92,7 +93,9 @@ class TestPerformerPayoutsAPI:
         _make_engagement(client_u, performer, Engagement.PAYMENT_PAID)
         _make_engagement(client_u, performer, Engagement.PAYMENT_RELEASED)
         _make_engagement(client_u, performer, Engagement.PAYMENT_REFUNDED)
-        _make_engagement(client_u, performer, Engagement.PAYMENT_UNPAID)  # must be excluded
+        _make_engagement(
+            client_u, performer, Engagement.PAYMENT_UNPAID
+        )  # must be excluded
 
         self.api.force_authenticate(user=performer)
         r = self.api.get(PERFORMER_PAYOUTS_URL)
@@ -120,7 +123,10 @@ class TestPerformerPayoutsAPI:
         assert r.status_code == 200
         assert r.data["count"] == 2
         statuses = {item["payment_status"] for item in r.data["results"]}
-        assert statuses == {Engagement.PAYMENT_PAYOUT_PROCESSING, Engagement.PAYMENT_PAYOUT_FAILED}
+        assert statuses == {
+            Engagement.PAYMENT_PAYOUT_PROCESSING,
+            Engagement.PAYMENT_PAYOUT_FAILED,
+        }
 
     def test_response_shape_includes_payment_fields(self):
         performer = _make_user("perf_d", is_performer=True)
@@ -203,7 +209,6 @@ CLIENT_PAYMENTS_URL = "/api/bookings/payments/client/"
 
 @pytest.mark.django_db
 class TestClientPaymentsAPI:
-
     def setup_method(self):
         self.api = APIClient()
 
@@ -256,7 +261,10 @@ class TestClientPaymentsAPI:
         assert r.status_code == 200
         assert r.data["count"] == 2
         statuses = {item["payment_status"] for item in r.data["results"]}
-        assert statuses == {Engagement.PAYMENT_PAYOUT_PROCESSING, Engagement.PAYMENT_PAYOUT_FAILED}
+        assert statuses == {
+            Engagement.PAYMENT_PAYOUT_PROCESSING,
+            Engagement.PAYMENT_PAYOUT_FAILED,
+        }
 
     def test_response_shape_includes_payment_fields(self):
         performer = _make_user("perf_h", is_performer=True)

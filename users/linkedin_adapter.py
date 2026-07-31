@@ -4,6 +4,7 @@ Overrides the default adapter which uses LinkedIn's deprecated V1 API
 (r_liteprofile, /v2/me, GET token exchange).
 Uses the new OpenID Connect /v2/userinfo endpoint instead.
 """
+
 from allauth.socialaccount.adapter import get_adapter
 from allauth.socialaccount.providers.linkedin_oauth2.views import (
     LinkedInOAuth2Adapter,
@@ -22,9 +23,7 @@ class LinkedInOIDCAdapter(LinkedInOAuth2Adapter):
     def get_user_info(self, token):
         headers = {"Authorization": f"Bearer {token.token}"}
         resp = (
-            get_adapter()
-            .get_requests_session()
-            .get(self.userinfo_url, headers=headers)
+            get_adapter().get_requests_session().get(self.userinfo_url, headers=headers)
         )
         resp.raise_for_status()
         data = resp.json()

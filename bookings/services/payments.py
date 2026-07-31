@@ -10,6 +10,7 @@ That property is critical because:
   - The browser callback and webhook may both fire for the same payment.
   - Webhooks can arrive multiple times due to Razorpay's retry policy.
 """
+
 import hashlib
 import hmac
 import logging
@@ -65,31 +66,30 @@ class PaymentService:
         # Payouts → complete bank details on file.
         if not performer_profile.can_receive_payments:
             raise ValueError(
-                "Performer's payment setup is incomplete. Booking cannot be "
-                "paid yet."
+                "Performer's payment setup is incomplete. Booking cannot be paid yet."
             )
 
-        platform_fee, performer_share = PaymentService._split_amount(
-            engagement.fee
-        )
+        platform_fee, performer_share = PaymentService._split_amount(engagement.fee)
         amount_paise = engagement.fee * 100
 
         # Identical base payload in both modes.
         order_data = {
-            "amount":   amount_paise,
+            "amount": amount_paise,
             "currency": "INR",
-            "receipt":  f"eng_{engagement.pk}",
-            "notes":    {"engagement_id": str(engagement.pk)},
+            "receipt": f"eng_{engagement.pk}",
+            "notes": {"engagement_id": str(engagement.pk)},
         }
         if settings.RAZORPAY_ROUTE_ENABLED:
             # Route: split at collection time; the held transfer IS the escrow.
-            order_data["transfers"] = [{
-                "account":  performer_profile.razorpay_account_id,
-                "amount":   performer_share * 100,
-                "currency": "INR",
-                "notes":    {"engagement_id": str(engagement.pk)},
-                "on_hold":  1,   # HOLD in escrow until event passes
-            }]
+            order_data["transfers"] = [
+                {
+                    "account": performer_profile.razorpay_account_id,
+                    "amount": performer_share * 100,
+                    "currency": "INR",
+                    "notes": {"engagement_id": str(engagement.pk)},
+                    "on_hold": 1,  # HOLD in escrow until event passes
+                }
+            ]
 
         client = get_client()
         order = client.order.create(order_data)
@@ -108,9 +108,9 @@ class PaymentService:
 
         return {
             "order_id": order["id"],
-            "amount":   amount_paise,
+            "amount": amount_paise,
             "currency": "INR",
-            "key_id":   settings.RAZORPAY_KEY_ID,
+            "key_id": settings.RAZORPAY_KEY_ID,
         }
 
     # ── Verify checkout callback (browser → backend) ────────────────
@@ -144,15 +144,18 @@ class PaymentService:
             return payment  # already done — no-op
         if payment.status in ("released", "refunded"):
             raise ValueError(
-                f"Payment {payment.pk} is already in terminal state "
-                f"{payment.status}."
+                f"Payment {payment.pk} is already in terminal state {payment.status}."
             )
 
         payment.razorpay_payment_id = razorpay_payment_id
         payment.status = "captured"
-        payment.save(update_fields=[
-            "razorpay_payment_id", "status", "updated_at",
-        ])
+        payment.save(
+            update_fields=[
+                "razorpay_payment_id",
+                "status",
+                "updated_at",
+            ]
+        )
 
         engagement = payment.engagement
         if engagement.payment_status == Engagement.PAYMENT_UNPAID:
@@ -184,9 +187,13 @@ class PaymentService:
 
         payment.razorpay_payment_id = razorpay_payment_id
         payment.status = "captured"
-        payment.save(update_fields=[
-            "razorpay_payment_id", "status", "updated_at",
-        ])
+        payment.save(
+            update_fields=[
+                "razorpay_payment_id",
+                "status",
+                "updated_at",
+            ]
+        )
         engagement = payment.engagement
         if engagement.payment_status == Engagement.PAYMENT_UNPAID:
             engagement.payment_status = Engagement.PAYMENT_PAID
@@ -221,9 +228,7 @@ class PaymentService:
             return
 
         # ── Route mode: unhold the escrowed transfer ─────────────────────
-        payment = engagement.payments.filter(status="captured").latest(
-            "created_at"
-        )
+        payment = engagement.payments.filter(status="captured").latest("created_at")
 
         client = get_client()
         # Razorpay returns a list of transfers because Route supports
@@ -235,9 +240,13 @@ class PaymentService:
             payment.razorpay_transfer_id = t["id"]
 
         payment.status = "released"
-        payment.save(update_fields=[
-            "status", "razorpay_transfer_id", "updated_at",
-        ])
+        payment.save(
+            update_fields=[
+                "status",
+                "razorpay_transfer_id",
+                "updated_at",
+            ]
+        )
         engagement.payment_status = Engagement.PAYMENT_RELEASED
         engagement.released_at = timezone.now()
         engagement.save(update_fields=["payment_status", "released_at"])
@@ -251,6 +260,7 @@ class PaymentService:
         later payout is a single API call. Safe to call repeatedly.
         """
         from . import razorpayx
+
         if profile.razorpayx_fund_account_id:
             return profile.razorpayx_fund_account_id
 
@@ -288,6 +298,7 @@ class PaymentService:
           3. X-Payout-Idempotency header stops Razorpay double-creating.
         """
         from . import razorpayx
+
         payment = (
             engagement.payments.select_for_update()
             .filter(status__in=["captured", "payout_failed"])
@@ -314,15 +325,22 @@ class PaymentService:
         payment.razorpayx_payout_id = payout["id"]
         payment.payout_idempotency_key = key
         payment.status = "payout_processing"
-        payment.save(update_fields=[
-            "razorpayx_payout_id", "payout_idempotency_key",
-            "status", "updated_at",
-        ])
+        payment.save(
+            update_fields=[
+                "razorpayx_payout_id",
+                "payout_idempotency_key",
+                "status",
+                "updated_at",
+            ]
+        )
         engagement.payment_status = Engagement.PAYMENT_PAYOUT_PROCESSING
         engagement.payout_initiated_at = timezone.now()
-        engagement.save(update_fields=[
-            "payment_status", "payout_initiated_at",
-        ])
+        engagement.save(
+            update_fields=[
+                "payment_status",
+                "payout_initiated_at",
+            ]
+        )
 
     # ── Signal 3: Refund to client ──────────────────────────────────
     @staticmethod
@@ -342,17 +360,13 @@ class PaymentService:
         if engagement.payment_status != Engagement.PAYMENT_PAID:
             return
 
-        payment = engagement.payments.filter(status="captured").latest(
-            "created_at"
-        )
+        payment = engagement.payments.filter(status="captured").latest("created_at")
         client = get_client()
         refund_data = {
             "notes": {
                 "engagement_id": str(engagement.pk),
                 "reason": (
-                    engagement.cancellation_reason
-                    or engagement.dispute_reason
-                    or ""
+                    engagement.cancellation_reason or engagement.dispute_reason or ""
                 )[:200],
             },
         }
@@ -361,27 +375,27 @@ class PaymentService:
         refund = client.payment.refund(payment.razorpay_payment_id, refund_data)
         payment.razorpay_refund_id = refund["id"]
         payment.status = "refunded"
-        payment.save(update_fields=[
-            "razorpay_refund_id", "status", "updated_at",
-        ])
+        payment.save(
+            update_fields=[
+                "razorpay_refund_id",
+                "status",
+                "updated_at",
+            ]
+        )
         engagement.payment_status = Engagement.PAYMENT_REFUNDED
         engagement.refunded_at = timezone.now()
         engagement.save(update_fields=["payment_status", "refunded_at"])
 
     # ── Webhook signature verification ──────────────────────────────
     @staticmethod
-    def verify_webhook_signature(
-        raw_body: bytes, signature_header: str
-    ) -> bool:
+    def verify_webhook_signature(raw_body: bytes, signature_header: str) -> bool:
         """
         HMAC-SHA256 of the entire raw request body using the webhook secret.
         Returns True only on exact match. Uses compare_digest to dodge
         timing attacks.
         """
         if not settings.RAZORPAY_WEBHOOK_SECRET:
-            logger.error(
-                "Webhook received but RAZORPAY_WEBHOOK_SECRET not configured."
-            )
+            logger.error("Webhook received but RAZORPAY_WEBHOOK_SECRET not configured.")
             return False
         expected = hmac.new(
             settings.RAZORPAY_WEBHOOK_SECRET.encode(),
@@ -413,14 +427,14 @@ class PaymentService:
                 )
         elif event_type == "refund.processed":
             entity = payload["refund"]["entity"]
-            Payment.objects.filter(
-                razorpay_refund_id=entity["id"]
-            ).update(status="refunded")
+            Payment.objects.filter(razorpay_refund_id=entity["id"]).update(
+                status="refunded"
+            )
         elif event_type == "transfer.processed":
             entity = payload["transfer"]["entity"]
-            Payment.objects.filter(
-                razorpay_transfer_id=entity["id"]
-            ).update(status="released")
+            Payment.objects.filter(razorpay_transfer_id=entity["id"]).update(
+                status="released"
+            )
         else:
             logger.info("Unhandled webhook event: %s", event_type)
 
@@ -432,9 +446,7 @@ class PaymentService:
         handlers are idempotent — RazorpayX retries, and events can arrive out
         of order (updated before processed, etc.).
         """
-        entity = (
-            event.get("payload", {}).get("payout", {}).get("entity", {})
-        )
+        entity = event.get("payload", {}).get("payout", {}).get("entity", {})
         payout_id = entity.get("id")
         if not payout_id:
             return
@@ -446,9 +458,9 @@ class PaymentService:
         elif event_type == "payout.updated" and entity.get("utr"):
             # UTR often lands here first — capture it for the audit trail
             # without changing state.
-            Payment.objects.filter(
-                razorpayx_payout_id=payout_id
-            ).update(payout_reference=entity["utr"])
+            Payment.objects.filter(razorpayx_payout_id=payout_id).update(
+                payout_reference=entity["utr"]
+            )
         elif event_type in ("payout.reversed", "payout.failed"):
             # Money bounced back to our balance. Flag for retry.
             PaymentService._fail_payout(payout_id)

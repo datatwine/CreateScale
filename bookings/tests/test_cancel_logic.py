@@ -7,6 +7,7 @@ guard the business rules:
   - Reason is mandatory and at least non-empty
   - accept() stamps accepted_at
 """
+
 from datetime import date, timedelta
 
 import pytest
@@ -18,7 +19,6 @@ from bookings.models import Engagement
 
 @pytest.mark.django_db
 class TestCancelWithin24h:
-
     def test_block_within_24h_client(self, engagement):
         # Push the event to 12h from now
         soon = timezone.now() + timedelta(hours=12)
@@ -51,7 +51,6 @@ class TestCancelWithin24h:
 
 @pytest.mark.django_db
 class TestCancelReasonMandatory:
-
     def test_empty_reason_rejected_client(self, engagement):
         with pytest.raises(ValidationError, match="reason is required"):
             engagement.cancel_by_client(reason="")
@@ -67,7 +66,6 @@ class TestCancelReasonMandatory:
 
 @pytest.mark.django_db
 class TestCancelTerminalStates:
-
     def test_cannot_cancel_already_declined(self, engagement):
         engagement.status = Engagement.STATUS_DECLINED
         engagement.save()
@@ -83,7 +81,6 @@ class TestCancelTerminalStates:
 
 @pytest.mark.django_db
 class TestAcceptStampsAcceptedAt:
-
     def test_accept_sets_accepted_at(self, engagement):
         assert engagement.accepted_at is None
         before = timezone.now()
@@ -96,7 +93,6 @@ class TestAcceptStampsAcceptedAt:
 
 @pytest.mark.django_db
 class TestPaymentDeadline:
-
     def test_none_before_acceptance(self, engagement):
         assert engagement.payment_deadline() is None
 
@@ -125,7 +121,6 @@ class TestPaymentDeadline:
 
 @pytest.mark.django_db
 class TestCanDispute:
-
     def test_false_when_unpaid(self, engagement):
         assert engagement.can_dispute is False
 

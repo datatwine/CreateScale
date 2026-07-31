@@ -5,9 +5,7 @@ from django.core.exceptions import ValidationError
 
 class TestPANValidation(TestCase):
     def setUp(self):
-        self.user = User.objects.create_user(
-            username="panuser", password="pass123"
-        )
+        self.user = User.objects.create_user(username="panuser", password="pass123")
         self.profile = self.user.profile
 
     def _set_pan(self, pan):

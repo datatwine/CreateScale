@@ -13,11 +13,15 @@ class AuditMiddleware:
         start = time.time()
         response = self.get_response(request)
         if request.user.is_authenticated:
-            logger.info(json.dumps({
-                "user": request.user.username,
-                "method": request.method,
-                "path": request.path,
-                "status": response.status_code,
-                "ms": round((time.time() - start) * 1000),
-            }))
+            logger.info(
+                json.dumps(
+                    {
+                        "user": request.user.username,
+                        "method": request.method,
+                        "path": request.path,
+                        "status": response.status_code,
+                        "ms": round((time.time() - start) * 1000),
+                    }
+                )
+            )
         return response

@@ -3,6 +3,7 @@ Integration tests for the payment views — Django test Client + mocked
 Razorpay. These verify the HTTP layer end-to-end (auth gates, permission
 checks, response shapes) without touching the network.
 """
+
 import hashlib
 import hmac
 import json
@@ -27,7 +28,6 @@ def client(db):
 # ─────────────────────────────────────────────────────────────────────────
 @pytest.mark.django_db
 class TestCreatePaymentOrderView:
-
     def test_requires_login(self, client, engagement):
         # Anonymous → redirect to login
         r = client.post(reverse("bookings:create-payment-order", args=[engagement.pk]))
@@ -38,7 +38,9 @@ class TestCreatePaymentOrderView:
         r = client.post(reverse("bookings:create-payment-order", args=[engagement.pk]))
         assert r.status_code == 403
 
-    def test_returns_order_data(self, client, engagement, client_user, mock_razorpay, settings):
+    def test_returns_order_data(
+        self, client, engagement, client_user, mock_razorpay, settings
+    ):
         settings.RAZORPAY_KEY_ID = "rzp_test_key"
         engagement.status = Engagement.STATUS_ACCEPTED
         engagement.accepted_at = timezone.now()
@@ -54,7 +56,9 @@ class TestCreatePaymentOrderView:
         assert data["amount"] == 200000
         assert data["key_id"] == "rzp_test_key"
 
-    def test_400_on_service_failure(self, client, engagement, client_user, mock_razorpay):
+    def test_400_on_service_failure(
+        self, client, engagement, client_user, mock_razorpay
+    ):
         # Performer setup incomplete → service raises → JSON 400. Clear ALL
         # payment-setup fields so the performer is unpayable in EITHER mode
         # (Route: linked account + KYC; payouts: bank details on file).
@@ -80,12 +84,13 @@ class TestCreatePaymentOrderView:
 # ─────────────────────────────────────────────────────────────────────────
 @pytest.mark.django_db
 class TestVerifyPaymentView:
-
     def test_happy_path(self, client, engagement, client_user, settings):
         settings.RAZORPAY_KEY_SECRET = "test_secret"
         Payment.objects.create(
-            engagement=engagement, amount=2000,
-            razorpay_order_id="order_X", status="created",
+            engagement=engagement,
+            amount=2000,
+            razorpay_order_id="order_X",
+            status="created",
         )
         body = b"order_X|pay_Y"
         sig = hmac.new(b"test_secret", body, hashlib.sha256).hexdigest()
@@ -93,11 +98,13 @@ class TestVerifyPaymentView:
         client.force_login(client_user)
         r = client.post(
             reverse("bookings:verify-payment", args=[engagement.pk]),
-            data=json.dumps({
-                "razorpay_order_id": "order_X",
-                "razorpay_payment_id": "pay_Y",
-                "razorpay_signature": sig,
-            }),
+            data=json.dumps(
+                {
+                    "razorpay_order_id": "order_X",
+                    "razorpay_payment_id": "pay_Y",
+                    "razorpay_signature": sig,
+                }
+            ),
             content_type="application/json",
         )
 
@@ -109,17 +116,21 @@ class TestVerifyPaymentView:
     def test_400_on_bad_signature(self, client, engagement, client_user, settings):
         settings.RAZORPAY_KEY_SECRET = "test_secret"
         Payment.objects.create(
-            engagement=engagement, amount=2000,
-            razorpay_order_id="order_X", status="created",
+            engagement=engagement,
+            amount=2000,
+            razorpay_order_id="order_X",
+            status="created",
         )
         client.force_login(client_user)
         r = client.post(
             reverse("bookings:verify-payment", args=[engagement.pk]),
-            data=json.dumps({
-                "razorpay_order_id": "order_X",
-                "razorpay_payment_id": "pay_Y",
-                "razorpay_signature": "bogus",
-            }),
+            data=json.dumps(
+                {
+                    "razorpay_order_id": "order_X",
+                    "razorpay_payment_id": "pay_Y",
+                    "razorpay_signature": "bogus",
+                }
+            ),
             content_type="application/json",
         )
         assert r.status_code == 400
@@ -130,12 +141,12 @@ class TestVerifyPaymentView:
 # ─────────────────────────────────────────────────────────────────────────
 @pytest.mark.django_db
 class TestWebhookEndpoint:
-
     def test_rejects_bad_signature(self, client, settings):
         settings.RAZORPAY_WEBHOOK_SECRET = "whsec"
         r = client.post(
             reverse("bookings:razorpay-webhook"),
-            data='{}', content_type="application/json",
+            data="{}",
+            content_type="application/json",
             HTTP_X_RAZORPAY_SIGNATURE="bad",
         )
         assert r.status_code == 400
@@ -147,7 +158,8 @@ class TestWebhookEndpoint:
 
         r = client.post(
             reverse("bookings:razorpay-webhook"),
-            data=body, content_type="application/json",
+            data=body,
+            content_type="application/json",
             HTTP_X_RAZORPAY_SIGNATURE=sig,
         )
         assert r.status_code == 200
@@ -161,7 +173,8 @@ class TestWebhookEndpoint:
         # (it skips CSRF), but the explicit assertion here documents intent.
         r = client.post(
             reverse("bookings:razorpay-webhook"),
-            data=body, content_type="application/json",
+            data=body,
+            content_type="application/json",
             HTTP_X_RAZORPAY_SIGNATURE=sig,
         )
         assert r.status_code in (200, 400)
@@ -173,7 +186,6 @@ class TestWebhookEndpoint:
 # ─────────────────────────────────────────────────────────────────────────
 @pytest.mark.django_db
 class TestDisputeView:
-
     def test_client_can_raise_dispute_in_window(self, client, engagement, client_user):
         engagement.status = Engagement.STATUS_ACCEPTED
         engagement.payment_status = Engagement.PAYMENT_PAID
@@ -229,7 +241,6 @@ class TestDisputeView:
 # ─────────────────────────────────────────────────────────────────────────
 @pytest.mark.django_db
 class TestPaymentHistoryViews:
-
     def test_performer_payouts_renders(self, client, engagement, performer_user):
         engagement.payment_status = Engagement.PAYMENT_PAID
         engagement.save()

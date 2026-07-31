@@ -8,6 +8,7 @@ Rewrites /etc/nginx/upstream.conf with only ready IPs + keepalive pool.
 Always includes 127.0.0.1 (the local Gunicorn on this OD box).
 Reloads Nginx only if the list changed.
 """
+
 import hashlib
 import socket
 import subprocess
@@ -25,10 +26,12 @@ ec2 = boto3.client("ec2", region_name=REGION)
 
 
 def get_web_ips():
-    resp = ec2.describe_instances(Filters=[
-        {"Name": f"tag:{TAG_KEY}", "Values": [TAG_VALUE]},
-        {"Name": "instance-state-name", "Values": ["running"]},
-    ])
+    resp = ec2.describe_instances(
+        Filters=[
+            {"Name": f"tag:{TAG_KEY}", "Values": [TAG_VALUE]},
+            {"Name": "instance-state-name", "Values": ["running"]},
+        ]
+    )
     ips = []
     for res in resp["Reservations"]:
         for inst in res["Instances"]:

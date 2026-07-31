@@ -7,76 +7,116 @@ class ProfanityFilterTest(TestCase):
     """Profession profanity filter — all four entry points."""
 
     def setUp(self):
-        self.user = User.objects.create_user(username='filteruser', password='password123')
-        self.client.login(username='filteruser', password='password123')
+        self.user = User.objects.create_user(
+            username="filteruser", password="password123"
+        )
+        self.client.login(username="filteruser", password="password123")
 
     def test_web_signup_rejects_profane_profession(self):
-        response = self.client.post(reverse('signup'), {
-            'username': 'baduser', 'email': 'bad@example.com',
-            'password1': 'strongpassword123', 'password2': 'strongpassword123',
-            'profession': 'shit', 'location': 'Mumbai',
-        })
+        response = self.client.post(
+            reverse("signup"),
+            {
+                "username": "baduser",
+                "email": "bad@example.com",
+                "password1": "strongpassword123",
+                "password2": "strongpassword123",
+                "profession": "shit",
+                "location": "Mumbai",
+            },
+        )
         self.assertEqual(response.status_code, 200)
-        self.assertFalse(User.objects.filter(username='baduser').exists())
+        self.assertFalse(User.objects.filter(username="baduser").exists())
 
     def test_web_signup_allows_clean_profession(self):
         self.client.logout()
-        response = self.client.post(reverse('signup'), {
-            'username': 'gooduser', 'email': 'good@example.com',
-            'password1': 'strongpassword123', 'password2': 'strongpassword123',
-            'profession': 'Musician', 'location': 'Delhi',
-        })
+        response = self.client.post(
+            reverse("signup"),
+            {
+                "username": "gooduser",
+                "email": "good@example.com",
+                "password1": "strongpassword123",
+                "password2": "strongpassword123",
+                "profession": "Musician",
+                "location": "Delhi",
+            },
+        )
         self.assertEqual(response.status_code, 302)
-        self.assertTrue(User.objects.filter(username='gooduser').exists())
+        self.assertTrue(User.objects.filter(username="gooduser").exists())
 
     def test_web_profile_edit_rejects_profane_profession(self):
-        response = self.client.post(reverse('profile'), {
-            'profile_submit': '1',
-            'profession': 'fuck', 'location': 'Mumbai',
-            'bio': 'Hello', 'is_performer': True, 'is_potential_client': False,
-        })
+        response = self.client.post(
+            reverse("profile"),
+            {
+                "profile_submit": "1",
+                "profession": "fuck",
+                "location": "Mumbai",
+                "bio": "Hello",
+                "is_performer": True,
+                "is_potential_client": False,
+            },
+        )
         self.user.profile.refresh_from_db()
-        self.assertNotEqual(self.user.profile.profession, 'fuck')
+        self.assertNotEqual(self.user.profile.profession, "fuck")
 
     def test_api_signup_rejects_profane_profession(self):
         self.client.logout()
-        response = self.client.post('/api/auth/signup/', {
-            'username': 'apiuser', 'email': 'api@example.com',
-            'password1': 'strongpassword123', 'password2': 'strongpassword123',
-            'profession': 'ass', 'location': 'Mumbai',
-        }, content_type='application/json')
+        response = self.client.post(
+            "/api/auth/signup/",
+            {
+                "username": "apiuser",
+                "email": "api@example.com",
+                "password1": "strongpassword123",
+                "password2": "strongpassword123",
+                "profession": "ass",
+                "location": "Mumbai",
+            },
+            content_type="application/json",
+        )
         self.assertEqual(response.status_code, 400)
 
     def test_api_profile_edit_rejects_profane_profession(self):
         from rest_framework.authtoken.models import Token
+
         token = Token.objects.create(user=self.user)
         response = self.client.patch(
-            '/api/users/me/',
-            {'profession': 'damn shit'},
-            content_type='application/json',
-            HTTP_AUTHORIZATION=f'Token {token.key}',
+            "/api/users/me/",
+            {"profession": "damn shit"},
+            content_type="application/json",
+            HTTP_AUTHORIZATION=f"Token {token.key}",
         )
         self.assertEqual(response.status_code, 400)
 
     def test_rejects_leetspeak(self):
         self.client.logout()
-        response = self.client.post(reverse('signup'), {
-            'username': 'leet', 'email': 'leet@example.com',
-            'password1': 'strongpassword123', 'password2': 'strongpassword123',
-            'profession': 'sh1t', 'location': 'Mumbai',
-        })
+        response = self.client.post(
+            reverse("signup"),
+            {
+                "username": "leet",
+                "email": "leet@example.com",
+                "password1": "strongpassword123",
+                "password2": "strongpassword123",
+                "profession": "sh1t",
+                "location": "Mumbai",
+            },
+        )
         self.assertEqual(response.status_code, 200)
-        self.assertFalse(User.objects.filter(username='leet').exists())
+        self.assertFalse(User.objects.filter(username="leet").exists())
 
     def test_rejects_masked_profanity(self):
         self.client.logout()
-        response = self.client.post(reverse('signup'), {
-            'username': 'masked', 'email': 'masked@example.com',
-            'password1': 'strongpassword123', 'password2': 'strongpassword123',
-            'profession': 'f**k', 'location': 'Mumbai',
-        })
+        response = self.client.post(
+            reverse("signup"),
+            {
+                "username": "masked",
+                "email": "masked@example.com",
+                "password1": "strongpassword123",
+                "password2": "strongpassword123",
+                "profession": "f**k",
+                "location": "Mumbai",
+            },
+        )
         self.assertEqual(response.status_code, 200)
-        self.assertFalse(User.objects.filter(username='masked').exists())
+        self.assertFalse(User.objects.filter(username="masked").exists())
 
 
 @override_settings(
