@@ -220,7 +220,9 @@ class PublicProfileDetailSerializer(serializers.ModelSerializer):
                 "last_engagement": {
                     "venue": last_eng.venue,
                     "date": last_eng.date.isoformat(),
-                } if last_eng else None
+                }
+                if last_eng
+                else None,
             }
         return obj._gig_data
 
