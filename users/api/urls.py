@@ -89,8 +89,16 @@ urlpatterns = [
         name="api-bookings-client-payments",
     ),
     # Bookings list endpoints
-    path("bookings/engagements/client/", ClientEngagementsAPIView.as_view(), name="api-bookings-client-engagements"),
-    path("bookings/engagements/performer/", PerformerEngagementsAPIView.as_view(), name="api-bookings-performer-engagements"),
+    path(
+        "bookings/engagements/client/",
+        ClientEngagementsAPIView.as_view(),
+        name="api-bookings-client-engagements",
+    ),
+    path(
+        "bookings/engagements/performer/",
+        PerformerEngagementsAPIView.as_view(),
+        name="api-bookings-performer-engagements",
+    ),
 ]
 
 urlpatterns += router.urls

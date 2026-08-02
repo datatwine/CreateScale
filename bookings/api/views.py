@@ -22,26 +22,31 @@ from .serializers import (
 
 class ClientEngagementsAPIView(APIView):
     """GET /api/bookings/engagements/client/"""
+
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        qs = (Engagement.objects
-              .filter(client=request.user)
-              .select_related("client", "performer")
-              .order_by("date", "time"))
+        qs = (
+            Engagement.objects.filter(client=request.user)
+            .select_related("client", "performer")
+            .order_by("date", "time")
+        )
         return Response(EngagementSerializer(qs, many=True).data)
 
 
 class PerformerEngagementsAPIView(APIView):
     """GET /api/bookings/engagements/performer/"""
+
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        qs = (Engagement.objects
-              .filter(performer=request.user)
-              .select_related("client", "performer")
-              .order_by("date", "time"))
+        qs = (
+            Engagement.objects.filter(performer=request.user)
+            .select_related("client", "performer")
+            .order_by("date", "time")
+        )
         return Response(EngagementSerializer(qs, many=True).data)
+
 
 class CreateHireRequestAPIView(APIView):
     """
