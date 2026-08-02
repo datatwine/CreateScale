@@ -20,13 +20,13 @@ import {
     Alert,
     FlatList,
     Image,
+    ScrollView,
     StyleSheet,
     Text,
     TouchableOpacity,
-    View,
+    View
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Ionicons } from "@expo/vector-icons";
 
 import { AuthContext } from "../context/AuthContext";
 import { API_BASE_URL } from "../config/api";
@@ -111,30 +111,36 @@ function FeedCard({ profile, onPress }) {
 
 function ProfessionFilter({ professions, selected, onSelect }) {
     return (
-        <View style={styles.filterRow}>
-            {/* "All" pill — clears the filter */}
-            <TouchableOpacity
-                style={[styles.pill, !selected && styles.pillActive]}
-                onPress={() => onSelect(null)}
+        <View>
+            <ScrollView
+                horizontal={true}
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.filterRow}
             >
-                <Text style={[styles.pillText, !selected && styles.pillTextActive]}>
-                    All
-                </Text>
-            </TouchableOpacity>
-
-            {professions.map((p) => (
+                {/* "All" pill — clears the filter */}
                 <TouchableOpacity
-                    key={p}
-                    style={[styles.pill, selected === p && styles.pillActive]}
-                    onPress={() => onSelect(p)}
+                    style={[styles.pill, !selected && styles.pillActive]}
+                    onPress={() => onSelect(null)}
                 >
-                    <Text
-                        style={[styles.pillText, selected === p && styles.pillTextActive]}
-                    >
-                        {p}
+                    <Text style={[styles.pillText, !selected && styles.pillTextActive]}>
+                        All
                     </Text>
                 </TouchableOpacity>
-            ))}
+
+                {professions.map((p) => (
+                    <TouchableOpacity
+                        key={p}
+                        style={[styles.pill, selected === p && styles.pillActive]}
+                        onPress={() => onSelect(p)}
+                    >
+                        <Text
+                            style={[styles.pillText, selected === p && styles.pillTextActive]}
+                        >
+                            {p}
+                        </Text>
+                    </TouchableOpacity>
+                ))}
+            </ScrollView>
         </View>
     );
 }
@@ -390,7 +396,6 @@ const styles = StyleSheet.create({
     // --- Filter pills ---
     filterRow: {
         flexDirection: "row",
-        flexWrap: "wrap",
         gap: 8,
         paddingHorizontal: 16,
         paddingBottom: 12,

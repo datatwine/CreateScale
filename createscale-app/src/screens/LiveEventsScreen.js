@@ -24,7 +24,7 @@ import {
     StyleSheet,
     Text,
     TouchableOpacity,
-    View,
+    View
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -490,10 +490,10 @@ export default function LiveEventsScreen({ navigation }) {
                                 <Text style={styles.countdownLabel}>Next event in</Text>
                                 <View style={styles.countdownRow}>
                                     {[
-                                        { value: countdown.days,  unit: "Days" },
+                                        { value: countdown.days, unit: "Days" },
                                         { value: countdown.hours, unit: "Hrs" },
-                                        { value: countdown.mins,  unit: "Min" },
-                                        { value: countdown.secs,  unit: "Sec" },
+                                        { value: countdown.mins, unit: "Min" },
+                                        { value: countdown.secs, unit: "Sec" },
                                     ].map(({ value, unit }, i, arr) => (
                                         <React.Fragment key={unit}>
                                             <View style={styles.countdownUnit}>
