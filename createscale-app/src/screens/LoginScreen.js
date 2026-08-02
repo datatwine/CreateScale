@@ -41,6 +41,10 @@ export default function LoginScreen({ navigation }) {
     navigation.navigate("Signup");
   };
 
+  const goToForgotPassword = () => {
+    navigation.navigate("ForgotPassword");
+  };
+
   return (
     <SafeAreaView edges={["top"]} style={styles.safeArea}>
       <StatusBar barStyle="light-content" backgroundColor={COLORS.black} translucent={false} />
@@ -75,6 +79,10 @@ export default function LoginScreen({ navigation }) {
               value={password}
               onChangeText={setPassword}
             />
+
+            <TouchableOpacity onPress={goToForgotPassword} style={styles.forgotLink}>
+              <Text style={styles.forgotLinkText}>Forgot password?</Text>
+            </TouchableOpacity>
 
             {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
@@ -164,6 +172,15 @@ const styles = StyleSheet.create({
     color: COLORS.error,
     marginBottom: 8,
     fontSize: 13,
+  },
+  forgotLink: {
+    alignSelf: "flex-end",
+    marginBottom: 12,
+  },
+  forgotLinkText: {
+    color: COLORS.accent,
+    fontSize: 13,
+    fontWeight: "600",
   },
   primaryButton: {
     borderRadius: 999,
