@@ -4,6 +4,7 @@ from django.shortcuts import get_object_or_404
 from django.utils import timezone
 
 from rest_framework import status, viewsets
+
 # Aliased: EngagementViewSet has a method named `action` (its own /action/
 # URL) which shadows this import for every @action-decorated method defined
 # below it in the class body — Python class bodies bind names sequentially.
@@ -380,4 +381,8 @@ class EngagementViewSet(viewsets.ViewSet):
         engagement.disputed_at = timezone.now()
         engagement.dispute_reason = ser.validated_data["reason"]
         engagement.save(update_fields=["disputed_at", "dispute_reason"])
-        return Response({"detail": "Issue raised. An admin will review and contact you within 24-48 hours."})
+        return Response(
+            {
+                "detail": "Issue raised. An admin will review and contact you within 24-48 hours."
+            }
+        )

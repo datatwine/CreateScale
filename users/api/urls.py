@@ -50,7 +50,11 @@ urlpatterns = [
     # USERS
     # -------------------------
     path("users/me/", MeProfileAPIView.as_view(), name="api-users-me"),
-    path("users/me/payment/", PaymentDetailsAPIView.as_view(), name="api-users-me-payment"),
+    path(
+        "users/me/payment/",
+        PaymentDetailsAPIView.as_view(),
+        name="api-users-me-payment",
+    ),
     path("users/me/uploads/", MyUploadsAPIView.as_view(), name="api-users-me-uploads"),
     path(
         "users/me/uploads/presign/",

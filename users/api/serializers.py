@@ -257,8 +257,12 @@ class PaymentDetailsSerializer(serializers.ModelSerializer):
     Same format checks as the web form (regexes imported from users.models,
     the single source of truth also enforced by Profile.clean()).
     """
+
     performer_fee = serializers.IntegerField(
-        min_value=500, max_value=500000, required=False, allow_null=True,
+        min_value=500,
+        max_value=500000,
+        required=False,
+        allow_null=True,
     )
 
     class Meta:
@@ -272,23 +276,27 @@ class PaymentDetailsSerializer(serializers.ModelSerializer):
             "bank_account_holder_name",
         ]
         extra_kwargs = {
-            "phone_number":             {"required": False},
-            "pan_number":               {"required": False},
-            "bank_account_number":      {"required": False},
-            "bank_ifsc":                {"required": False},
+            "phone_number": {"required": False},
+            "pan_number": {"required": False},
+            "bank_account_number": {"required": False},
+            "bank_ifsc": {"required": False},
             "bank_account_holder_name": {"required": False},
         }
 
     def validate_phone_number(self, value):
         value = (value or "").strip()
         if value and not PHONE_RE.match(value):
-            raise serializers.ValidationError("Enter a valid 10-digit Indian mobile number.")
+            raise serializers.ValidationError(
+                "Enter a valid 10-digit Indian mobile number."
+            )
         return value
 
     def validate_pan_number(self, value):
         value = (value or "").upper().strip()
         if value and not PAN_RE.match(value):
-            raise serializers.ValidationError("Invalid PAN format. Expected: ABCDE1234F")
+            raise serializers.ValidationError(
+                "Invalid PAN format. Expected: ABCDE1234F"
+            )
         return value
 
     def validate_bank_ifsc(self, value):
