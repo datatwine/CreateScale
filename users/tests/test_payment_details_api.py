@@ -9,6 +9,7 @@ update_payment_details view. Mirrors its dual-mode branching:
     account and sets kyc_status="pending".
 Both onboarding calls are non-fatal on failure — details stay saved.
 """
+
 from unittest.mock import patch
 
 import pytest
@@ -28,7 +29,9 @@ VALID_PAYLOAD = {
 
 
 def _make_performer(username):
-    u = User.objects.create_user(username, password="x", email=f"{username}@artkhoj.local")
+    u = User.objects.create_user(
+        username, password="x", email=f"{username}@artkhoj.local"
+    )
     u.profile.is_performer = True
     u.profile.save()
     return u, u.profile
@@ -36,7 +39,6 @@ def _make_performer(username):
 
 @pytest.mark.django_db
 class TestPaymentDetailsAuth:
-
     def test_requires_authentication(self):
         api = APIClient()
         r = api.patch(URL, VALID_PAYLOAD, format="json")
@@ -45,7 +47,6 @@ class TestPaymentDetailsAuth:
 
 @pytest.mark.django_db
 class TestPaymentDetailsValidation:
-
     def setup_method(self):
         self.api = APIClient()
 
@@ -61,7 +62,9 @@ class TestPaymentDetailsValidation:
         settings.RAZORPAY_ROUTE_ENABLED = False
         user, _ = _make_performer("perf_fee_high")
         self.api.force_authenticate(user=user)
-        r = self.api.patch(URL, {**VALID_PAYLOAD, "performer_fee": 1000000}, format="json")
+        r = self.api.patch(
+            URL, {**VALID_PAYLOAD, "performer_fee": 1000000}, format="json"
+        )
         assert r.status_code == 400
         assert "performer_fee" in r.data
 
@@ -69,7 +72,9 @@ class TestPaymentDetailsValidation:
         settings.RAZORPAY_ROUTE_ENABLED = False
         user, _ = _make_performer("perf_bad_phone")
         self.api.force_authenticate(user=user)
-        r = self.api.patch(URL, {**VALID_PAYLOAD, "phone_number": "12345"}, format="json")
+        r = self.api.patch(
+            URL, {**VALID_PAYLOAD, "phone_number": "12345"}, format="json"
+        )
         assert r.status_code == 400
         assert "phone_number" in r.data
 
@@ -77,7 +82,9 @@ class TestPaymentDetailsValidation:
         settings.RAZORPAY_ROUTE_ENABLED = False
         user, _ = _make_performer("perf_bad_pan")
         self.api.force_authenticate(user=user)
-        r = self.api.patch(URL, {**VALID_PAYLOAD, "pan_number": "notapan"}, format="json")
+        r = self.api.patch(
+            URL, {**VALID_PAYLOAD, "pan_number": "notapan"}, format="json"
+        )
         assert r.status_code == 400
         assert "pan_number" in r.data
 
@@ -99,7 +106,9 @@ class TestPaymentDetailsPayoutsMode:
 
     @patch("bookings.services.razorpay_client.get_client")
     @patch("bookings.services.payments.PaymentService.ensure_payout_destination")
-    def test_saves_fields_and_pre_creates_destination(self, mock_ensure, mock_get_client, settings):
+    def test_saves_fields_and_pre_creates_destination(
+        self, mock_ensure, mock_get_client, settings
+    ):
         settings.RAZORPAY_ROUTE_ENABLED = False
         user, profile = _make_performer("perf_payouts_ok")
         self.api.force_authenticate(user=user)
@@ -119,7 +128,9 @@ class TestPaymentDetailsPayoutsMode:
         "bookings.services.payments.PaymentService.ensure_payout_destination",
         side_effect=Exception("bad IFSC"),
     )
-    def test_destination_failure_is_non_fatal(self, mock_ensure, mock_get_client, settings):
+    def test_destination_failure_is_non_fatal(
+        self, mock_ensure, mock_get_client, settings
+    ):
         settings.RAZORPAY_ROUTE_ENABLED = False
         user, profile = _make_performer("perf_payouts_fail")
         self.api.force_authenticate(user=user)
@@ -129,9 +140,26 @@ class TestPaymentDetailsPayoutsMode:
         assert r.status_code == 200
         profile.refresh_from_db()
         assert profile.bank_account_number == "1234567890"
+        # Failure must surface as a warning, not a silent 200 (review Flag 1).
+        assert "warnings" in r.data
+        assert len(r.data["warnings"]) >= 1
+
+    @patch("bookings.services.razorpay_client.get_client")
+    @patch("bookings.services.payments.PaymentService.ensure_payout_destination")
+    def test_no_warnings_key_on_success(self, mock_ensure, mock_get_client, settings):
+        settings.RAZORPAY_ROUTE_ENABLED = False
+        user, _ = _make_performer("perf_payouts_clean")
+        self.api.force_authenticate(user=user)
+
+        r = self.api.patch(URL, VALID_PAYLOAD, format="json")
+
+        assert r.status_code == 200
+        assert "warnings" not in r.data
 
     @patch("bookings.services.payments.PaymentService.ensure_payout_destination")
-    def test_does_not_re_onboard_when_fund_account_already_exists(self, mock_ensure, settings):
+    def test_does_not_re_onboard_when_fund_account_already_exists(
+        self, mock_ensure, settings
+    ):
         settings.RAZORPAY_ROUTE_ENABLED = False
         user, profile = _make_performer("perf_payouts_idempotent")
         profile.razorpayx_fund_account_id = "fa_existing"
@@ -176,7 +204,9 @@ class TestPaymentDetailsRouteMode:
         self.api = APIClient()
 
     @patch("bookings.services.razorpay_client.get_client")
-    def test_creates_linked_account_when_fields_complete(self, mock_get_client, settings):
+    def test_creates_linked_account_when_fields_complete(
+        self, mock_get_client, settings
+    ):
         settings.RAZORPAY_ROUTE_ENABLED = True
         mock_get_client.return_value.account.create.return_value = {"id": "acc_new123"}
         user, profile = _make_performer("perf_route_ok")
@@ -190,7 +220,9 @@ class TestPaymentDetailsRouteMode:
         assert profile.razorpay_kyc_status == "pending"
 
     @patch("bookings.services.razorpay_client.get_client")
-    def test_does_not_re_onboard_when_account_already_exists(self, mock_get_client, settings):
+    def test_does_not_re_onboard_when_account_already_exists(
+        self, mock_get_client, settings
+    ):
         settings.RAZORPAY_ROUTE_ENABLED = True
         user, profile = _make_performer("perf_route_idempotent")
         profile.razorpay_account_id = "acc_existing"

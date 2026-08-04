@@ -10,6 +10,7 @@ mode-dependent (Route vs Payouts) gate logic client-side. The property
 itself is already fully tested in test_can_receive_payments.py — these
 tests only confirm it's exposed on the serializers, read-only.
 """
+
 import pytest
 from django.contrib.auth.models import User
 from django.core.cache import cache
@@ -23,7 +24,6 @@ def _make_user(username):
 
 @pytest.mark.django_db
 class TestCanReceivePaymentsOnMeProfile:
-
     def setup_method(self):
         self.api = APIClient()
 
@@ -61,7 +61,9 @@ class TestCanReceivePaymentsOnMeProfile:
         profile.save()
 
         self.api.force_authenticate(user=user)
-        r = self.api.patch("/api/users/me/", {"can_receive_payments": True}, format="json")
+        r = self.api.patch(
+            "/api/users/me/", {"can_receive_payments": True}, format="json"
+        )
 
         assert r.status_code == 200
         profile.refresh_from_db()
@@ -71,7 +73,6 @@ class TestCanReceivePaymentsOnMeProfile:
 
 @pytest.mark.django_db
 class TestCanReceivePaymentsOnPublicProfileDetail:
-
     def setup_method(self):
         self.api = APIClient()
         # ProfileDetailAPIView caches by user_id, and Redis persists across
