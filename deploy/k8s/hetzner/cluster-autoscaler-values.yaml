@@ -8,9 +8,9 @@ extraEnv:
   HCLOUD_FIREWALL: "artkhoj-fw"
   HCLOUD_SSH_KEY: "artkhoj-key"
 extraArgs:
-  scale-down-unneeded-time: 20m
-  scale-down-delay-after-add: 15m
-  scale-down-delay-after-delete: 5m
+  scale-down-unneeded-time: 60m
+  scale-down-delay-after-add: 30m
+  scale-down-delay-after-delete: 10m
   scale-down-utilization-threshold: "0.15"
 autoscalingGroups:
   - name: web-pool

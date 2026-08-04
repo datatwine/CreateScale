@@ -40,11 +40,11 @@ spec:
                 name: artkhoj-env
           resources:
             requests:
-              cpu: "250m"
-              memory: "512Mi"
+              cpu: "400m"
+              memory: "768Mi"
             limits:
-              cpu: "1"
-              memory: "1Gi"
+              cpu: "800m"
+              memory: "768Mi"
           startupProbe:
             httpGet:
               path: /metrics
