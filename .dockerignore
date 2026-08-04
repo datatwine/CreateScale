@@ -4,7 +4,7 @@
 .vscode
 __pycache__
 *.pyc
-node_modules
+**/node_modules
 media
 vol
 deploy
@@ -13,3 +13,5 @@ docs
 *.log
 .env*
 compose/docker-compose*
+venv
+createscale-app
