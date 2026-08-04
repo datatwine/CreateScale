@@ -32,6 +32,10 @@ import { AuthContext } from "../context/AuthContext";
 import { API_BASE_URL } from "../config/api";
 import { COLORS } from "../config/theme";
 import PressableStamp from "../components/PressableStamp";
+import { injectAds } from "../ads/injectAds";
+import { MOCK_FEED_AD } from "../ads/mockInventory";
+import { FEED_AD_INTERVAL, FEED_FIRST_AD_OFFSET } from "../ads/constants";
+import FeedAdCard from "../ads/FeedAdCard";
 
 // ---------------------------------------------------------------------------
 // Shared helpers (same logic as ProfileScreen — tiny, so duplicated here
@@ -253,6 +257,12 @@ export default function GlobalFeedScreen({ navigation }) {
         navigation.navigate("ProfileDetail", { userId: profile.user_id });
     };
 
+    // Simulation: no-op. Real AdMob handles the click + destination itself,
+    // so this handler goes away (or logs) once real ads land.
+    const handleAdPress = (ad) => {
+        console.log("Ad tapped:", ad.advertiser);
+    };
+
 
     // --- Render --------------------------------------------------------------
 
@@ -264,6 +274,14 @@ export default function GlobalFeedScreen({ navigation }) {
             </View>
         );
     };
+
+    const adReady = true; // simulation: mock is always ready. Later: from useNativeAds().
+    const feedData = injectAds(
+        profiles,
+        adReady ? MOCK_FEED_AD : null,
+        FEED_AD_INTERVAL,
+        FEED_FIRST_AD_OFFSET,
+    );
 
     return (
         <SafeAreaView style={styles.safeArea} edges={["top"]}>
@@ -304,16 +322,20 @@ export default function GlobalFeedScreen({ navigation }) {
                 </View>
             ) : (
                 <FlatList
-                    data={profiles}
-                    keyExtractor={(item) => String(item.user_id)}
+                    data={feedData}
+                    keyExtractor={(item) => (item._isAd ? item.id : String(item.user_id))}
                     numColumns={2}
                     columnWrapperStyle={{ gap: 12 }}
                     renderItem={({ item }) => (
                         <View style={{ flex: 1, marginBottom: 12 }}>
-                            <FeedCard
-                                profile={item}
-                                onPress={() => handleCardPress(item)}
-                            />
+                            {item._isAd ? (
+                                <FeedAdCard ad={item} onPress={() => handleAdPress(item)} />
+                            ) : (
+                                <FeedCard
+                                    profile={item}
+                                    onPress={() => handleCardPress(item)}
+                                />
+                            )}
                         </View>
                     )}
                     contentContainerStyle={styles.listContent}
