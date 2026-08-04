@@ -200,7 +200,8 @@ jobs:
             "https://api.hetzner.cloud/v1/firewalls/$FW_ID" \
             | jq --arg ip "$RUNNER_IP" \
             '[.firewall.rules[] | {direction, protocol, port, source_ips, destination_ips, description}]
-             + [{"direction":"in","protocol":"tcp","port":"6443","source_ips":[$ip],"destination_ips":[],"description":"ci-deploy-web"}]')
+             + [{"direction":"in","protocol":"tcp","port":"6443","source_ips":[$ip],"destination_ips":[],"description":"ci-deploy-web"},
+                {"direction":"in","protocol":"tcp","port":"22","source_ips":[$ip],"destination_ips":[],"description":"ci-deploy-web"}]')
 
           curl -s -X POST \
             -H "Authorization: Bearer $HCLOUD_TOKEN" \
