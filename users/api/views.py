@@ -154,6 +154,7 @@ class ForgotPasswordAPIView(APIView):
     """
 
     permission_classes = [AllowAny]
+    throttle_classes = [AuthRateThrottle]
 
     def post(self, request):
         serializer = ForgotPasswordSerializer(data=request.data)

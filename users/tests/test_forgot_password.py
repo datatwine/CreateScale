@@ -2,6 +2,7 @@ from django.test import TestCase
 from django.contrib.auth.models import User
 from django.contrib.auth.tokens import default_token_generator
 from django.core import mail
+from django.core.cache import cache
 from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode
 from rest_framework.test import APIClient
@@ -12,6 +13,10 @@ class TestForgotPasswordAPIIntegration(TestCase):
 
     def setUp(self):
         self.client = APIClient()
+        # The AuthRateThrottle budget is stored in cache and persists across
+        # test methods in this process. Flush it so no sibling test eats into
+        # the shared per-IP budget of another.
+        cache.clear()
         self.user = User.objects.create_user(
             username="test.performer",
             email="performer@example.com",
@@ -83,6 +88,25 @@ class TestForgotPasswordAPIIntegration(TestCase):
         resp = self.client.post("/api/auth/forgot-password/", {}, format="json")
 
         self.assertEqual(resp.status_code, 400)
+
+    def test_more_than_five_requests_are_throttled(self):
+        # Rate limit is 5/minute per IP. Fire 6 valid calls with a user that
+        # exists so each one would otherwise send an email. The 6th should be
+        # blocked with 429, proving the endpoint can't be spammed.
+        for _ in range(5):
+            resp = self.client.post(
+                "/api/auth/forgot-password/",
+                {"email": "performer@example.com"},
+                format="json",
+            )
+            self.assertEqual(resp.status_code, 200)
+
+        resp = self.client.post(
+            "/api/auth/forgot-password/",
+            {"email": "performer@example.com"},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 429)
 
 
 class TestPasswordResetWebFlow(TestCase):
