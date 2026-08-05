@@ -30,6 +30,7 @@ flannel-iface: enp7s0
 node-ip: ${PRIVATE_IP}
 kubelet-arg:
   - "cloud-provider=external"
+  - "system-reserved=cpu=300m,memory=300Mi"
 CONF
 
 # --- Registry mirror: pull images from DB node LAN cache first ---
