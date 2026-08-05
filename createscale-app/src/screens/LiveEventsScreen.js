@@ -32,7 +32,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { AuthContext } from "../context/AuthContext";
 import { API_BASE_URL } from "../config/api";
 import { computeCountdown } from "../utils/countdown";
-import { COLORS } from "../config/theme";
+import { COLORS, TAB_BAR_CLEARANCE } from "../config/theme";
 import PressableStamp from "../components/PressableStamp";
 import { injectAds } from "../ads/injectAds";
 import { MOCK_EVENT_AD } from "../ads/mockInventory";
@@ -664,7 +664,7 @@ const styles = StyleSheet.create({
     // --- List ---
     listContent: {
         paddingHorizontal: 16,
-        paddingBottom: 24,
+        paddingBottom: TAB_BAR_CLEARANCE,
         paddingTop: 4,
     },
 

@@ -4,6 +4,7 @@ import React, { useContext } from "react";
 import { NavigationContainer, DefaultTheme } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import { SafeAreaProvider, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { AuthProvider, AuthContext } from "./src/context/AuthContext";
 
@@ -39,17 +40,42 @@ const WebTheme = {
 };
 
 function MainTabs() {
+  const insets = useSafeAreaInsets();
+  // Lift the bar off the very bottom edge so it reads as a floating pill and
+  // clears the home-indicator zone. On devices without a home indicator
+  // (insets.bottom === 0) fall back to a fixed gap.
+  const bottomGap = insets.bottom > 0 ? insets.bottom : 12;
+
   return (
     <Tab.Navigator
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: COLORS.accent,
         tabBarInactiveTintColor: COLORS.textMuted,
+        tabBarItemStyle: { paddingVertical: 6 },
         tabBarStyle: {
+          // True floating overlay: absolutely positioned over screen content
+          // (instead of sitting in normal layout flow and pushing it up), so
+          // list content is visible scrolling behind/around the pill. Screens
+          // add TAB_BAR_CLEARANCE bottom padding so their last item still
+          // clears it.
+          position: "absolute",
+          left: 16,
+          right: 16,
+          bottom: bottomGap,
           backgroundColor: COLORS.card,
-          borderTopColor: COLORS.ink,
-          borderTopWidth: 2,
-          height:55,
+          // Full ink border + rounded corners = the app's stamp aesthetic.
+          borderWidth: 2,
+          borderColor: COLORS.ink,
+          borderRadius: 18,
+          height: 62,
+          paddingBottom: 0,
+          // Soft shadow so it hovers above the content.
+          shadowColor: COLORS.ink,
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.15,
+          shadowRadius: 8,
+          elevation: 8,
         },
       }}
     >
@@ -135,12 +161,14 @@ function RootNavigator() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <View style={{ flex: 1, backgroundColor: COLORS.background }}>
-        <StatusBar barStyle="light-content" backgroundColor={COLORS.black} translucent={false} />
-        <RootNavigator />
-      </View>
-    </AuthProvider>
+    <SafeAreaProvider>
+      <AuthProvider>
+        <View style={{ flex: 1, backgroundColor: COLORS.background }}>
+          <StatusBar barStyle="light-content" backgroundColor={COLORS.black} translucent={false} />
+          <RootNavigator />
+        </View>
+      </AuthProvider>
+    </SafeAreaProvider>
   );
 }
 

@@ -30,7 +30,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { AuthContext } from "../context/AuthContext";
 import { API_BASE_URL } from "../config/api";
-import { COLORS } from "../config/theme";
+import { COLORS, TAB_BAR_CLEARANCE } from "../config/theme";
 import PressableStamp from "../components/PressableStamp";
 import { injectAds } from "../ads/injectAds";
 import { MOCK_FEED_AD } from "../ads/mockInventory";
@@ -443,7 +443,7 @@ const styles = StyleSheet.create({
     // --- Feed list ---
     listContent: {
         paddingHorizontal: 16,
-        paddingBottom: 24,
+        paddingBottom: TAB_BAR_CLEARANCE,
     },
 
     // --- Card ---
