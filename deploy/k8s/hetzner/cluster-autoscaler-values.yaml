@@ -54,10 +54,10 @@ expanderPriorities:
 autoscalingGroups:
   # Germany
   - { name: web-cx33-fsn1, minSize: 0, maxSize: 10, instanceType: cx33, region: fsn1 }
-  - { name: web-cx33-nbg1, minSize: 0, maxSize: 10, instanceType: cx33, region: nbg1 }
+  - { name: web-cx33-nbg1, minSize: 1, maxSize: 10, instanceType: cx33, region: nbg1 }
   - { name: web-cpx21-fsn1, minSize: 0, maxSize: 15, instanceType: cpx21, region: fsn1 }
   - { name: web-cpx21-nbg1, minSize: 0, maxSize: 15, instanceType: cpx21, region: nbg1 }
-  - { name: web-pool, minSize: 1, maxSize: 15, instanceType: cpx22, region: fsn1 }  # UNCHANGED — always-on worker
+  - { name: web-pool, minSize: 0, maxSize: 15, instanceType: cpx22, region: fsn1 }
   - { name: web-cpx22-nbg1, minSize: 0, maxSize: 15, instanceType: cpx22, region: nbg1 }
   - { name: web-cpx32-fsn1, minSize: 0, maxSize: 10, instanceType: cpx32, region: fsn1 }
   - { name: web-cpx32-nbg1, minSize: 0, maxSize: 10, instanceType: cpx32, region: nbg1 }
