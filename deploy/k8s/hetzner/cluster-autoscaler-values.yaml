@@ -1,20 +1,83 @@
 # Helm values for Cluster Autoscaler (Hetzner driver).
 # CI/CD runs helm upgrade automatically when this file changes.
 # Secrets (HCLOUD_TOKEN, HCLOUD_CLUSTER_CONFIG) live in GitHub Secrets.
-# Manual usage: see "Going forward" in the PR description.
+#
+# Multi-pool antifragile matrix: 7 x86 types x {fsn1, nbg1, hel1} for web
+# workers, priority-ranked by $/pod-slot (Germany first, hel1 overflow last),
+# plus one dedicated ingress pool (HAProxy Ingress Controller node, tainted
+# role=ingress:NoSchedule via ingress-init.sh).
+# Pool membership is tracked by the hcloud/node-group label the CA sets at
+# server creation — worker-init.sh MERGES labels, never PUT-replaces them.
+# Every pool name here must have a matching nodeConfig in
+# deploy/cloud-init/cluster-config.json.
 cloudProvider: hetzner
 extraEnv:
   HCLOUD_NETWORK: "artkhoj-net-eu"
   HCLOUD_FIREWALL: "artkhoj-fw"
   HCLOUD_SSH_KEY: "artkhoj-key"
 extraArgs:
-  scale-down-unneeded-time: 60m
+  expander: priority                          # choose pools via the priority ConfigMap (expanderPriorities below)
+  scale-down-unneeded-time: 60m               # LT8 Fix 1
   scale-down-delay-after-add: 30m
   scale-down-delay-after-delete: 10m
   scale-down-utilization-threshold: "0.15"
+  max-node-provision-time: 4m                 # abandon a stuck node fast (default 15m)
+  initial-node-group-backoff-duration: 30s    # retry a dry pool quickly (default 5m)
+  max-node-group-backoff-duration: 3m         # never bench a pool for long (default 30m)
+  node-group-backoff-reset-timeout: 10m       # restocked pool regains priority fast (default 3h)
+  enforce-node-group-min-size: "true"         # actively scale pools UP to minSize (web-pool + ingress pool self-heal)
+  max-nodes-total: "24"                       # master + ingress + 22 workers; respects 25-server account limit (db box is outside k8s)
+expanderPriorities:
+  # --- Germany (fsn1 + nbg1, ~1ms apart), ranked by $/pod-slot ---
+  100: ["web-cx33-fsn1"]
+  98: ["web-cx33-nbg1"]
+  95: ["web-cx23-fsn1"]
+  93: ["web-cx23-nbg1"]
+  88: ["web-cpx21-fsn1"]
+  86: ["web-cpx21-nbg1"]
+  84: ["web-pool"]          # existing cpx22/fsn1 pool — NAME UNCHANGED (keeps current worker managed)
+  82: ["web-cpx22-nbg1"]
+  80: ["web-cpx32-fsn1"]
+  78: ["web-cpx32-nbg1"]
+  70: ["web-ccx13-fsn1"]
+  68: ["web-ccx13-nbg1"]
+  66: ["web-ccx23-fsn1"]
+  64: ["web-ccx23-nbg1"]
+  # --- hel1 overflow (strictly last — +20ms to DB in fsn1), same internal order ---
+  30: ["web-cx33-hel1"]
+  28: ["web-cx23-hel1"]
+  26: ["web-cpx21-hel1"]
+  24: ["web-cpx22-hel1"]
+  22: ["web-cpx32-hel1"]
+  20: ["web-ccx13-hel1"]
+  18: ["web-ccx23-hel1"]
+  # --- ingress pool: lowest priority as a formality — django pods can't
+  #     tolerate its taint, so it never competes for web scale-ups anyway ---
+  1: ["ingress-cx23-nbg1"]
 autoscalingGroups:
-  - name: web-pool
-    minSize: 1
-    maxSize: 15
-    instanceType: cpx22
-    region: fsn1
+  # Germany
+  - { name: web-cx33-fsn1, minSize: 0, maxSize: 10, instanceType: cx33, region: fsn1 }
+  - { name: web-cx33-nbg1, minSize: 0, maxSize: 10, instanceType: cx33, region: nbg1 }
+  - { name: web-cx23-fsn1, minSize: 0, maxSize: 15, instanceType: cx23, region: fsn1 }
+  - { name: web-cx23-nbg1, minSize: 0, maxSize: 15, instanceType: cx23, region: nbg1 }
+  - { name: web-cpx21-fsn1, minSize: 0, maxSize: 15, instanceType: cpx21, region: fsn1 }
+  - { name: web-cpx21-nbg1, minSize: 0, maxSize: 15, instanceType: cpx21, region: nbg1 }
+  - { name: web-pool, minSize: 1, maxSize: 15, instanceType: cpx22, region: fsn1 }  # UNCHANGED — always-on worker
+  - { name: web-cpx22-nbg1, minSize: 0, maxSize: 15, instanceType: cpx22, region: nbg1 }
+  - { name: web-cpx32-fsn1, minSize: 0, maxSize: 10, instanceType: cpx32, region: fsn1 }
+  - { name: web-cpx32-nbg1, minSize: 0, maxSize: 10, instanceType: cpx32, region: nbg1 }
+  - { name: web-ccx13-fsn1, minSize: 0, maxSize: 6, instanceType: ccx13, region: fsn1 }
+  - { name: web-ccx13-nbg1, minSize: 0, maxSize: 6, instanceType: ccx13, region: nbg1 }
+  - { name: web-ccx23-fsn1, minSize: 0, maxSize: 4, instanceType: ccx23, region: fsn1 }
+  - { name: web-ccx23-nbg1, minSize: 0, maxSize: 4, instanceType: ccx23, region: nbg1 }
+  # hel1 overflow
+  - { name: web-cx33-hel1, minSize: 0, maxSize: 10, instanceType: cx33, region: hel1 }
+  - { name: web-cx23-hel1, minSize: 0, maxSize: 15, instanceType: cx23, region: hel1 }
+  - { name: web-cpx21-hel1, minSize: 0, maxSize: 15, instanceType: cpx21, region: hel1 }
+  - { name: web-cpx22-hel1, minSize: 0, maxSize: 15, instanceType: cpx22, region: hel1 }
+  - { name: web-cpx32-hel1, minSize: 0, maxSize: 10, instanceType: cpx32, region: hel1 }
+  - { name: web-ccx13-hel1, minSize: 0, maxSize: 6, instanceType: ccx13, region: hel1 }
+  - { name: web-ccx23-hel1, minSize: 0, maxSize: 4, instanceType: ccx23, region: hel1 }
+  # Dedicated ingress node — always exactly one; enforce-node-group-min-size
+  # recreates it if it dies (self-healing LB)
+  - { name: ingress-cx23-nbg1, minSize: 1, maxSize: 1, instanceType: cx23, region: nbg1 }

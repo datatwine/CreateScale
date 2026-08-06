@@ -62,12 +62,16 @@ spec:
                   REGISTERED=$(kubectl get nodes -o jsonpath='{.items[*].metadata.name}')
                   echo "Registered nodes: $REGISTERED"
 
+                  # Key-presence selector: matches every server that HAS an hcloud/node-group
+                  # label (set by the cluster autoscaler on every server it creates, in every
+                  # pool) — covers all current pools and any pool added later.
+                  # %2F is the URL-encoded "/" in the label key "hcloud/node-group".
                   SERVERS=$(curl -s -H "Authorization: Bearer $HCLOUD_TOKEN" \
-                    "https://api.hetzner.cloud/v1/servers?label_selector=instance_group=web-pool" \
+                    "https://api.hetzner.cloud/v1/servers?label_selector=hcloud%2Fnode-group&per_page=50" \
                     | jq -r '.servers[] | "\(.id) \(.name) \(.created)"')
 
                   if [ -z "$SERVERS" ]; then
-                    echo "No web-pool servers found in Hetzner. Done."
+                    echo "No autoscaler-managed servers found in Hetzner. Done."
                     exit 0
                   fi
 

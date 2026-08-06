@@ -31,6 +31,10 @@ mkdir -p /etc/rancher/k3s
 cat > /etc/rancher/k3s/config.yaml <<CONF
 flannel-iface: enp7s0
 node-ip: ${PRIVATE_IP}
+node-label:
+  - "role=ingress"
+node-taint:
+  - "role=ingress:NoSchedule"
 kubelet-arg:
   - "cloud-provider=external"
   - "system-reserved=cpu=300m,memory=300Mi"
