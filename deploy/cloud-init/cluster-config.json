@@ -7,12 +7,6 @@
     "web-cx33-nbg1": {
       "cloudInit": "__CLOUD_INIT_B64__"
     },
-    "web-cx23-fsn1": {
-      "cloudInit": "__CLOUD_INIT_B64__"
-    },
-    "web-cx23-nbg1": {
-      "cloudInit": "__CLOUD_INIT_B64__"
-    },
     "web-cpx21-fsn1": {
       "cloudInit": "__CLOUD_INIT_B64__"
     },
@@ -46,9 +40,6 @@
     "web-cx33-hel1": {
       "cloudInit": "__CLOUD_INIT_B64__"
     },
-    "web-cx23-hel1": {
-      "cloudInit": "__CLOUD_INIT_B64__"
-    },
     "web-cpx21-hel1": {
       "cloudInit": "__CLOUD_INIT_B64__"
     },
@@ -64,7 +55,7 @@
     "web-ccx23-hel1": {
       "cloudInit": "__CLOUD_INIT_B64__"
     },
-    "ingress-cx23-nbg1": {
+    "ingress-cx33-nbg1": {
       "cloudInit": "__INGRESS_INIT_B64__",
       "labels": { "role": "ingress" },
       "taints": [

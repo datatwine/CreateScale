@@ -1,5 +1,5 @@
 # Helm values for the HAProxy Kubernetes Ingress Controller (haproxytech chart).
-# Runs ONLY on the dedicated ingress node (pool ingress-cx23-nbg1, tainted
+# Runs ONLY on the dedicated ingress node (pool ingress-cx33-nbg1, tainted
 # role=ingress:NoSchedule by ingress-init.sh), binding hostPorts 80/443 directly
 # on that node's public IP. Cloudflare connects there; routing to django pods
 # uses the ClusterIP Service over flannel (private net, unbilled).

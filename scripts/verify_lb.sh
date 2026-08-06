@@ -18,7 +18,7 @@ NS_APP="artkhoj"
 NS_HAPROXY="haproxy-controller"
 HOST_HEADER="stagefreedom.org"
 HPA_MAX_REPLICAS=60   # keep in sync with deploy/k8s/30-hpa-web.yaml
-EXPECTED_POOLS=22     # 21 worker pools + 1 ingress pool
+EXPECTED_POOLS=19     # 21 worker pools + 1 ingress pool
 
 PASS=0; FAIL=0; WARN=0
 FAILED_LIST=""
@@ -170,7 +170,7 @@ fi
 if [ -z "$INGRESS_IP" ] && [ -n "${HCLOUD_TOKEN:-}" ] && command -v jq >/dev/null 2>&1; then
   # Fallback: ask the Hetzner API directly
   INGRESS_IP=$(curl -s --max-time 20 -H "Authorization: Bearer $HCLOUD_TOKEN" \
-    "https://api.hetzner.cloud/v1/servers?label_selector=hcloud%2Fnode-group=ingress-cx23-nbg1" \
+    "https://api.hetzner.cloud/v1/servers?label_selector=hcloud%2Fnode-group=ingress-cx33-nbg1" \
     | jq -r '.servers[0].public_net.ipv4.ip // empty' 2>/dev/null || true)
 fi
 echo "--- ingress public IP: ${INGRESS_IP:-NOT FOUND} ---"
