@@ -1,0 +1,44 @@
+# Helm values for the HAProxy Kubernetes Ingress Controller (haproxytech chart).
+# Runs ONLY on the dedicated ingress node (pool ingress-cx23-nbg1, tainted
+# role=ingress:NoSchedule by ingress-init.sh), binding hostPorts 80/443 directly
+# on that node's public IP. Cloudflare connects there; routing to django pods
+# uses the ClusterIP Service over flannel (private net, unbilled).
+# Parallel to Traefik: this controller claims ONLY ingresses with
+# ingressClassName: haproxy (see deploy/k8s/21b-ingress-web-haproxy.yaml).
+# CI deploys via: helm upgrade --install haproxy-ingress haproxytech/kubernetes-ingress
+controller:
+  kind: DaemonSet                  # one pod per ingress node; auto-scales if a 2nd ingress node is ever added
+  ingressClass: haproxy            # claims ONLY class-haproxy ingresses — zero overlap with Traefik (k3s default class)
+  nodeSelector:
+    role: ingress                  # run ONLY on the ingress node
+  tolerations:
+    - key: role
+      value: ingress
+      effect: NoSchedule           # tolerate the reservation taint
+  daemonset:
+    useHostPort: true              # bind 80/443 directly on the node — Cloudflare connects here
+  service:
+    type: ClusterIP                # NOT LoadBalancer — prevents k3s svclb from spawning port-forward pods
+  defaultTLSSecret:
+    secretNamespace: haproxy-controller
+    secret: cf-origin              # Cloudflare Origin CA cert; created manually on the master (plan B5) — controller falls back to self-signed until it exists
+  resources:
+    requests:
+      cpu: 250m
+      memory: 400Mi
+    limits:
+      memory: 3Gi                  # no CPU limit — the node is dedicated; let HAProxy use both vCPUs under load
+  config:
+    # ---- middleware parity: sec-headers (values copied VERBATIM from deploy/k8s/22-middlewares.yaml) ----
+    response-set-header: |
+      X-Content-Type-Options "nosniff"
+      X-Frame-Options "DENY"
+      Referrer-Policy "strict-origin-when-cross-origin"
+      Permissions-Policy "camera=(), microphone=(), geolocation=()"
+      Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' https://checkout.razorpay.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://media.stagefreedom.org https://*.r2.cloudflarestorage.com; connect-src 'self' https://checkout.razorpay.com https://media.stagefreedom.org https://*.r2.cloudflarestorage.com; frame-src https://checkout.razorpay.com"
+    # ---- middleware parity: gzip + 25MB body limit (no first-class annotations for these —
+    #      documented mechanism is a raw HAProxy frontend snippet) ----
+    frontend-config-snippet: |
+      compression algo gzip
+      compression type text/html text/css text/plain application/json application/javascript
+      http-request deny deny_status 413 if { req.hdr_val(content-length) gt 26214400 }

@@ -1,0 +1,24 @@
+# Parallel ingress served by the HAProxy Ingress Controller on the dedicated
+# ingress node (see deploy/k8s/hetzner/haproxy-ingress-values.yaml).
+# Same host/backend as the Traefik ingress (21-ingress-web.yaml), which stays
+# untouched and classless — Traefik (k3s default class) keeps serving it until
+# Phase D. Cutover between the two paths is a Cloudflare DNS flip only.
+# Middlewares (headers/gzip/body-limit) live at controller level, not here.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: artkhoj-haproxy
+  namespace: artkhoj
+spec:
+  ingressClassName: haproxy
+  rules:
+    - host: stagefreedom.org
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: django
+                port:
+                  number: 8000

@@ -1,8 +1,75 @@
 {
   "imagesForArch": { "amd64": "405000555" },
   "nodeConfigs": {
+    "web-cx33-fsn1": {
+      "cloudInit": "__CLOUD_INIT_B64__"
+    },
+    "web-cx33-nbg1": {
+      "cloudInit": "__CLOUD_INIT_B64__"
+    },
+    "web-cx23-fsn1": {
+      "cloudInit": "__CLOUD_INIT_B64__"
+    },
+    "web-cx23-nbg1": {
+      "cloudInit": "__CLOUD_INIT_B64__"
+    },
+    "web-cpx21-fsn1": {
+      "cloudInit": "__CLOUD_INIT_B64__"
+    },
+    "web-cpx21-nbg1": {
+      "cloudInit": "__CLOUD_INIT_B64__"
+    },
     "web-pool": {
       "cloudInit": "__CLOUD_INIT_B64__"
+    },
+    "web-cpx22-nbg1": {
+      "cloudInit": "__CLOUD_INIT_B64__"
+    },
+    "web-cpx32-fsn1": {
+      "cloudInit": "__CLOUD_INIT_B64__"
+    },
+    "web-cpx32-nbg1": {
+      "cloudInit": "__CLOUD_INIT_B64__"
+    },
+    "web-ccx13-fsn1": {
+      "cloudInit": "__CLOUD_INIT_B64__"
+    },
+    "web-ccx13-nbg1": {
+      "cloudInit": "__CLOUD_INIT_B64__"
+    },
+    "web-ccx23-fsn1": {
+      "cloudInit": "__CLOUD_INIT_B64__"
+    },
+    "web-ccx23-nbg1": {
+      "cloudInit": "__CLOUD_INIT_B64__"
+    },
+    "web-cx33-hel1": {
+      "cloudInit": "__CLOUD_INIT_B64__"
+    },
+    "web-cx23-hel1": {
+      "cloudInit": "__CLOUD_INIT_B64__"
+    },
+    "web-cpx21-hel1": {
+      "cloudInit": "__CLOUD_INIT_B64__"
+    },
+    "web-cpx22-hel1": {
+      "cloudInit": "__CLOUD_INIT_B64__"
+    },
+    "web-cpx32-hel1": {
+      "cloudInit": "__CLOUD_INIT_B64__"
+    },
+    "web-ccx13-hel1": {
+      "cloudInit": "__CLOUD_INIT_B64__"
+    },
+    "web-ccx23-hel1": {
+      "cloudInit": "__CLOUD_INIT_B64__"
+    },
+    "ingress-cx23-nbg1": {
+      "cloudInit": "__INGRESS_INIT_B64__",
+      "labels": { "role": "ingress" },
+      "taints": [
+        { "key": "role", "value": "ingress", "effect": "NoSchedule" }
+      ]
     }
   }
 }

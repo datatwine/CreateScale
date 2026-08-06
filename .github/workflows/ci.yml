@@ -230,6 +230,7 @@ jobs:
             13-deployment-beat.yaml
             20-service-web.yaml
             21-ingress-web.yaml
+            21b-ingress-web-haproxy.yaml
             22-middlewares.yaml
             30-hpa-web.yaml
             40-daemonset-promtail.yaml
@@ -393,7 +394,7 @@ jobs:
       - name: "Check if autoscaler values changed"
         id: check
         run: |
-          CHANGED=$(git diff HEAD~1 --name-only -- deploy/k8s/hetzner/cluster-autoscaler-values.yaml deploy/cloud-init/ || echo "first-run")
+          CHANGED=$(git diff HEAD~1 --name-only -- deploy/k8s/hetzner/cluster-autoscaler-values.yaml deploy/k8s/hetzner/haproxy-ingress-values.yaml deploy/cloud-init/ scripts/verify_lb.sh || echo "first-run")
           if [ -n "$CHANGED" ]; then
             echo "changed=true" >> $GITHUB_OUTPUT
           else
@@ -438,6 +439,7 @@ jobs:
         if: steps.check.outputs.changed == 'true'
         run: |
           helm repo add autoscaler https://kubernetes.github.io/autoscaler
+          helm repo add haproxytech https://haproxytech.github.io/helm-charts
           helm repo update
 
       - name: "Build cluster config + Helm upgrade"
@@ -450,9 +452,14 @@ jobs:
           sed "s#__HCLOUD_TOKEN__#${HCLOUD_TOKEN}#" \
             deploy/cloud-init/worker-init.sh > /tmp/worker-init-rendered.sh
 
-          CLOUD_INIT_B64=$(base64 -w0 /tmp/worker-init-rendered.sh)
+          sed "s#__HCLOUD_TOKEN__#${HCLOUD_TOKEN}#" \
+            deploy/cloud-init/ingress-init.sh > /tmp/ingress-init-rendered.sh
 
-          sed "s#__CLOUD_INIT_B64__#${CLOUD_INIT_B64}#" \
+          CLOUD_INIT_B64=$(base64 -w0 /tmp/worker-init-rendered.sh)
+          INGRESS_INIT_B64=$(base64 -w0 /tmp/ingress-init-rendered.sh)
+
+          sed -e "s#__CLOUD_INIT_B64__#${CLOUD_INIT_B64}#" \
+              -e "s#__INGRESS_INIT_B64__#${INGRESS_INIT_B64}#" \
             deploy/cloud-init/cluster-config.json > /tmp/cluster-config-rendered.json
 
           HCLOUD_CLUSTER_CONFIG=$(base64 -w0 /tmp/cluster-config-rendered.json)
@@ -468,9 +475,27 @@ jobs:
             -f deploy/k8s/hetzner/cluster-autoscaler-values.yaml \
             -f /tmp/autoscaler-secrets.yaml
 
-          rm -f /tmp/worker-init-rendered.sh /tmp/cluster-config-rendered.json /tmp/autoscaler-secrets.yaml
+          rm -f /tmp/worker-init-rendered.sh /tmp/ingress-init-rendered.sh /tmp/cluster-config-rendered.json /tmp/autoscaler-secrets.yaml
 
           echo "AUTOSCALER_DEPLOY_COMPLETE"
+
+      - name: "Deploy HAProxy Ingress Controller"
+        if: steps.check.outputs.changed == 'true'
+        run: |
+          export KUBECONFIG=./kubeconfig
+          helm upgrade --install haproxy-ingress haproxytech/kubernetes-ingress \
+            -n haproxy-controller --create-namespace \
+            -f deploy/k8s/hetzner/haproxy-ingress-values.yaml
+          echo "HAPROXY_INGRESS_DEPLOY_COMPLETE"
+
+      - name: "Verify LB + autoscaler (automated checks V8-V19)"
+        if: steps.check.outputs.changed == 'true'
+        env:
+          HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
+          MASTER_HOST: ${{ secrets.MASTER_HOST }}
+        run: |
+          export KUBECONFIG=./kubeconfig
+          bash scripts/verify_lb.sh
 
       - name: "Close firewall"
         if: always() && steps.check.outputs.changed == 'true'
