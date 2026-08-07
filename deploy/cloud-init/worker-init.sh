@@ -4,6 +4,11 @@
 # Any other change made here MUST be copied to the sibling file in the same commit.
 set -e
 
+# Stop k3s-agent immediately — it auto-starts from the snapshot and may
+# register the node before cloud-init writes config.yaml (taints/labels).
+# k3s only applies node-taint at INITIAL registration, not on restart.
+systemctl stop k3s-agent 2>/dev/null || true
+
 # --- Fix IPv6: force IPv4 preference for all DNS resolution ---
 # Hetzner IPv6 → GHCR CDN drops mid-transfer; IPv4 is reliable.
 echo 'precedence ::ffff:0:0/96  100' >> /etc/gai.conf

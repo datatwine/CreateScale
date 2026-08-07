@@ -488,6 +488,12 @@ jobs:
             -f deploy/k8s/hetzner/haproxy-ingress-values.yaml
           echo "HAPROXY_INGRESS_DEPLOY_COMPLETE"
 
+      - name: "Ensure ingress node taint"
+        if: steps.check.outputs.changed == 'true'
+        run: |
+          export KUBECONFIG=./kubeconfig
+          kubectl taint node -l role=ingress role=ingress:NoSchedule --overwrite 2>/dev/null || true
+
       - name: "Verify LB + autoscaler (automated checks V8-V19)"
         if: steps.check.outputs.changed == 'true'
         env:
