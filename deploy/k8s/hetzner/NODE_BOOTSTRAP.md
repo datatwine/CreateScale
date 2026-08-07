@@ -41,15 +41,55 @@ cat /var/lib/rancher/k3s/server/node-token
 
 ## Snapshot approach (faster boot)
 
-Instead of installing k3s on every boot, create a snapshot:
+Instead of installing k3s on every boot, nodes boot from a pre-baked snapshot.
+Current golden image: **417284290** (`k3s-node-golden-v2-agent-disabled`,
+built 2026-08-07 on a cpx22 → 80GB disk; referenced in
+`deploy/cloud-init/cluster-config.json`).
 
-1. Boot a fresh CAX21 with the cloud-init above
-2. Wait for k3s agent to install and connect
-3. Stop the VM
-4. Create a Hetzner snapshot from it
-5. Configure `cluster-autoscaler-values.yaml` to use this snapshot image
+### THE CARDINAL RULE — k3s-agent must be DISABLED in the snapshot
 
-New nodes from the snapshot boot in ~20s instead of ~60s (skip the install step).
+If k3s-agent is *enabled*, it auto-starts at power-on and registers with the
+master BEFORE cloud-init writes `/etc/rancher/k3s/config.yaml`. k3s applies
+`node-taint`/`node-label` config **only at first registration, never on
+restart** — so the node joins untainted/unlabeled forever. This exact bug let
+django pods + svclb-traefik colonize the dedicated ingress node (2026-08-07).
+With the agent disabled, the init script (`worker-init.sh` / `ingress-init.sh`)
+is the ONLY thing that ever starts it — always after config.yaml exists — and
+it runs `systemctl enable --now` so reboots rejoin normally afterwards.
+
+### Rebuild procedure (v2 — follow exactly)
+
+1. Boot a throwaway from the current golden image, **without private network,
+   without user-data** (agent can't reach the master = can't phantom-join):
+   `hcloud server create --name snapshot-builder --type cpx22 --location nbg1 --image <CURRENT_ID> --ssh-key artkhoj-key`
+   **Builder disk must be exactly 80GB** (cx33/cpx21/cpx22) — the image
+   inherits the builder's disk size, and a bigger image won't fit the 80GB
+   pools (learned the hard way with cx23's 40GB).
+2. Make whatever changes prompted the rebuild (k3s upgrade, OS patches, …).
+3. Clean + disable (all as root):
+   ```bash
+   systemctl disable --now k3s-agent          # THE fix — never skip
+   rm -rf /var/lib/rancher/k3s/agent          # no inherited cluster identity
+   rm -f  /etc/rancher/node/password
+   rm -rf /etc/rancher/k3s                    # init scripts rewrite these
+   truncate -s 0 /etc/machine-id              # each clone mints its own
+   rm -f /var/lib/dbus/machine-id && ln -s /etc/machine-id /var/lib/dbus/machine-id
+   cloud-init clean --logs                    # next boot = first boot
+   rm -f /etc/ssh/ssh_host_*                  # per-node host keys
+   systemctl is-enabled k3s-agent             # MUST print "disabled"
+   ```
+   **Never delete** `/etc/systemd/system/k3s-agent.service.env` — it holds the
+   baked-in `K3S_URL` (master private IP) + `K3S_TOKEN` join credentials that
+   the init scripts rely on.
+4. Freeze offline: `hcloud server poweroff snapshot-builder` then
+   `hcloud server create-image --type snapshot --description "k3s-node-golden-vN-agent-disabled" snapshot-builder`
+5. **Pre-flight before pointing the fleet at it:** boot a second throwaway from
+   the new image (again no private net / no user-data) and verify:
+   is-enabled=disabled, is-active=inactive, no `/var/lib/rancher/k3s/agent`,
+   `K3S_URL` still present. Delete both throwaways.
+6. Update `imagesForArch` in `deploy/cloud-init/cluster-config.json`, commit,
+   push. Keep the previous image until the new one has survived a load test —
+   rollback is just reverting that one line.
 
 ## Firewall rules
 

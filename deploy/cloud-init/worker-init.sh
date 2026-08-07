@@ -4,9 +4,10 @@
 # Any other change made here MUST be copied to the sibling file in the same commit.
 set -e
 
-# Stop k3s-agent immediately — it auto-starts from the snapshot and may
-# register the node before cloud-init writes config.yaml (taints/labels).
-# k3s only applies node-taint at INITIAL registration, not on restart.
+# Defense-in-depth: snapshot v2 ships k3s-agent DISABLED, so nothing should be
+# running here. This stop only matters if a future snapshot rebuild forgets the
+# disable — the agent must never register before config.yaml is written, because
+# k3s applies node-taint/labels only at FIRST registration, never on restart.
 systemctl stop k3s-agent 2>/dev/null || true
 
 # --- Fix IPv6: force IPv4 preference for all DNS resolution ---
@@ -62,5 +63,8 @@ curl -s -X PUT "https://api.hetzner.cloud/v1/servers/$SERVER_ID" \
   -H "Content-Type: application/json" \
   -d "$CURRENT_LABELS"
 
-# --- Start k3s agent (pre-installed in image snapshot) ---
-systemctl restart k3s-agent
+# --- Enable + start k3s agent (pre-installed but DISABLED in the snapshot) ---
+# This script is the ONLY starter, and it runs after config.yaml exists, so the
+# first registration always carries the right taints/labels. enable makes the
+# node rejoin normally after reboots.
+systemctl enable --now k3s-agent

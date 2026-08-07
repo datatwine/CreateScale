@@ -1,5 +1,5 @@
 {
-  "imagesForArch": { "amd64": "405000555" },
+  "imagesForArch": { "amd64": "417284290" },
   "nodeConfigs": {
     "web-cx33-fsn1": {
       "cloudInit": "__CLOUD_INIT_B64__"
