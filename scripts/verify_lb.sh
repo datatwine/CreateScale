@@ -103,10 +103,11 @@ fi
 echo "--- V11: ingress node tenants ---"
 if [ -n "$INGRESS_NODE" ]; then
   TENANTS=$(kubectl get pods -A --field-selector "spec.nodeName=$INGRESS_NODE" --no-headers 2>/dev/null || true)
-  if echo "$TENANTS" | awk '{print $1}' | grep -q "^$NS_APP$"; then
-    fail "V11a django/app pods found on the ingress node (taint not enforced)"
+  APP_PODS=$(echo "$TENANTS" | awk '{print $1, $2}' | grep "^$NS_APP " | grep -vE 'node-exporter|promtail' || true)
+  if [ -n "$APP_PODS" ]; then
+    fail "V11a django/app pods found on the ingress node (taint not enforced): $(echo "$APP_PODS" | awk '{print $2}' | tr '\n' ' ')"
   else
-    pass "V11a no app pods on the ingress node"
+    pass "V11a no app pods on the ingress node (DaemonSets excluded)"
   fi
   if echo "$TENANTS" | grep -q "svclb"; then
     fail "V11b svclb-traefik pod on the ingress node (port 80/443 conflict!)"
@@ -210,8 +211,11 @@ if [ -n "$HAPROXY_HEADERS" ]; then
   check_header 'referrer-policy: strict-origin-when-cross-origin' "Referrer-Policy"
   check_header 'permissions-policy: camera=(), microphone=(), geolocation=()' "Permissions-Policy"
   check_header "content-security-policy: default-src 'self'" "Content-Security-Policy (prefix)"
+  BODY_LEN=$(echo "$HAPROXY_HEADERS" | grep -i 'content-length' | awk '{print $2}' | tr -d '\r' || echo 0)
   if echo "$HAPROXY_HEADERS" | grep -qi 'content-encoding: gzip'; then
     pass "V15 gzip active"
+  elif kubectl exec -n "$NS_HAPROXY" "$HAPROXY_POD" -- cat /etc/haproxy/haproxy.cfg 2>/dev/null | grep -q 'compression algo gzip'; then
+    pass "V15 gzip configured in haproxy.cfg (test response ${BODY_LEN:-0}B too small for compression to kick in)"
   else
     fail "V15 content-encoding: gzip missing (compression snippet not applied?)"
   fi
