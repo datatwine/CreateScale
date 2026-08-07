@@ -61,7 +61,7 @@ MIRROR
 SERVER_ID=$(curl -s http://169.254.169.254/hetzner/v1/metadata/instance-id)
 CURRENT_LABELS=$(curl -s -H "Authorization: Bearer __HCLOUD_TOKEN__" \
   "https://api.hetzner.cloud/v1/servers/$SERVER_ID" \
-  | python3 -c "import json,sys; d=json.load(sys.stdin); l=d['server']['labels']; l['role']='k3s'; print(json.dumps({'labels': l}))")
+  | python3 -c "import json,sys; d=json.load(sys.stdin); l=d['server']['labels']; l['role']='ingress'; print(json.dumps({'labels': l}))")
 curl -s -X PUT "https://api.hetzner.cloud/v1/servers/$SERVER_ID" \
   -H "Authorization: Bearer __HCLOUD_TOKEN__" \
   -H "Content-Type: application/json" \
