@@ -1,3 +1,5 @@
+import logging
+
 from django.core.exceptions import ValidationError, PermissionDenied
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
@@ -18,6 +20,8 @@ from .serializers import (
     EngagementActionSerializer,
     PaymentHistorySerializer,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class CreateHireRequestAPIView(APIView):
@@ -283,13 +287,42 @@ class EngagementViewSet(viewsets.ViewSet):
             if action == "cancel_client" and is_client:
                 engagement.cancel_by_client(reason=reason)
                 if engagement.payment_status == Engagement.PAYMENT_PAID:
-                    PaymentService.refund_to_client(engagement)
+                    try:
+                        PaymentService.refund_to_client(engagement)
+                    except Exception as exc:
+                        # Cancel already committed; the client is still told
+                        # the cancel worked. Money stays in escrow until an
+                        # admin reconciles the failed refund.
+                        logger.exception(
+                            "Refund failed for cancelled engagement %s: %s",
+                            engagement.pk,
+                            exc,
+                        )
+                        return Response(
+                            {
+                                "detail": "Cancelled, but the refund could not be "
+                                "processed automatically. An admin will follow up."
+                            }
+                        )
                 return Response({"detail": "Cancelled by client."})
 
             if action == "cancel_performer" and is_performer:
                 engagement.cancel_by_performer(reason=reason)
                 if engagement.payment_status == Engagement.PAYMENT_PAID:
-                    PaymentService.refund_to_client(engagement)
+                    try:
+                        PaymentService.refund_to_client(engagement)
+                    except Exception as exc:
+                        logger.exception(
+                            "Refund failed for cancelled engagement %s: %s",
+                            engagement.pk,
+                            exc,
+                        )
+                        return Response(
+                            {
+                                "detail": "Cancelled, but the refund could not be "
+                                "processed automatically. An admin will follow up."
+                            }
+                        )
                 return Response({"detail": "Cancelled by performer."})
 
             return Response(

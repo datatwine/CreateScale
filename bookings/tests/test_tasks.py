@@ -14,9 +14,69 @@ from django.utils import timezone
 
 from bookings.models import Engagement
 from bookings.tasks import (
+    expire_stale_pending_engagements,
     expire_unpaid_engagements,
     release_completed_event_payouts,
 )
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# expire_stale_pending_engagements
+# ─────────────────────────────────────────────────────────────────────────
+@pytest.mark.django_db
+class TestExpireStalePending:
+    def test_expires_pending_older_than_24h(self, engagement):
+        # The engagement fixture is pending; backdate its creation to 30h ago.
+        Engagement.objects.filter(pk=engagement.pk).update(
+            created_at=timezone.now() - timedelta(hours=30)
+        )
+
+        count = expire_stale_pending_engagements()
+
+        engagement.refresh_from_db()
+        assert engagement.status == Engagement.STATUS_AUTO_EXPIRED
+        assert count == 1
+
+    def test_skips_recent_pending(self, engagement):
+        # Created 12h ago — still inside the 24h response window.
+        Engagement.objects.filter(pk=engagement.pk).update(
+            created_at=timezone.now() - timedelta(hours=12)
+        )
+
+        count = expire_stale_pending_engagements()
+
+        engagement.refresh_from_db()
+        assert engagement.status == Engagement.STATUS_PENDING  # unchanged
+        assert count == 0
+
+    def test_skips_non_pending_engagements(self, engagement):
+        # Accepted (not pending) and old — the task only expires pendings.
+        engagement.status = Engagement.STATUS_ACCEPTED
+        engagement.save()
+        Engagement.objects.filter(pk=engagement.pk).update(
+            created_at=timezone.now() - timedelta(hours=30)
+        )
+
+        count = expire_stale_pending_engagements()
+
+        engagement.refresh_from_db()
+        assert engagement.status == Engagement.STATUS_ACCEPTED  # unchanged
+        assert count == 0
+
+    def test_exact_24h_boundary_is_not_expired(self, engagement):
+        # Task filter is `created_at < now - 24h` (strict). Pin the task's
+        # clock so an engagement created EXACTLY at the cutoff survives.
+        fixed_now = timezone.now().replace(microsecond=0)
+        Engagement.objects.filter(pk=engagement.pk).update(
+            created_at=fixed_now - timedelta(hours=24)
+        )
+
+        with patch("bookings.tasks.timezone.now", return_value=fixed_now):
+            count = expire_stale_pending_engagements()
+
+        engagement.refresh_from_db()
+        assert engagement.status == Engagement.STATUS_PENDING  # exactly at cutoff
+        assert count == 0
 
 
 # ─────────────────────────────────────────────────────────────────────────
@@ -148,7 +208,9 @@ class TestReleasePayouts:
             payment_status=Engagement.PAYMENT_PAID,
         )
 
-        mock_release.side_effect = [Exception("boom"), None]
+        # release_to_performer returns True iff a release actually happened;
+        # the task counts only those. First row raises, second succeeds.
+        mock_release.side_effect = [Exception("boom"), True]
         count = release_completed_event_payouts()
 
         # Both were attempted; one succeeded

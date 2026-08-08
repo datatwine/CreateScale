@@ -111,8 +111,8 @@ def release_completed_event_payouts() -> int:
     for e in ready:
         if e.event_datetime() < cutoff:
             try:
-                PaymentService.release_to_performer(e)
-                released_count += 1
+                if PaymentService.release_to_performer(e):
+                    released_count += 1
             except Exception as exc:
                 # Don't let one bad row stop the whole batch.
                 logger.exception(
