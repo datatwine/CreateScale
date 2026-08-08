@@ -19,6 +19,7 @@ from .views import (
     PresignUploadAPIView,
     GlobalFeedAPIView,
     ProfileDetailAPIView,
+    RegisterPushTokenView,
     ProfessionsAPIView,
     LiveEventsAPIView,
 )
@@ -66,6 +67,7 @@ urlpatterns = [
     path(
         "users/live-events/", LiveEventsAPIView.as_view(), name="api-users-live-events"
     ),
+    path("users/push-token/", RegisterPushTokenView.as_view(), name="api-push-token"),
     # -------------------------
     # BOOKINGS (hire creation)
     # -------------------------

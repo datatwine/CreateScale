@@ -17,7 +17,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.authtoken.models import Token
 
-from users.models import Profile, Upload
+from users.models import Profile, PushToken, Upload
 from bookings.models import Engagement
 
 from .presign import generate_upload_presign
@@ -416,6 +416,40 @@ class GlobalFeedAPIView(_LenientPaginatorMixin, generics.GenericAPIView):
                 "results": filtered,
             }
         )
+
+
+class RegisterPushTokenView(generics.CreateAPIView):
+    """
+    POST /api/users/push-token/
+    Body: {"token": "ExponentPushToken[abc123...]"}
+
+    Called by the Expo app on every launch to register the device's push token.
+    The app sends this token so Django knows WHERE to deliver notifications.
+
+    Uses update_or_create to handle two scenarios:
+    - New device: creates a new PushToken row.
+    - Same device, different user: updates the existing row's user (handles
+      the case where someone logs out and a different person logs into the
+      same phone).
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        token = request.data.get("token", "").strip()
+
+        if not token.startswith("ExponentPushToken["):
+            return Response(
+                {"error": "Invalid token format — expected ExponentPushToken[...]"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        PushToken.objects.update_or_create(
+            token=token,
+            defaults={"user": request.user},
+        )
+
+        return Response({"status": "ok"}, status=status.HTTP_201_CREATED)
 
 
 class ProfileDetailAPIView(generics.RetrieveAPIView):

@@ -323,6 +323,24 @@ class Engagement(models.Model):
         self.accepted_at = timezone.now()
         self.save(update_fields=["status", "accepted_at"])
 
+        # Import here to avoid circular imports (bookings.models ↔ users.models).
+        from users.notifications import send_push_notification
+        from users.tasks import notify_new_live_event
+
+        # 1) Private notification to the client: "your booking is confirmed"
+        send_push_notification(
+            user=self.client,
+            title="Booking confirmed!",
+            body=f"{self.performer.username} accepted your booking for {self.occasion} on {self.date.strftime('%b %d')}",
+            data={
+                "screen": "BookingDetail",
+                "id": self.pk,
+            },
+        )
+
+        # 2) Broadcast to ALL users: "new live event on ArtKhoj"
+        notify_new_live_event.delay(self.pk)
+
     def decline(self):
         """Performer declines."""
         self._ensure_pending()

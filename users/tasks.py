@@ -20,6 +20,8 @@ import logging
 from celery import shared_task
 from django.core.files import File
 
+from users.notifications import broadcast_push_notification
+
 log = logging.getLogger(__name__)
 
 
@@ -169,3 +171,40 @@ def process_uploaded_image(upload_id):
             "process_uploaded_image(%s) failed: %s — original untouched", upload_id, e
         )
         return f"error: {e}"
+
+
+@shared_task(time_limit=120, soft_time_limit=110)
+def notify_new_live_event(engagement_id):
+    """
+    Broadcast "new live event" notification to ALL users.
+
+    Called asynchronously from Engagement.accept() via .delay().
+    We run this in a Celery worker (not in the request cycle) because
+    broadcasting to 50k+ users means hundreds of Expo API calls — that
+    would make the accept() response hang for minutes.
+
+    time_limit=120: hard kill after 2 minutes (safety net).
+    soft_time_limit=110: Celery raises SoftTimeLimitExceeded at ~1m50s
+    so we can log and exit cleanly.
+    """
+    from bookings.models import Engagement
+
+    try:
+        engagement = Engagement.objects.select_related("performer", "client").get(
+            pk=engagement_id
+        )
+    except Engagement.DoesNotExist:
+        return
+
+    broadcast_push_notification(
+        title="New live event!",
+        body=(
+            f"{engagement.performer.username} is performing"
+            f" at {engagement.occasion} on {engagement.date.strftime('%b %d')}"
+        ),
+        data={
+            "screen": "LiveEvents",
+        },
+        # Don't notify the performer — they just tapped accept, they know.
+        exclude_user=engagement.performer,
+    )
