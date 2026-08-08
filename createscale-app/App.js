@@ -1,11 +1,12 @@
 // App.js
 
-import React, { useContext } from "react";
+import React, { useContext, useEffect, useRef } from "react";
 import { NavigationContainer, DefaultTheme } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Ionicons } from "@expo/vector-icons";
 import { AuthProvider, AuthContext } from "./src/context/AuthContext";
+import { registerForPushNotifications } from "./src/notifications";
 
 // Screens
 import LoginScreen from "./src/screens/LoginScreen";
@@ -99,6 +100,16 @@ function MainTabs() {
 
 function RootNavigator() {
   const { token, initializing } = useContext(AuthContext);
+  const navigationRef = useRef(null);
+
+  // Register for push notifications whenever the user logs in. Needs the
+  // auth token (to tell Django which device belongs to whom), so this can
+  // only run once token is set — not during the initial loading state.
+  useEffect(() => {
+    if (token) {
+      registerForPushNotifications(token, navigationRef);
+    }
+  }, [token]);
 
   if (initializing) {
     return (
@@ -109,7 +120,7 @@ function RootNavigator() {
   }
 
   return (
-    <NavigationContainer theme={WebTheme}>
+    <NavigationContainer ref={navigationRef} theme={WebTheme}>
       {token ? (
         <Stack.Navigator screenOptions={{ headerShown: false, animation: "fade" }}>
           <Stack.Screen name="MainTabs" component={MainTabs} />
