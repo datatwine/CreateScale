@@ -19,6 +19,8 @@ from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 
+from users.notifications import send_push_notification
+
 from ..models import Engagement, Payment
 from .razorpay_client import get_client
 
@@ -333,6 +335,13 @@ class PaymentService:
             engagement.released_at = timezone.now()
             engagement.save(update_fields=["payment_status", "released_at"])
 
+        send_push_notification(
+            user=engagement.performer,
+            title="Payment sent!",
+            body=f"₹{payment.performer_share} has been sent to your bank account",
+            data={"screen": "Bookings", "id": engagement.pk},
+        )
+
     # ── Payouts mode: ensure a RazorpayX fund account exists ────────
     @staticmethod
     def ensure_payout_destination(profile) -> str:
@@ -587,6 +596,13 @@ class PaymentService:
             eng.refunded_at = timezone.now()
             eng.save(update_fields=["payment_status", "refunded_at"])
 
+        send_push_notification(
+            user=engagement.client,
+            title="Refund initiated",
+            body=f"₹{engagement.fee} refund initiated — will be credited within 5-7 days",
+            data={"screen": "Bookings", "id": engagement.pk},
+        )
+
     # ── Webhook signature verification ──────────────────────────────
     @staticmethod
     def verify_webhook_signature(raw_body: bytes, signature_header: str) -> bool:
@@ -821,6 +837,13 @@ class PaymentService:
         eng.payment_status = Engagement.PAYMENT_RELEASED
         eng.released_at = timezone.now()
         eng.save(update_fields=["payment_status", "released_at"])
+
+        send_push_notification(
+            user=eng.performer,
+            title="Payment sent!",
+            body=f"₹{payment.performer_share} has been sent to your bank account",
+            data={"screen": "Bookings", "id": eng.pk},
+        )
 
     @staticmethod
     @transaction.atomic

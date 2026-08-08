@@ -16,6 +16,7 @@ from django.core.cache import cache
 from django.views.decorators.http import require_POST
 
 from users.models import Profile
+from users.notifications import send_push_notification
 from .forms import EngagementRequestForm, CancelEngagementForm, DisputeForm
 from .models import Engagement, Payment
 from .services.payments import PaymentService
@@ -100,6 +101,12 @@ def create_hire_request(request, performer_id):
                 )
 
             engagement.save()
+            send_push_notification(
+                user=performer_profile.user,
+                title="New hire request!",
+                body=f"{request.user.username} wants to book you for {engagement.occasion}",
+                data={"screen": "Bookings", "id": engagement.pk},
+            )
             messages.success(request, "Hiring request sent.")
             return redirect("bookings:client-engagements")
     else:

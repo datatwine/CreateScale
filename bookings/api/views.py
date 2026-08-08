@@ -15,6 +15,7 @@ from rest_framework.views import APIView
 
 from users.models import Profile
 from users.api.views import _LenientPaginatorMixin
+from users.notifications import send_push_notification
 from bookings.models import Engagement, Payment
 from bookings.services.payments import PaymentService
 from .serializers import (
@@ -131,6 +132,12 @@ class CreateHireRequestAPIView(APIView):
             )
 
         engagement.save()
+        send_push_notification(
+            user=performer_profile.user,
+            title="New hire request!",
+            body=f"{request.user.username} wants to book you for {engagement.occasion}",
+            data={"screen": "Bookings", "id": engagement.pk},
+        )
         return Response(
             EngagementSerializer(engagement).data, status=status.HTTP_201_CREATED
         )
