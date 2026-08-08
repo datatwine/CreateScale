@@ -6,10 +6,15 @@ from django.contrib.auth.models import User
 
 # Create your views here.
 from django.shortcuts import render, redirect
-from django.contrib.auth.forms import AuthenticationForm
-from django.contrib.auth import login, authenticate
+from django.contrib.auth import login
 from django.contrib import messages
-from .forms import UserRegisterForm, UploadForm, ProfileUpdateForm, PaymentDetailsForm
+from .forms import (
+    CustomLoginForm,
+    UserRegisterForm,
+    UploadForm,
+    ProfileUpdateForm,
+    PaymentDetailsForm,
+)
 from .models import Profile, Upload
 
 # Razorpay client is loaded lazily inside the payment-details view so the
@@ -38,22 +43,15 @@ def signup(request):
 def signin(request):
     next_url = request.GET.get("next")  # Get the 'next' URL parameter, if available
     if request.method == "POST":
-        form = AuthenticationForm(request, data=request.POST)
+        form = CustomLoginForm(request, data=request.POST)
         if form.is_valid():
-            username = form.cleaned_data.get("username")
-            password = form.cleaned_data.get("password")
-            user = authenticate(username=username, password=password)
-            if user is not None:
-                login(request, user)
-                if next_url:  # Redirect to the 'next' URL if available
-                    return redirect(next_url)
-                else:
-                    return redirect("profile")  # Otherwise, redirect to profile
+            login(request, form.get_user())
+            if next_url:  # Redirect to the 'next' URL if available
+                return redirect(next_url)
             else:
-                messages.error(request, "Invalid username or password")
-        else:
-            messages.error(request, "Invalid username or password")
-    form = AuthenticationForm()
+                return redirect("profile")  # Otherwise, redirect to profile
+    else:
+        form = CustomLoginForm()
     return render(request, "users/login.html", {"form": form})
 
 
