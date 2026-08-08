@@ -55,3 +55,10 @@ export const COLORS = {
   darkSurface: "#1A1A1A",
   darkCard: "#181818",
 };
+
+// The bottom tab bar (App.js) floats as an absolutely-positioned overlay so
+// screen content is visible around/behind it, instead of being pushed up.
+// Scrollable screens need enough bottom padding that their last item isn't
+// hidden underneath it. Worst case: bar height (62) + largest home-indicator
+// inset (~34 on notched iPhones) + a little breathing room.
+export const TAB_BAR_CLEARANCE = 110;

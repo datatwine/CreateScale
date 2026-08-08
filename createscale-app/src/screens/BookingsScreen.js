@@ -40,7 +40,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { API_BASE_URL } from "../config/api";
 import { AuthContext } from "../context/AuthContext";
-import { COLORS } from "../config/theme";
+import { COLORS, TAB_BAR_CLEARANCE } from "../config/theme";
 import PressableStamp from "../components/PressableStamp";
 
 // ---------------------------------------------------------------------------
@@ -576,7 +576,7 @@ const styles = StyleSheet.create({
     // --- List ---
     listContent: {
         paddingHorizontal: 16,
-        paddingBottom: 24,
+        paddingBottom: TAB_BAR_CLEARANCE,
     },
 
     // --- Card ---
