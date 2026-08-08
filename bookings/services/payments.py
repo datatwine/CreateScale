@@ -58,6 +58,15 @@ class PaymentService:
                 f"Engagement {engagement.pk} is not in unpaid state "
                 f"(current: {engagement.payment_status})."
             )
+        # Double-click guard: an order was already created but never captured
+        # (checkout modal still open, browser callback lost, etc.). Creating a
+        # second Razorpay order here would orphan the first one and let a
+        # client double-pay. Reject instead — the client retries via the same
+        # /pay/ flow only after the stale order is handled.
+        if engagement.payments.filter(status__in=("created", "captured")).exists():
+            raise ValueError(
+                f"Engagement {engagement.pk} already has a pending payment order."
+            )
         if not engagement.fee:
             raise ValueError("Engagement has no fee snapshot.")
 
@@ -204,7 +213,7 @@ class PaymentService:
     # ── Signal 2: Release money to performer ────────────────────────
     @staticmethod
     @transaction.atomic
-    def release_to_performer(engagement: Engagement) -> None:
+    def release_to_performer(engagement: Engagement) -> bool:
         """
         Called by Celery once the dispute window closes. Idempotent. Skipped if
         the engagement was disputed by the client — those wait for admin action.
@@ -212,23 +221,37 @@ class PaymentService:
         Route ON  — unholds the escrowed transfer → released (terminal here).
         Route OFF — fires a RazorpayX payout → payout_processing. The terminal
                     'released' arrives when the payout.processed webhook lands.
+
+        Returns True iff a release was actually performed. No-op paths
+        (not paid, disputed, no captured Payment row) return False so callers
+        can count real releases instead of attempts.
         """
         if engagement.payment_status != Engagement.PAYMENT_PAID:
-            return
+            return False
         if engagement.disputed_at is not None:
             logger.info(
                 "release_to_performer: skipping disputed engagement %s",
                 engagement.pk,
             )
-            return
+            return False
 
         if not settings.RAZORPAY_ROUTE_ENABLED:
             # ── Payouts mode: fire the RazorpayX payout (async) ──────────
             PaymentService.initiate_payout(engagement)
-            return
+            return True
 
         # ── Route mode: unhold the escrowed transfer ─────────────────────
-        payment = engagement.payments.filter(status="captured").latest("created_at")
+        try:
+            payment = engagement.payments.filter(status="captured").latest("created_at")
+        except Payment.DoesNotExist:
+            # Paid flag but no captured row is a data anomaly (e.g. a cancel
+            # raced the release). Don't crash the whole payout batch — log and
+            # leave the money in escrow for admin to reconcile.
+            logger.warning(
+                "release_to_performer: no captured Payment for engagement %s",
+                engagement.pk,
+            )
+            return False
 
         client = get_client()
         # Razorpay returns a list of transfers because Route supports
@@ -250,6 +273,7 @@ class PaymentService:
         engagement.payment_status = Engagement.PAYMENT_RELEASED
         engagement.released_at = timezone.now()
         engagement.save(update_fields=["payment_status", "released_at"])
+        return True
 
     # ── Payouts mode: ensure a RazorpayX fund account exists ────────
     @staticmethod
@@ -360,7 +384,17 @@ class PaymentService:
         if engagement.payment_status != Engagement.PAYMENT_PAID:
             return
 
-        payment = engagement.payments.filter(status="captured").latest("created_at")
+        try:
+            payment = engagement.payments.filter(status="captured").latest("created_at")
+        except Payment.DoesNotExist:
+            # Paid flag but no captured row is a data anomaly (cancel fired
+            # before capture, or the row was cleaned up). Log and bail — the
+            # engagement stays PAID and the money stays in escrow for admin.
+            logger.warning(
+                "refund_to_client: no captured Payment for engagement %s",
+                engagement.pk,
+            )
+            return
         client = get_client()
         refund_data = {
             "notes": {
