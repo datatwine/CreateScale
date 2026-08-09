@@ -6,7 +6,10 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Ionicons } from "@expo/vector-icons";
 import { AuthProvider, AuthContext } from "./src/context/AuthContext";
-import { registerForPushNotifications } from "./src/notifications";
+import {
+  registerForPushNotifications,
+  setupNotificationResponseHandling,
+} from "./src/notifications";
 
 // Screens
 import LoginScreen from "./src/screens/LoginScreen";
@@ -107,9 +110,17 @@ function RootNavigator() {
   // only run once token is set — not during the initial loading state.
   useEffect(() => {
     if (token) {
-      registerForPushNotifications(token, navigationRef);
+      registerForPushNotifications(token);
     }
   }, [token]);
+
+  // Tap-handling is set up ONCE on mount, decoupled from login — tying it
+  // to the token effect above would attach another live listener on every
+  // re-login, so a single tap would fire navigate() once per stacked
+  // listener. The cleanup removes the listener on unmount.
+  useEffect(() => {
+    return setupNotificationResponseHandling(navigationRef);
+  }, []);
 
   if (initializing) {
     return (
