@@ -10,6 +10,13 @@ remaining triggers #4 and #5):
 
 send_push_notification is monkey-patched so these tests never touch Expo's
 API, and mock_razorpay/mock_razorpayx keep them off the real Razorpay APIs.
+
+All three send sites are wrapped in transaction.on_commit() (money already
+moved by the time they fire, so a notification failure must not roll back
+the payment-state write) — tests that expect the notification to actually
+fire use the django_capture_on_commit_callbacks fixture to run those
+deferred callbacks, since pytest-django wraps each test in a transaction
+that's rolled back, not committed.
 """
 
 from unittest.mock import MagicMock
@@ -35,7 +42,9 @@ def route_mode(settings):
 @pytest.mark.django_db
 @pytest.mark.usefixtures("route_mode")
 class TestReleaseToPerformerNotifiesRouteMode:
-    def test_notifies_performer_on_release(self, engagement, mock_razorpay, mock_send):
+    def test_notifies_performer_on_release(
+        self, engagement, mock_razorpay, mock_send, django_capture_on_commit_callbacks
+    ):
         engagement.payment_status = Engagement.PAYMENT_PAID
         engagement.save()
         Payment.objects.create(
@@ -50,7 +59,8 @@ class TestReleaseToPerformerNotifiesRouteMode:
             "items": [{"id": "trf_ABC", "amount": 190000}]
         }
 
-        PaymentService.release_to_performer(engagement)
+        with django_capture_on_commit_callbacks(execute=True):
+            PaymentService.release_to_performer(engagement)
 
         mock_send.assert_called_once()
         _, kwargs = mock_send.call_args
@@ -118,17 +128,23 @@ class TestSettlePayoutNotifies:
         engagement.refresh_from_db()
         return engagement
 
-    def test_notifies_performer_when_payout_settles(self, processing, mock_send):
-        PaymentService._settle_payout("pout_test", utr="UTR12345")
+    def test_notifies_performer_when_payout_settles(
+        self, processing, mock_send, django_capture_on_commit_callbacks
+    ):
+        with django_capture_on_commit_callbacks(execute=True):
+            PaymentService._settle_payout("pout_test", utr="UTR12345")
 
         mock_send.assert_called_once()
         _, kwargs = mock_send.call_args
         assert kwargs["user"] == processing.performer
         assert "1900" in kwargs["body"]
 
-    def test_does_not_notify_twice_idempotent(self, processing, mock_send):
-        PaymentService._settle_payout("pout_test", utr="UTR12345")
-        PaymentService._settle_payout("pout_test", utr="UTR12345")
+    def test_does_not_notify_twice_idempotent(
+        self, processing, mock_send, django_capture_on_commit_callbacks
+    ):
+        with django_capture_on_commit_callbacks(execute=True):
+            PaymentService._settle_payout("pout_test", utr="UTR12345")
+            PaymentService._settle_payout("pout_test", utr="UTR12345")
 
         mock_send.assert_called_once()
 
@@ -136,7 +152,9 @@ class TestSettlePayoutNotifies:
 @pytest.mark.django_db
 @pytest.mark.usefixtures("route_mode")
 class TestRefundToClientNotifies:
-    def test_notifies_client_on_refund(self, engagement, mock_razorpay, mock_send):
+    def test_notifies_client_on_refund(
+        self, engagement, mock_razorpay, mock_send, django_capture_on_commit_callbacks
+    ):
         engagement.payment_status = Engagement.PAYMENT_PAID
         engagement.cancellation_reason = "Family emergency"
         engagement.save()
@@ -149,7 +167,8 @@ class TestRefundToClientNotifies:
         )
         mock_razorpay.payment.refund.return_value = {"id": "rfnd_XYZ"}
 
-        PaymentService.refund_to_client(engagement)
+        with django_capture_on_commit_callbacks(execute=True):
+            PaymentService.refund_to_client(engagement)
 
         mock_send.assert_called_once()
         _, kwargs = mock_send.call_args
