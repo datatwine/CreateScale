@@ -74,6 +74,9 @@ class Engagement(models.Model):
         "payout_failed"  # payouts mode: payout reversed/failed, needs retry
     )
     PAYMENT_RELEASED = "released"  # money reached the performer (both modes)
+    PAYMENT_REFUND_PENDING = (
+        "refund_pending"  # refund fired at Razorpay, awaiting DB/webhook confirm
+    )
     PAYMENT_REFUNDED = "refunded"  # reversed back to client
 
     PAYMENT_CHOICES = [
@@ -82,6 +85,7 @@ class Engagement(models.Model):
         (PAYMENT_PAYOUT_PROCESSING, "Payout processing"),
         (PAYMENT_PAYOUT_FAILED, "Payout failed — needs attention"),
         (PAYMENT_RELEASED, "Released to performer"),
+        (PAYMENT_REFUND_PENDING, "Refund pending"),
         (PAYMENT_REFUNDED, "Refunded to client"),
     ]
     payment_status = models.CharField(
@@ -406,8 +410,11 @@ class Payment(models.Model):
         ("captured", "Payment captured"),
         ("payout_processing", "Payout processing"),
         ("payout_failed", "Payout failed"),
+        ("payout_reversed", "Payout reversed after settlement"),
         ("released", "Released to performer"),
+        ("refund_pending", "Refund pending"),
         ("refunded", "Refunded to client"),
+        ("refund_failed", "Refund failed"),
         ("failed", "Failed"),
     ]
     status = models.CharField(

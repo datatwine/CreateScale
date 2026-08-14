@@ -130,27 +130,35 @@ class TestCanDispute:
         engagement.save()
         assert engagement.can_dispute is False
 
-    def test_true_within_24h_post_event(self, engagement):
+    def test_true_after_midnight_following_event(self, engagement):
+        # M5: the window now opens at midnight AFTER the event date, so an
+        # event dated yesterday is disputable all of today regardless of the
+        # time of day the test runs.
         engagement.payment_status = Engagement.PAYMENT_PAID
-        # Event was 6 hours ago
-        recent = timezone.now() - timedelta(hours=6)
-        engagement.date = recent.date()
-        engagement.time = recent.time().replace(microsecond=0)
+        engagement.date = date.today() - timedelta(days=1)
         engagement.save()
         assert engagement.can_dispute is True
 
+    def test_false_on_event_day_until_midnight(self, engagement):
+        # M5: a same-day event (even one that already started) is not
+        # disputable until the date rolls over — covers long/full-day events
+        # whose old event-start window closed before the event even ended.
+        engagement.payment_status = Engagement.PAYMENT_PAID
+        engagement.date = date.today()
+        engagement.save()
+        assert engagement.can_dispute is False
+
     def test_false_after_window_closes(self, engagement):
         engagement.payment_status = Engagement.PAYMENT_PAID
-        # Event was 2 days ago
+        # Event was 2 days ago → window opened at midnight after it and has
+        # long since closed.
         engagement.date = date.today() - timedelta(days=2)
         engagement.save()
         assert engagement.can_dispute is False
 
     def test_false_when_already_disputed(self, engagement):
         engagement.payment_status = Engagement.PAYMENT_PAID
-        recent = timezone.now() - timedelta(hours=6)
-        engagement.date = recent.date()
-        engagement.time = recent.time().replace(microsecond=0)
+        engagement.date = date.today() - timedelta(days=1)  # window IS open
         engagement.disputed_at = timezone.now()
         engagement.save()
         assert engagement.can_dispute is False

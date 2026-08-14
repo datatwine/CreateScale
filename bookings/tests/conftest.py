@@ -13,7 +13,7 @@ from unittest.mock import MagicMock
 import pytest
 from django.contrib.auth.models import User
 
-from bookings.models import Engagement
+from bookings.models import Engagement, Payment
 from users.models import Profile
 
 
@@ -109,14 +109,62 @@ def mock_razorpayx(monkeypatch):
     """
     Patch the raw RazorpayX API module so payouts-mode tests never hit HTTP.
     Mirrors mock_razorpay: patches create_contact/create_fund_account/
-    create_payout/new_idempotency_key to return canned ids.
+    create_payout/new_idempotency_key/validate_fund_account to canned values.
+
+    create_payout and validate_fund_account are MagicMocks (not lambdas) so
+    tests can assert on call_args — e.g. that the same idempotency_key is
+    reused across a crash recovery, or read the validation call — and can
+    override return_value per-test (e.g. an "invalid" validation result).
     """
     import bookings.services.razorpayx as rx
 
     monkeypatch.setattr(rx, "create_contact", lambda **k: {"id": "cont_test"})
     monkeypatch.setattr(rx, "create_fund_account", lambda **k: {"id": "fa_test"})
     monkeypatch.setattr(
-        rx, "create_payout", lambda **k: {"id": "pout_test", "status": "queued"}
+        rx,
+        "create_payout",
+        MagicMock(return_value={"id": "pout_test", "status": "queued"}),
     )
+    # Stable key by default so tests asserting an exact value stay simple;
+    # rotation tests re-patch this locally.
     monkeypatch.setattr(rx, "new_idempotency_key", lambda: "idem_test")
+    # Validation defaults to a clean pass: active account, name matches the
+    # performer_user fixture's holder name ("Performer One").
+    monkeypatch.setattr(
+        rx,
+        "validate_fund_account",
+        MagicMock(
+            return_value={
+                "id": "fav_test",
+                "status": "completed",
+                "results": {
+                    "account_status": "active",
+                    "registered_name": "Performer One",
+                },
+            }
+        ),
+    )
     return rx
+
+
+@pytest.fixture
+def payout_crash_row(engagement):
+    """
+    A Payment seeded into the exact post-crash state C2 must recover from:
+    the idempotency key was committed (step 1) but the payout_id was never
+    recorded (step 3 never landed). initiate_payout must REUSE this key rather
+    than mint a fresh one, so Razorpay dedups instead of double-paying.
+    """
+    engagement.payment_status = Engagement.PAYMENT_PAID
+    engagement.save()
+    return Payment.objects.create(
+        engagement=engagement,
+        amount=2000,
+        platform_fee=100,
+        performer_share=1900,
+        razorpay_order_id="order_c",
+        razorpay_payment_id="pay_c",
+        status="captured",
+        payout_idempotency_key="idem_saved",  # committed in step 1
+        razorpayx_payout_id="",  # the tell: step 3 never ran
+    )
