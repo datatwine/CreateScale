@@ -227,7 +227,7 @@
             <form id="upload-form" method="POST" enctype="multipart/form-data">
                 {% csrf_token %}
 
-                <div class="field-group">
+                <div class="field-group" id="image-field-group">
                     <label class="field-label" for="pick-image">Photo</label>
                     <input type="file" id="pick-image" name="image" accept="image/jpeg,image/png,image/gif" class="file-input-hidden">
                     <label for="pick-image" class="file-pick-btn" id="label-image">
@@ -238,9 +238,15 @@
                         </span>
                         <span style="font-size:18px;">→</span>
                     </label>
+                    <div id="image-swap-msg" class="swap-wrap" style="display:none;">
+                        <div class="swap-notice">
+                            <span>Photo selected — want to upload a video instead?</span>
+                            <button type="button" id="clear-image-btn" class="swap-clear-btn" aria-label="Clear image selection">×</button>
+                        </div>
+                    </div>
                 </div>
 
-                <div class="field-group">
+                <div class="field-group" id="video-field-group">
                     <label class="field-label" for="pick-video">Video</label>
                     <input type="file" id="pick-video" name="video" accept="video/mp4" class="file-input-hidden">
                     <label for="pick-video" class="file-pick-btn" id="label-video">
@@ -252,6 +258,12 @@
                         <span style="font-size:18px;">→</span>
                     </label>
                     <div id="video-error" class="upload-error" style="display:none; margin-top:8px; padding:10px 14px; border-radius:10px; background:#FFE6E0; border:1.5px solid #C5530B; color:#8f3400; font-size:13px; font-weight:500;"></div>
+                    <div id="video-swap-msg" class="swap-wrap" style="display:none;">
+                        <div class="swap-notice">
+                            <span>Video selected — want to upload an image instead?</span>
+                            <button type="button" id="clear-video-btn" class="swap-clear-btn" aria-label="Clear video selection">×</button>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="field-group">
@@ -336,6 +348,7 @@
                 opts.labelEl.textContent = name.length > 28 ? name.slice(0, 26) + "…" : name;
                 if (opts.labelBtn) opts.labelBtn.classList.add("has-file");
             }
+            if (opts.onDone) opts.onDone();
         }
 
         // ----- Wire each image input (REPLACES the old change listeners) -----
@@ -358,12 +371,63 @@
             });
         }
 
+        // ============================================================
+        // Mutual exclusion: picking one media type hides the other.
+        // ============================================================
+        var imageFieldGroup = document.getElementById("image-field-group");
+        var videoFieldGroup = document.getElementById("video-field-group");
+        var imageSwapMsg = document.getElementById("image-swap-msg");
+        var videoSwapMsg = document.getElementById("video-swap-msg");
+
+        function showSwapNotice(type) {
+            if (type === "image") {
+                if (videoFieldGroup) videoFieldGroup.style.display = "none";
+                if (imageFieldGroup) imageFieldGroup.style.display = "";
+                if (imageSwapMsg) imageSwapMsg.style.display = "flex";
+                if (videoSwapMsg) videoSwapMsg.style.display = "none";
+            } else if (type === "video") {
+                if (imageFieldGroup) imageFieldGroup.style.display = "none";
+                if (videoFieldGroup) videoFieldGroup.style.display = "";
+                if (videoSwapMsg) videoSwapMsg.style.display = "flex";
+                if (imageSwapMsg) imageSwapMsg.style.display = "none";
+            } else {
+                if (imageFieldGroup) imageFieldGroup.style.display = "";
+                if (videoFieldGroup) videoFieldGroup.style.display = "";
+                if (imageSwapMsg) imageSwapMsg.style.display = "none";
+                if (videoSwapMsg) videoSwapMsg.style.display = "none";
+            }
+        }
+
+        function resetMediaSelection() {
+            if (pickImage) pickImage.value = "";
+            if (pickVideo) pickVideo.value = "";
+            showSwapNotice(null);
+            var imgName = document.getElementById("image-name");
+            if (imgName) imgName.textContent = "JPG or PNG · auto-compressed";
+            var imgLabel = document.getElementById("label-image");
+            if (imgLabel) imgLabel.classList.remove("has-file");
+            if (videoNameEl) videoNameEl.textContent = "MP4 · max 60s ~120 MB";
+            if (videoLabelBtn) videoLabelBtn.classList.remove("has-file");
+            clearVideoError();
+        }
+
+        // Clear buttons
+        var clearImageBtn = document.getElementById("clear-image-btn");
+        if (clearImageBtn) clearImageBtn.addEventListener("click", resetMediaSelection);
+        var clearVideoBtn = document.getElementById("clear-video-btn");
+        if (clearVideoBtn) clearVideoBtn.addEventListener("click", resetMediaSelection);
+
         var pickImage = document.getElementById("pick-image");
         if (pickImage) {
             pickImage.addEventListener("change", function (e) {
+                if (!e.target.files[0]) {
+                    resetMediaSelection();
+                    return;
+                }
                 handleImagePick(e.target, 1080, {
                     labelEl: document.getElementById("image-name"),
                     labelBtn: document.getElementById("label-image"),
+                    onDone: function () { showSwapNotice("image"); },
                 });
             });
         }
@@ -415,6 +479,7 @@
                     videoNameEl.textContent = f.name.length > 28 ? f.name.slice(0, 26) + "…" : f.name;
                 }
                 if (videoLabelBtn) videoLabelBtn.classList.add("has-file");
+                showSwapNotice("video");
 
                 // Duration check — uses a transient <video> element
                 var v = document.createElement("video");
@@ -427,6 +492,7 @@
                         e.target.value = "";
                         if (videoNameEl) videoNameEl.textContent = "MP4 · max 60s ~120 MB";
                         if (videoLabelBtn) videoLabelBtn.classList.remove("has-file");
+                        showSwapNotice(null);
                     }
                 };
                 v.onerror = function () { URL.revokeObjectURL(v.src); };

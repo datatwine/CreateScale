@@ -54,9 +54,14 @@ class UploadSerializer(serializers.ModelSerializer):
         # On update (PATCH), media fields aren't required — only caption changes.
         if self.instance is not None:
             return attrs
-        # On create, require at least one media field.
-        if not attrs.get("image") and not attrs.get("video"):
+        has_image = bool(attrs.get("image"))
+        has_video = bool(attrs.get("video"))
+        if not has_image and not has_video:
             raise serializers.ValidationError("Upload requires an image or a video.")
+        if has_image and has_video:
+            raise serializers.ValidationError(
+                "Upload only one file at a time — choose either a photo or a video, not both."
+            )
         return attrs
 
 
@@ -250,6 +255,10 @@ import re
 from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
+
+
+class ForgotPasswordSerializer(serializers.Serializer):
+    email = serializers.EmailField()
 
 
 class SignupSerializer(serializers.Serializer):

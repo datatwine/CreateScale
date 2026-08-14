@@ -1,10 +1,48 @@
 from django import forms
 from django.contrib.auth.models import User
-from django.contrib.auth.forms import UserCreationForm
+from django.contrib.auth.forms import (
+    UserCreationForm,
+    SetPasswordForm,
+    PasswordResetForm,
+    AuthenticationForm,
+)
 from .models import Upload, Profile, Message
 import re
 from django.core.exceptions import ValidationError
 from .validators import validate_no_profanity
+
+
+class CustomLoginForm(AuthenticationForm):
+    """Overrides Django's verbose default login error message."""
+
+    error_messages = {
+        **AuthenticationForm.error_messages,
+        "invalid_login": "Invalid username or password.",
+    }
+
+
+class CustomPasswordResetForm(PasswordResetForm):
+    """Validates that the email exists before sending a reset link."""
+
+    def clean_email(self):
+        email = self.cleaned_data.get("email", "").strip().lower()
+        if not User.objects.filter(email__iexact=email).exists():
+            raise ValidationError(
+                "No account found with this email address. Please check the email you entered."
+            )
+        return email
+
+
+class CustomSetPasswordForm(SetPasswordForm):
+    """Prevents user from setting the same password they already have."""
+
+    def clean_new_password1(self):
+        new_password = self.cleaned_data.get("new_password1")
+        if self.user.check_password(new_password):
+            raise ValidationError(
+                "New password cannot be the same as your current password."
+            )
+        return new_password
 
 
 class UserRegisterForm(UserCreationForm):
@@ -36,6 +74,8 @@ class UserRegisterForm(UserCreationForm):
             raise ValidationError("Enter a valid email address.")
         if "spam" in email:
             raise ValidationError("Spam emails are not allowed.")
+        if User.objects.filter(email__iexact=email).exists():
+            raise ValidationError("An account with this email already exists.")
         return email
 
 
@@ -45,10 +85,14 @@ class UploadForm(forms.ModelForm):
         fields = ["image", "video", "caption"]
 
     def clean(self):
-        cleaned_data = super().clean()
-        if not cleaned_data.get("image") and not cleaned_data.get("video"):
+        cleaned = super().clean()
+        if not cleaned.get("image") and not cleaned.get("video"):
             raise ValidationError("Upload requires at least one file (image or video).")
-        return cleaned_data
+        if cleaned.get("image") and cleaned.get("video"):
+            raise ValidationError(
+                "Upload only one file at a time — choose either a photo or a video, not both."
+            )
+        return cleaned
 
     def clean_image(self):
         image = self.cleaned_data.get("image")

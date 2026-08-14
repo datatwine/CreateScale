@@ -23,7 +23,7 @@ import { API_BASE_URL } from "../config/api";
 import { uploadMedia } from "../api/upload";
 import { kycLabel, kycColor, shouldShowPayoutsLink, shouldShowPaymentsLink } from "../utils/settingsDrawer";
 import { isUnauthorized } from "../utils/session";
-import { COLORS } from "../config/theme";
+import { COLORS, TAB_BAR_CLEARANCE } from "../config/theme";
 import PressableStamp from "../components/PressableStamp";
 
 // ---------------------------------------------------------------------------
@@ -890,7 +890,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 16,
-    paddingBottom: 32,
+    paddingBottom: TAB_BAR_CLEARANCE,
     backgroundColor: COLORS.background,
     flexGrow: 1,
   },

@@ -32,8 +32,12 @@ import { Ionicons } from "@expo/vector-icons";
 import { AuthContext } from "../context/AuthContext";
 import { API_BASE_URL } from "../config/api";
 import { computeCountdown } from "../utils/countdown";
-import { COLORS } from "../config/theme";
+import { COLORS, TAB_BAR_CLEARANCE } from "../config/theme";
 import PressableStamp from "../components/PressableStamp";
+import { injectAds } from "../ads/injectAds";
+import { MOCK_EVENT_AD } from "../ads/mockInventory";
+import { EVENTS_AD_INTERVAL, EVENTS_FIRST_AD_OFFSET } from "../ads/constants";
+import EventAdCard from "../ads/EventAdCard";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -339,16 +343,26 @@ export default function LiveEventsScreen({ navigation }) {
     // Derived data
     // -----------------------------------------------------------------------
 
-    const data = scope === "upcoming" ? upcomingData : pastData;
+    const baseData = scope === "upcoming" ? upcomingData : pastData;
     const isPast = scope === "past";
+    const adReady = true; // simulation. Later: from useNativeAds().
+    const data = injectAds(
+        baseData,
+        adReady ? MOCK_EVENT_AD : null,
+        EVENTS_AD_INTERVAL,
+        EVENTS_FIRST_AD_OFFSET,
+    );
 
     // -----------------------------------------------------------------------
     // Render helpers
     // -----------------------------------------------------------------------
 
-    const renderItem = ({ item }) => (
-        <EventCard event={item} isPast={isPast} />
-    );
+    const renderItem = ({ item }) =>
+        item._isAd ? (
+            <EventAdCard ad={item} onPress={() => console.log("Ad tapped:", item.advertiser)} />
+        ) : (
+            <EventCard event={item} isPast={isPast} />
+        );
 
     const renderFooter = () => {
         if (!loadingMore) return null;
@@ -481,7 +495,7 @@ export default function LiveEventsScreen({ navigation }) {
             ) : (
                 <FlatList
                     data={data}
-                    keyExtractor={(item) => String(item.id)}
+                    keyExtractor={(item) => (item._isAd ? item.id : String(item.id))}
                     renderItem={renderItem}
                     contentContainerStyle={styles.listContent}
                     ListHeaderComponent={
@@ -650,7 +664,7 @@ const styles = StyleSheet.create({
     // --- List ---
     listContent: {
         paddingHorizontal: 16,
-        paddingBottom: 24,
+        paddingBottom: TAB_BAR_CLEARANCE,
         paddingTop: 4,
     },
 

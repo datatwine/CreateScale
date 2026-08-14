@@ -135,6 +135,47 @@ export async function signupWithCredentials({ username, email, password1, passwo
   return data; // { token, user_id, username }
 }
 
+/**
+ * Request a password reset link for an email address.
+ *
+ * POST /api/auth/forgot-password/
+ * Body: { email }
+ * Returns: 200 { "detail": "Password reset link sent to your email." }
+ *          400 { "detail": "No account found with this email address." }
+ *
+ * The reset itself happens in the browser — the email contains a link to
+ * Django's template-based reset pages. This app only triggers the email.
+ */
+export async function forgotPassword(email) {
+  const url = `${API_BASE_URL}/auth/forgot-password/`;
+  console.log("Forgot password: POST", url);
+
+  let response;
+  try {
+    response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ email }),
+    });
+  } catch (err) {
+    console.log("Network error while calling auth/forgot-password:", err);
+    throw new Error(
+      "Network request failed – check API_BASE_URL and that your device can reach the backend."
+    );
+  }
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    const detail = data.detail || "Failed to send password reset link.";
+    throw new Error(detail);
+  }
+
+  return data; // { detail }
+}
+
 // ---------------------------------------------
 // Fetch uploads for the currently authenticated user
 // API endpoint: GET /api/users/me/uploads/
