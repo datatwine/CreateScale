@@ -1,12 +1,16 @@
 // App.js
 
-import React, { useContext } from "react";
+import React, { useContext, useEffect, useRef } from "react";
 import { NavigationContainer, DefaultTheme } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { SafeAreaProvider, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { AuthProvider, AuthContext } from "./src/context/AuthContext";
+import {
+  registerForPushNotifications,
+  setupNotificationResponseHandling,
+} from "./src/notifications";
 
 // Screens
 import LoginScreen from "./src/screens/LoginScreen";
@@ -126,6 +130,36 @@ function MainTabs() {
 
 function RootNavigator() {
   const { token, initializing } = useContext(AuthContext);
+  const navigationRef = useRef(null);
+
+  // Register for push notifications whenever the user logs in. Needs the
+  // auth token (to tell Django which device belongs to whom), so this can
+  // only run once token is set — not during the initial loading state.
+  useEffect(() => {
+    if (token) {
+      registerForPushNotifications(token);
+    }
+  }, [token]);
+
+  // Tap-handling is set up once, decoupled from login — tying it to the
+  // token effect above would attach another live listener on every
+  // re-login, so a single tap would fire navigate() once per stacked
+  // listener. The cleanup removes the listener on unmount.
+  //
+  // Gated on !initializing rather than mount ([]): NavigationContainer
+  // (and navigationRef.current) doesn't exist until the loading screen
+  // below is past — it's blocked on fetchAuthMe(), a network call. Firing
+  // on mount would run the cold-start check while the ref is still null,
+  // silently dropping a launch tap for exactly the users who can receive
+  // one (logged-in, stored token). initializing flips true → false once,
+  // never back, so this still only sets up the listener a single time —
+  // just at the point the ref is actually populated instead of before it.
+  useEffect(() => {
+    if (initializing) {
+      return;
+    }
+    return setupNotificationResponseHandling(navigationRef);
+  }, [initializing]);
 
   if (initializing) {
     return (
@@ -136,7 +170,7 @@ function RootNavigator() {
   }
 
   return (
-    <NavigationContainer theme={WebTheme}>
+    <NavigationContainer ref={navigationRef} theme={WebTheme}>
       {token ? (
         <Stack.Navigator screenOptions={{ headerShown: false, animation: "fade" }}>
           <Stack.Screen name="MainTabs" component={MainTabs} />
