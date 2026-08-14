@@ -1,5 +1,5 @@
 # Register your models here.
-from django.contrib import admin
+from django.contrib import admin, messages
 
 from .models import Engagement, Payment
 from .services.payments import PaymentService
@@ -120,17 +120,34 @@ class PaymentAdmin(admin.ModelAdmin):
     )
     actions = ["retry_failed_payout"]
 
-    @admin.action(description="Retry failed payout (re-fire RazorpayX payout)")
+    @admin.action(description="Retry failed payout (refresh bank details)")
     def retry_failed_payout(self, request, queryset):
         """
-        Safety net for payout_failed rows (e.g. wrong bank detail fixed, or a
-        transient bank/NPCI outage). Re-fires the payout via the normal path —
-        initiate_payout is guarded + idempotent, so non-failed rows are skipped.
+        Safety net for payout_failed / payout_reversed rows (wrong bank detail
+        fixed, a transient bank/NPCI outage, or a post-settlement reversal).
+
+        Clears the cached RazorpayX fund account first so any corrected bank
+        details are picked up (H3) — ensure_payout_destination rebuilds and
+        re-validates it — then re-fires via the normal guarded, idempotent
+        path. Per-row messaging so a bad row doesn't hide the others.
         """
-        done = 0
-        for payment in queryset.select_related("engagement"):
-            if payment.status != "payout_failed":
+        for payment in queryset.select_related(
+            "engagement", "engagement__performer"
+        ):
+            if payment.status not in ("payout_failed", "payout_reversed"):
+                self.message_user(
+                    request,
+                    f"Skipped {payment} (status {payment.status}).",
+                    messages.WARNING,
+                )
                 continue
-            PaymentService.initiate_payout(payment.engagement)
-            done += 1
-        self.message_user(request, f"Re-fired {done} payout(s).")
+            try:
+                profile = payment.engagement.performer.profile
+                profile.razorpayx_fund_account_id = ""
+                profile.save(update_fields=["razorpayx_fund_account_id"])
+                PaymentService.initiate_payout(payment.engagement)
+                self.message_user(request, f"Retried {payment}.", messages.SUCCESS)
+            except Exception as e:  # noqa: BLE001 — surface any failure to admin
+                self.message_user(
+                    request, f"Retry failed for {payment}: {e}", messages.ERROR
+                )

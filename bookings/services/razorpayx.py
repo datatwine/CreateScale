@@ -135,6 +135,29 @@ def create_payout(
     )
 
 
+def validate_fund_account(fund_account_id: str) -> dict:
+    """
+    POST /v1/fund_accounts/validations — a ₹1 penny-drop validation of a fund
+    account, debited from OUR RazorpayX balance (RAZORPAYX_ACCOUNT_NUMBER).
+    Returns {id: "fav_...", status: "created"|"completed"|"failed",
+    results: {account_status, registered_name}}.
+
+    NOTE: status "completed" means the RESULTS are in, NOT that the account is
+    valid — the caller must read results.account_status. Bank-side delays can
+    push completion to T+2 working days, arriving later via the
+    fund_account.validation.completed webhook, so treat "created" as pending.
+    """
+    return _post(
+        "fund_accounts/validations",
+        {
+            "account_number": settings.RAZORPAYX_ACCOUNT_NUMBER,  # OUR source acct
+            "fund_account": {"id": fund_account_id},
+            "amount": 100,  # paise → ₹1
+            "currency": "INR",
+        },
+    )
+
+
 def verify_webhook_signature(raw_body: bytes, signature_header: str) -> bool:
     """
     HMAC-SHA256 over the RAW request body using the RazorpayX webhook secret

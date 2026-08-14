@@ -94,6 +94,30 @@ class Profile(models.Model):
         max_length=64, blank=True, db_index=True
     )
 
+    # md5(ifsc:account_number)[:16] of the bank details the cached fund account
+    # was built from. When the performer edits their bank details this stops
+    # matching, so ensure_payout_destination knows to discard the stale fund
+    # account and create a fresh one instead of paying the old bank forever.
+    _bank_details_hash = models.CharField(max_length=16, blank=True)
+
+    # Proactive bank-detail validation (RazorpayX Fund Account Validation API).
+    # bank_validation_status gates payouts: only a confirmed "invalid" blocks —
+    # "pending" stays payable so a slow (T+2) bank response never freezes a
+    # booking. razorpayx_validation_id (fav_...) matches the async
+    # fund_account.validation.completed webhook back to this profile.
+    bank_validation_status = models.CharField(
+        max_length=10,
+        choices=[
+            ("", "Not validated"),
+            ("pending", "Pending"),
+            ("valid", "Valid"),
+            ("invalid", "Invalid"),
+        ],
+        default="",
+        blank=True,
+    )
+    razorpayx_validation_id = models.CharField(max_length=64, blank=True)
+
     @property
     def can_receive_payments(self) -> bool:
         """
@@ -112,11 +136,15 @@ class Profile(models.Model):
                 bool(self.razorpay_account_id)
                 and self.razorpay_kyc_status == "approved"
             )
+        # Payouts: complete bank details on file AND not proven bad. Only a
+        # confirmed "invalid" from Fund Account Validation blocks — "" (not yet
+        # validated) and "pending" (T+2 bank delay) stay payable so onboarding
+        # and bookings aren't held hostage to a slow validation round-trip.
         return bool(
             self.bank_account_holder_name
             and self.bank_account_number
             and self.bank_ifsc
-        )
+        ) and self.bank_validation_status != "invalid"
 
     def __str__(self):
         return f"{self.user.username} Profile"
