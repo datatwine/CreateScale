@@ -17,7 +17,6 @@ from django.utils import timezone
 
 from bookings.models import Engagement, Payment
 from bookings.services.payments import PaymentService
-from users.models import Profile
 
 
 @pytest.fixture(autouse=True)
