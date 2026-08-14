@@ -188,6 +188,30 @@ class Profile(models.Model):
         super().save(*args, **kwargs)
 
 
+class PushToken(models.Model):
+    """
+    Stores Expo push notification tokens — one per device per user.
+
+    When the app launches, it asks the OS for a push token (a delivery address
+    like ExponentPushToken[abc123...]) and sends it here. Django uses these
+    tokens to reach the user's phone(s) via Expo's push API.
+
+    One user can have multiple tokens — e.g. an iPhone and an iPad.
+    A single device can only have one token at a time (unique=True).
+    """
+
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="push_tokens",
+    )
+    token = models.CharField(max_length=200, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"PushToken({self.user.username}, {self.token[:30]}...)"
+
+
 class Upload(models.Model):
     MAX_UPLOADS_PER_USER = 9
 
