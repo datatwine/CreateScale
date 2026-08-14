@@ -18,6 +18,7 @@
 
 import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
+import Constants from "expo-constants";
 import { API_BASE_URL } from "./config/api";
 
 // --- Configure how notifications behave when the app is already open ---
@@ -58,43 +59,53 @@ function _navigateFromResponse(response, navigationRef) {
  * @param {string} authToken - The user's API auth token (for the Authorization header)
  */
 export async function registerForPushNotifications(authToken) {
-  const { status } = await Notifications.requestPermissionsAsync();
-
-  // User said no — respect it. We can't send them notifications.
-  if (status !== "granted") {
-    return;
-  }
-
-  // The token looks like: ExponentPushToken[abc123...]
-  const tokenData = await Notifications.getExpoPushTokenAsync();
-  const pushToken = tokenData.data;
-
-  // We send this on EVERY app launch (not just the first time) because the
-  // token can change — app reinstall, OS update, etc. Django's update_or_create
-  // handles duplicates gracefully.
+  // Whole body guarded: this is called fire-and-forget (no .catch()) from
+  // App.js, so any unguarded throw here becomes an unhandled promise
+  // rejection. getExpoPushTokenAsync() in particular throws in EAS/standalone
+  // builds when extra.eas.projectId is missing from app config — Expo Go
+  // supplies ambient project context, so this only surfaces outside it.
   try {
-    await fetch(`${API_BASE_URL}/users/push-token/`, {
-      method: "POST",
-      headers: {
-        Authorization: `Token ${authToken}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ token: pushToken }),
-    });
-  } catch (err) {
-    // Network error — token didn't get registered this time.
-    // It'll retry on next app launch. Not critical.
-    console.warn("Failed to register push token:", err);
-  }
+    const { status } = await Notifications.requestPermissionsAsync();
 
-  // Android requires a "channel" for notifications (iOS ignores this).
-  // Without it, notifications may not show on some Android devices.
-  if (Platform.OS === "android") {
-    await Notifications.setNotificationChannelAsync("default", {
-      name: "Default",
-      importance: Notifications.AndroidImportance.HIGH,
-      sound: "default",
-    });
+    // User said no — respect it. We can't send them notifications.
+    if (status !== "granted") {
+      return;
+    }
+
+    // The token looks like: ExponentPushToken[abc123...]
+    const projectId = Constants.expoConfig?.extra?.eas?.projectId;
+    const tokenData = await Notifications.getExpoPushTokenAsync({ projectId });
+    const pushToken = tokenData.data;
+
+    // We send this on EVERY app launch (not just the first time) because the
+    // token can change — app reinstall, OS update, etc. Django's update_or_create
+    // handles duplicates gracefully.
+    try {
+      await fetch(`${API_BASE_URL}/users/push-token/`, {
+        method: "POST",
+        headers: {
+          Authorization: `Token ${authToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ token: pushToken }),
+      });
+    } catch (err) {
+      // Network error — token didn't get registered this time.
+      // It'll retry on next app launch. Not critical.
+      console.warn("Failed to register push token:", err);
+    }
+
+    // Android requires a "channel" for notifications (iOS ignores this).
+    // Without it, notifications may not show on some Android devices.
+    if (Platform.OS === "android") {
+      await Notifications.setNotificationChannelAsync("default", {
+        name: "Default",
+        importance: Notifications.AndroidImportance.HIGH,
+        sound: "default",
+      });
+    }
+  } catch (err) {
+    console.warn("Push notification registration failed:", err);
   }
 }
 
@@ -110,19 +121,35 @@ export async function registerForPushNotifications(authToken) {
  *    asking "was this app just launched by a notification tap?" — checked
  *    once here, on mount.
  *
+ * Both the cold-start check and the live listener can end up handling the
+ * SAME launch tap (SDK/timing dependent), which would otherwise navigate
+ * twice for one tap — deduped here by notification.request.identifier.
+ *
  * @param {object} navigationRef - React Navigation ref, so we can navigate on tap
  * @returns {Function} cleanup function — call on unmount to remove the listener
  */
 export function setupNotificationResponseHandling(navigationRef) {
+  let lastHandledId = null;
+
+  const handle = (response) => {
+    const id = response?.notification?.request?.identifier;
+    if (id && id === lastHandledId) {
+      return;
+    }
+    if (id) {
+      lastHandledId = id;
+    }
+    _navigateFromResponse(response, navigationRef);
+  };
+
   Notifications.getLastNotificationResponseAsync().then((response) => {
     if (response) {
-      _navigateFromResponse(response, navigationRef);
+      handle(response);
     }
   });
 
-  const subscription = Notifications.addNotificationResponseReceivedListener(
-    (response) => _navigateFromResponse(response, navigationRef)
-  );
+  const subscription =
+    Notifications.addNotificationResponseReceivedListener(handle);
 
   return () => subscription.remove();
 }

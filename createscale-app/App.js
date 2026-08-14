@@ -114,13 +114,25 @@ function RootNavigator() {
     }
   }, [token]);
 
-  // Tap-handling is set up ONCE on mount, decoupled from login — tying it
-  // to the token effect above would attach another live listener on every
+  // Tap-handling is set up once, decoupled from login — tying it to the
+  // token effect above would attach another live listener on every
   // re-login, so a single tap would fire navigate() once per stacked
   // listener. The cleanup removes the listener on unmount.
+  //
+  // Gated on !initializing rather than mount ([]): NavigationContainer
+  // (and navigationRef.current) doesn't exist until the loading screen
+  // below is past — it's blocked on fetchAuthMe(), a network call. Firing
+  // on mount would run the cold-start check while the ref is still null,
+  // silently dropping a launch tap for exactly the users who can receive
+  // one (logged-in, stored token). initializing flips true → false once,
+  // never back, so this still only sets up the listener a single time —
+  // just at the point the ref is actually populated instead of before it.
   useEffect(() => {
+    if (initializing) {
+      return;
+    }
     return setupNotificationResponseHandling(navigationRef);
-  }, []);
+  }, [initializing]);
 
   if (initializing) {
     return (

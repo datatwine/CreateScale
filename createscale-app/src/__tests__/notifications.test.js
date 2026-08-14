@@ -24,6 +24,11 @@ jest.mock("expo-notifications", () => ({
   AndroidImportance: { HIGH: 4 },
 }));
 
+jest.mock("expo-constants", () => ({
+  __esModule: true,
+  default: { expoConfig: { extra: { eas: { projectId: "test-project-id" } } } },
+}));
+
 import { Platform } from "react-native";
 import * as Notifications from "expo-notifications";
 import {
@@ -87,6 +92,31 @@ describe("registerForPushNotifications", () => {
     await expect(
       registerForPushNotifications("auth-tok-123")
     ).resolves.not.toThrow();
+  });
+
+  test("passes an explicit projectId to getExpoPushTokenAsync", async () => {
+    mockRequestPermissionsAsync.mockResolvedValue({ status: "granted" });
+    mockGetExpoPushTokenAsync.mockResolvedValue({
+      data: "ExponentPushToken[abc123]",
+    });
+
+    await registerForPushNotifications("auth-tok-123");
+
+    expect(mockGetExpoPushTokenAsync).toHaveBeenCalledWith({
+      projectId: "test-project-id",
+    });
+  });
+
+  test("does not throw when getExpoPushTokenAsync itself throws", async () => {
+    // Happens in EAS/standalone builds when extra.eas.projectId is missing —
+    // must not become an unhandled rejection (this fn is called fire-and-forget).
+    mockRequestPermissionsAsync.mockResolvedValue({ status: "granted" });
+    mockGetExpoPushTokenAsync.mockRejectedValue(new Error("No projectId found"));
+
+    await expect(
+      registerForPushNotifications("auth-tok-123")
+    ).resolves.not.toThrow();
+    expect(global.fetch).not.toHaveBeenCalled();
   });
 
   test("does not register a tap listener itself", async () => {
@@ -205,5 +235,62 @@ describe("setupNotificationResponseHandling", () => {
     await Promise.resolve();
 
     expect(navigate).not.toHaveBeenCalled();
+  });
+
+  test("does not navigate twice when the same tap fires from both cold-start and the live listener", async () => {
+    // Both getLastNotificationResponseAsync and the live listener can fire
+    // for the same launch tap depending on SDK version/timing. They share a
+    // notification.request.identifier when that happens — dedup on it.
+    const navigate = jest.fn();
+    const navigationRef = { current: { navigate } };
+    const sameResponse = {
+      notification: {
+        request: {
+          identifier: "notif-abc-123",
+          content: { data: { screen: "Bookings", id: 42 } },
+        },
+      },
+    };
+    mockGetLastNotificationResponseAsync.mockResolvedValue(sameResponse);
+
+    setupNotificationResponseHandling(navigationRef);
+    await Promise.resolve();
+    await Promise.resolve();
+
+    // Live listener fires for the SAME notification right after.
+    const handler = mockAddNotificationResponseReceivedListener.mock.calls[0][0];
+    handler(sameResponse);
+
+    expect(navigate).toHaveBeenCalledTimes(1);
+  });
+
+  test("still navigates for a different notification after an earlier one", async () => {
+    const navigate = jest.fn();
+    const navigationRef = { current: { navigate } };
+    mockGetLastNotificationResponseAsync.mockResolvedValue({
+      notification: {
+        request: {
+          identifier: "notif-first",
+          content: { data: { screen: "Bookings", id: 1 } },
+        },
+      },
+    });
+
+    setupNotificationResponseHandling(navigationRef);
+    await Promise.resolve();
+    await Promise.resolve();
+
+    const handler = mockAddNotificationResponseReceivedListener.mock.calls[0][0];
+    handler({
+      notification: {
+        request: {
+          identifier: "notif-second",
+          content: { data: { screen: "LiveEvents", id: 2 } },
+        },
+      },
+    });
+
+    expect(navigate).toHaveBeenNthCalledWith(1, "Bookings", { id: 1 });
+    expect(navigate).toHaveBeenNthCalledWith(2, "LiveEvents", { id: 2 });
   });
 });
