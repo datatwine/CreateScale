@@ -352,7 +352,8 @@ class PaymentService:
         from . import razorpayx
 
         current_bank_hash = hashlib.md5(
-            f"{profile.bank_ifsc}:{profile.bank_account_number}".encode()
+            f"{profile.bank_ifsc}:{profile.bank_account_number}".encode(),
+            usedforsecurity=False,
         ).hexdigest()[:16]
 
         if profile.razorpayx_fund_account_id:
