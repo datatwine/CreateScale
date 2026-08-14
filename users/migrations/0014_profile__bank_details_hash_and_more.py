@@ -4,25 +4,34 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('users', '0013_profile_razorpayx_contact_id_and_more'),
+        ("users", "0013_profile_razorpayx_contact_id_and_more"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='profile',
-            name='_bank_details_hash',
+            model_name="profile",
+            name="_bank_details_hash",
             field=models.CharField(blank=True, max_length=16),
         ),
         migrations.AddField(
-            model_name='profile',
-            name='bank_validation_status',
-            field=models.CharField(blank=True, choices=[('', 'Not validated'), ('pending', 'Pending'), ('valid', 'Valid'), ('invalid', 'Invalid')], default='', max_length=10),
+            model_name="profile",
+            name="bank_validation_status",
+            field=models.CharField(
+                blank=True,
+                choices=[
+                    ("", "Not validated"),
+                    ("pending", "Pending"),
+                    ("valid", "Valid"),
+                    ("invalid", "Invalid"),
+                ],
+                default="",
+                max_length=10,
+            ),
         ),
         migrations.AddField(
-            model_name='profile',
-            name='razorpayx_validation_id',
+            model_name="profile",
+            name="razorpayx_validation_id",
             field=models.CharField(blank=True, max_length=64),
         ),
     ]

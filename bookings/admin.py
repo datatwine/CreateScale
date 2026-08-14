@@ -131,9 +131,7 @@ class PaymentAdmin(admin.ModelAdmin):
         re-validates it — then re-fires via the normal guarded, idempotent
         path. Per-row messaging so a bad row doesn't hide the others.
         """
-        for payment in queryset.select_related(
-            "engagement", "engagement__performer"
-        ):
+        for payment in queryset.select_related("engagement", "engagement__performer"):
             if payment.status not in ("payout_failed", "payout_reversed"):
                 self.message_user(
                     request,

@@ -140,11 +140,14 @@ class Profile(models.Model):
         # confirmed "invalid" from Fund Account Validation blocks — "" (not yet
         # validated) and "pending" (T+2 bank delay) stay payable so onboarding
         # and bookings aren't held hostage to a slow validation round-trip.
-        return bool(
-            self.bank_account_holder_name
-            and self.bank_account_number
-            and self.bank_ifsc
-        ) and self.bank_validation_status != "invalid"
+        return (
+            bool(
+                self.bank_account_holder_name
+                and self.bank_account_number
+                and self.bank_ifsc
+            )
+            and self.bank_validation_status != "invalid"
+        )
 
     def __str__(self):
         return f"{self.user.username} Profile"

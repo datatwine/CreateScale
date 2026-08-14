@@ -80,9 +80,7 @@ class PaymentService:
         # Razorpay itself the dedup layer. A resumed Route order still carries
         # its original held-transfer spec, so escrow survives resumption.
         existing = (
-            engagement.payments.filter(status="created")
-            .order_by("-created_at")
-            .first()
+            engagement.payments.filter(status="created").order_by("-created_at").first()
         )
         if existing:
             rz_order = client.order.fetch(existing.razorpay_order_id)
@@ -187,9 +185,7 @@ class PaymentService:
         if engagement.payment_status != Engagement.PAYMENT_UNPAID:
             payment.razorpay_payment_id = razorpay_payment_id
             payment.status = "failed"
-            payment.save(
-                update_fields=["razorpay_payment_id", "status", "updated_at"]
-            )
+            payment.save(update_fields=["razorpay_payment_id", "status", "updated_at"])
             logger.warning(
                 "Duplicate capture blocked: payment %s (order %s) for "
                 "already-%s engagement %s — needs refund/reconciliation.",
@@ -244,9 +240,7 @@ class PaymentService:
         if engagement.payment_status != Engagement.PAYMENT_UNPAID:
             payment.razorpay_payment_id = razorpay_payment_id
             payment.status = "failed"
-            payment.save(
-                update_fields=["razorpay_payment_id", "status", "updated_at"]
-            )
+            payment.save(update_fields=["razorpay_payment_id", "status", "updated_at"])
             logger.warning(
                 "Duplicate capture (webhook) blocked: payment %s (order %s) "
                 "for already-%s engagement %s — needs refund/reconciliation.",
@@ -303,9 +297,7 @@ class PaymentService:
 
         # ── Route mode: unhold the escrowed transfer ─────────────────────
         with transaction.atomic():
-            payment = engagement.payments.filter(status="captured").latest(
-                "created_at"
-            )
+            payment = engagement.payments.filter(status="captured").latest("created_at")
 
             client = get_client()
             # Razorpay returns a list of transfers because Route supports
@@ -394,9 +386,7 @@ class PaymentService:
         )
         profile.razorpayx_fund_account_id = fa["id"]
         profile._bank_details_hash = current_bank_hash
-        profile.save(
-            update_fields=["razorpayx_fund_account_id", "_bank_details_hash"]
-        )
+        profile.save(update_fields=["razorpayx_fund_account_id", "_bank_details_hash"])
 
         # Proactive penny-drop validation of the fresh fund account (Rec 11).
         # The hash gate above guarantees changed details always reach here.
@@ -502,9 +492,7 @@ class PaymentService:
             else:
                 key = razorpayx.new_idempotency_key()
                 payment.payout_idempotency_key = key
-                payment.save(
-                    update_fields=["payout_idempotency_key", "updated_at"]
-                )
+                payment.save(update_fields=["payout_idempotency_key", "updated_at"])
             payment_pk = payment.pk
             performer_share = payment.performer_share
 
@@ -526,15 +514,11 @@ class PaymentService:
             payment = Payment.objects.select_for_update().get(pk=payment_pk)
             payment.razorpayx_payout_id = payout["id"]
             payment.status = "payout_processing"
-            payment.save(
-                update_fields=["razorpayx_payout_id", "status", "updated_at"]
-            )
+            payment.save(update_fields=["razorpayx_payout_id", "status", "updated_at"])
             eng = payment.engagement
             eng.payment_status = Engagement.PAYMENT_PAYOUT_PROCESSING
             eng.payout_initiated_at = timezone.now()
-            eng.save(
-                update_fields=["payment_status", "payout_initiated_at"]
-            )
+            eng.save(update_fields=["payment_status", "payout_initiated_at"])
 
     # ── Signal 3: Refund to client ──────────────────────────────────
     @staticmethod
@@ -596,9 +580,7 @@ class PaymentService:
             payment = Payment.objects.select_for_update().get(pk=payment_pk)
             payment.razorpay_refund_id = refund["id"]
             payment.status = "refunded"
-            payment.save(
-                update_fields=["razorpay_refund_id", "status", "updated_at"]
-            )
+            payment.save(update_fields=["razorpay_refund_id", "status", "updated_at"])
             eng = payment.engagement
             eng.payment_status = Engagement.PAYMENT_REFUNDED
             eng.refunded_at = timezone.now()
@@ -728,9 +710,7 @@ class PaymentService:
                     if eng.payment_status != Engagement.PAYMENT_RELEASED:
                         eng.payment_status = Engagement.PAYMENT_RELEASED
                         eng.released_at = timezone.now()
-                        eng.save(
-                            update_fields=["payment_status", "released_at"]
-                        )
+                        eng.save(update_fields=["payment_status", "released_at"])
 
         elif event_type == "transfer.failed":
             # M1 (Route): transfer creation/settlement failed — the client was

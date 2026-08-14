@@ -450,7 +450,9 @@ class TestGatewayWebhookHandlers:
                 "payload": {"refund": {"entity": {"id": "rfnd_1"}}},
             }
         )
-        assert Payment.objects.get(razorpay_refund_id="rfnd_1").status == "refund_failed"
+        assert (
+            Payment.objects.get(razorpay_refund_id="rfnd_1").status == "refund_failed"
+        )
         engagement.refresh_from_db()
         assert engagement.payment_status != Engagement.PAYMENT_REFUNDED
 
@@ -484,9 +486,7 @@ class TestGatewayWebhookHandlers:
         PaymentService.handle_webhook_event(
             {
                 "event": "transfer.failed",
-                "payload": {
-                    "transfer": {"entity": {"id": "trf_x", "source": "pay_x"}}
-                },
+                "payload": {"transfer": {"entity": {"id": "trf_x", "source": "pay_x"}}},
             }
         )
         assert "FAILED" in caplog.text

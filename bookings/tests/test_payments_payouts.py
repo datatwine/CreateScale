@@ -331,7 +331,10 @@ class TestPayoutIdempotencyRecovery:
         import bookings.services.razorpayx as rx
 
         PaymentService.handle_payout_webhook_event(
-            {"event": "payout.failed", "payload": {"payout": {"entity": {"id": "pout_test"}}}}
+            {
+                "event": "payout.failed",
+                "payload": {"payout": {"entity": {"id": "pout_test"}}},
+            }
         )
         processing.refresh_from_db()
         first = processing.payments.latest("created_at").payout_idempotency_key
@@ -367,7 +370,10 @@ class TestReversalAfterRelease:
     def test_reversed_after_release_reopens(self, released):
         assert released.payment_status == Engagement.PAYMENT_RELEASED
         PaymentService.handle_payout_webhook_event(
-            {"event": "payout.reversed", "payload": {"payout": {"entity": {"id": "pout_test"}}}}
+            {
+                "event": "payout.reversed",
+                "payload": {"payout": {"entity": {"id": "pout_test"}}},
+            }
         )
         released.refresh_from_db()
         assert released.payment_status == Engagement.PAYMENT_PAYOUT_FAILED
@@ -377,7 +383,10 @@ class TestReversalAfterRelease:
     def test_failed_racing_a_settle_keeps_success(self, released):
         # A late payout.failed (NOT reversed) must not clobber a real settle.
         PaymentService.handle_payout_webhook_event(
-            {"event": "payout.failed", "payload": {"payout": {"entity": {"id": "pout_test"}}}}
+            {
+                "event": "payout.failed",
+                "payload": {"payout": {"entity": {"id": "pout_test"}}},
+            }
         )
         released.refresh_from_db()
         assert released.payment_status == Engagement.PAYMENT_RELEASED
@@ -385,7 +394,10 @@ class TestReversalAfterRelease:
     def test_double_reversal_is_idempotent(self, released):
         # RazorpayX retries webhooks — a second payout.reversed must stay
         # payout_reversed, not degrade to payout_failed.
-        rev = {"event": "payout.reversed", "payload": {"payout": {"entity": {"id": "pout_test"}}}}
+        rev = {
+            "event": "payout.reversed",
+            "payload": {"payout": {"entity": {"id": "pout_test"}}},
+        }
         PaymentService.handle_payout_webhook_event(rev)
         PaymentService.handle_payout_webhook_event(rev)  # retry
         released.refresh_from_db()
@@ -579,7 +591,10 @@ class TestAdminRetryAction:
         engagement.refresh_from_db()
         PaymentService.release_to_performer(engagement)
         PaymentService.handle_payout_webhook_event(
-            {"event": "payout.failed", "payload": {"payout": {"entity": {"id": "pout_test"}}}}
+            {
+                "event": "payout.failed",
+                "payload": {"payout": {"entity": {"id": "pout_test"}}},
+            }
         )
         engagement.refresh_from_db()
         return engagement
