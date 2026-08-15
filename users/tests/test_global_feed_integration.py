@@ -97,3 +97,91 @@ class TestGlobalFeedWebIntegration(TestCase):
 
         self.assertContains(resp, "viewer")
         self.assertNotContains(resp, "rahul")
+
+    def test_search_by_username_partial(self):
+        resp = self.client.get("/users/global-feed/", {"search": "ali"})
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "alice")
+        self.assertNotContains(resp, "bob")
+
+    def test_search_by_profession_partial(self):
+        resp = self.client.get("/users/global-feed/", {"search": "danc"})
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "alice")
+        self.assertNotContains(resp, "bob")
+
+    def test_search_by_city_partial(self):
+        resp = self.client.get("/users/global-feed/", {"search": "del"})
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "bob")
+        self.assertNotContains(resp, "alice")
+
+    def test_search_is_case_insensitive(self):
+        resp = self.client.get("/users/global-feed/", {"search": "MUMBAI"})
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "alice")
+        self.assertNotContains(resp, "bob")
+
+    def test_search_combines_with_profession_filter(self):
+        # search matches alice (Mumbai dancer); filter must exclude her
+        resp = self.client.get(
+            "/users/global-feed/",
+            {"search": "mum", "professions": "Singer"},
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertNotContains(resp, "alice")
+        self.assertNotContains(resp, "bob")
+
+    def test_search_combines_with_profession_filter_match(self):
+        resp = self.client.get(
+            "/users/global-feed/",
+            {"search": "mum", "professions": "Dancer"},
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "alice")
+        self.assertNotContains(resp, "bob")
+
+    def test_empty_search_returns_full_feed(self):
+        resp = self.client.get("/users/global-feed/", {"search": ""})
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "alice")
+        self.assertContains(resp, "bob")
+
+    def test_no_results_empty_state_mentions_search(self):
+        resp = self.client.get("/users/global-feed/", {"search": "zzznomatch"})
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "No artists found")
+        self.assertContains(resp, 'No results for "zzznomatch"')
+
+    def test_search_bar_renders(self):
+        resp = self.client.get("/users/global-feed/")
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Search by name, profession, or city...")
+
+    def test_clear_button_renders_when_search_active(self):
+        resp = self.client.get("/users/global-feed/", {"search": "ali"})
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, 'aria-label="Clear search"')
+
+    def test_search_preserved_in_pagination_links(self):
+        # 21 profiles/page-1 + matches → forces a second page with pagination
+        for i in range(21):
+            User.objects.create_user(f"artist{i}", password="testpass")
+        resp = self.client.get("/users/global-feed/", {"search": "artist"})
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Next &rarr;")
+        self.assertContains(resp, "&search=artist")
+
+    def test_profession_pills_preserve_search(self):
+        resp = self.client.get("/users/global-feed/", {"search": "ali"})
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "?professions=Dancer&search=ali")
+        self.assertContains(resp, "?search=ali")
+
+    def test_search_pills_with_pill_active_preserve_both(self):
+        resp = self.client.get(
+            "/users/global-feed/",
+            {"search": "mum", "professions": "Dancer"},
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "&search=mum")

@@ -120,6 +120,55 @@ a { color: inherit; text-decoration: none; }
   100% { box-shadow: 0 0 0 9px rgba(230,138,0,0); }
 }
 
+/* ==================== SEARCH BAR ==================== */
+.search-bar-wrap {
+  margin-bottom: 20px;
+}
+.search-form {
+  position: relative;
+  max-width: 480px;
+  margin: 0 auto;
+}
+.search-input {
+  width: 100%;
+  padding: 12px 40px 12px 18px;
+  font-family: "Outfit", system-ui, sans-serif;
+  font-size: 15px;
+  color: var(--ink);
+  background: var(--card);
+  border: 2px solid var(--grey-line);
+  border-radius: var(--radius-pill);
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.search-input::placeholder {
+  color: var(--ink-mute);
+}
+.search-input:focus {
+  border-color: var(--orange);
+  box-shadow: 0 0 0 3px rgba(230, 138, 0, 0.15);
+}
+.search-clear {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 20px;
+  color: var(--ink-mute);
+  text-decoration: none;
+  line-height: 1;
+  padding: 4px;
+}
+.search-clear:hover {
+  color: var(--ink);
+}
+
+@media (max-width: 600px) {
+  .search-form {
+    max-width: 100%;
+  }
+}
+
 /* ==================== FILTER BAR ==================== */
 .filter-bar-wrap {
   margin-bottom: 32px;
