@@ -272,3 +272,21 @@ class Message(models.Model):
 
     def __str__(self):
         return f"Message from {self.sender} to {self.recipient}"
+
+
+# proxy = True means: SAME database table as Profile, just a different Python
+# name we can register a second admin screen under. No new columns, no data
+# copied — Performer.objects and Client.objects read the exact same rows as
+# Profile.objects. verbose_name_plural is what the admin sidebar label shows.
+class Performer(Profile):
+    class Meta:
+        proxy = True
+        verbose_name = "Performer"
+        verbose_name_plural = "Performers"
+
+
+class Client(Profile):
+    class Meta:
+        proxy = True
+        verbose_name = "Client"
+        verbose_name_plural = "Clients"
