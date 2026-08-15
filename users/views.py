@@ -153,7 +153,7 @@ def global_feed(request):
     page_number = request.GET.get("page", "1")
     selected_profession = request.GET.get("professions", "")
     professions_key = selected_profession or "all"
-    cache_key = f"web:feed:{page_number}:{professions_key}"
+    cache_key = f"web:feed:{request.user.id}:{page_number}:{professions_key}"
 
     profiles_page = cache.get(cache_key)
     if profiles_page is None:
@@ -171,10 +171,11 @@ def global_feed(request):
         profiles_page = paginator.get_page(page_number)
         cache.set(cache_key, profiles_page, 60)
 
-    # profiles_page is cached and shared across users, so self-exclusion
-    # happens post-cache (same pattern as GlobalFeedAPIView). Django's
-    # {% empty %} tag can't see past the template's inner self-check, so
-    # compute visibility explicitly for the empty-state message.
+    # Cache key is scoped per user (unlike GlobalFeedAPIView's shared key)
+    # because self-exclusion is baked into the paginated queryset before
+    # caching — a shared key would leak one viewer's roster to everyone.
+    # The template's inner self-check hides the current user as a second
+    # line of defense; compute visibility explicitly for the empty state.
     has_visible_profiles = any(p.user_id != request.user.id for p in profiles_page)
 
     return render(

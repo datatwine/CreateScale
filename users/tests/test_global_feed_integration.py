@@ -23,6 +23,14 @@ class TestGlobalFeedWebIntegration(TestCase):
             profession="Singer", location="Delhi"
         )
 
+    def _create_artist(self, username, profession):
+        user = User.objects.create_user(username, password="testpass")
+        Profile.objects.filter(user=user).update(profession=profession)
+        return user
+
+    def _card_count(self, resp):
+        return resp.content.count(b'class="performer-card"')
+
     def test_feed_shows_other_profiles_excludes_self(self):
         resp = self.client.get("/users/global-feed/")
         self.assertEqual(resp.status_code, 200)
@@ -46,3 +54,41 @@ class TestGlobalFeedWebIntegration(TestCase):
         self.client.logout()
         resp = self.client.get("/users/global-feed/")
         self.assertRedirects(resp, "/users/login/?next=/users/global-feed/")
+
+    def test_clear_filter_restores_all_profiles(self):
+        self.client.get("/users/global-feed/", {"professions": "Dancer"})
+        resp = self.client.get("/users/global-feed/")
+        self.assertContains(resp, "alice")
+        self.assertContains(resp, "bob")
+        self.assertNotContains(resp, "viewer")
+
+    def test_pagination_page1_20_page2_5(self):
+        for i in range(23):
+            self._create_artist(f"artist{i}", "Musician")
+        p1 = self.client.get("/users/global-feed/")
+        self.assertEqual(p1.status_code, 200)
+        self.assertEqual(self._card_count(p1), 20)
+        self.assertContains(p1, "25 artists on stage")
+        p2 = self.client.get("/users/global-feed/", {"page": "2"})
+        self.assertEqual(p2.status_code, 200)
+        self.assertEqual(self._card_count(p2), 5)
+
+    def test_page_999_clamps_to_last_page(self):
+        for i in range(23):
+            self._create_artist(f"artist{i}", "Musician")
+        resp = self.client.get("/users/global-feed/", {"page": "999"})
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(self._card_count(resp), 5)
+        self.assertContains(resp, "Page 2 of 2")
+
+    def test_cache_does_not_leak_between_users(self):
+        rahul = User.objects.create_user("rahul", password="testpass")
+
+        self.client.get("/users/global-feed/")
+
+        self.client.logout()
+        self.client.login(username="rahul", password="testpass")
+        resp = self.client.get("/users/global-feed/")
+
+        self.assertContains(resp, "viewer")
+        self.assertNotContains(resp, "rahul")
