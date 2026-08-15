@@ -508,14 +508,14 @@ def leave_review(request, pk):
         return redirect("bookings:engagement-detail", pk=pk)
 
     if request.method == "POST":
-        # Form was submitted → bind the posted data and validate it.
-        form = ReviewForm(request.POST)
+        # We must bind the engagement and author to the instance *before*
+        # validation so the model's clean() method can access them.
+        review_instance = Review(engagement=engagement, author=request.user)
+        form = ReviewForm(request.POST, instance=review_instance)
         if form.is_valid():
             # commit=False → build the Review object in memory but DON'T save
             # yet, so we can attach the fields the form deliberately omitted.
             review = form.save(commit=False)
-            review.engagement = engagement
-            review.author = request.user
             try:
                 # model.save() calls full_clean() (§3): this is where subject +
                 # direction get filled in and the accepted/past-event gates run.
