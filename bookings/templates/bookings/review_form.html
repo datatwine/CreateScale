@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Leave a review</h2>
+<p>
+  Event: {{ engagement.occasion }} at {{ engagement.venue }} on {{ engagement.date }}
+</p>
+
+{# method="post" because we're submitting data. #}
+<form method="post">
+  {# {% csrf_token %} is REQUIRED on every POST form — Django rejects the      #}
+  {# submission without it. It's the anti-cross-site-forgery guard.            #}
+  {% csrf_token %}
+  {# form.as_p renders the score + comment fields (and any errors) as <p> rows.#}
+  {{ form.as_p }}
+  <button type="submit">Submit review</button>
+  {# {% url %} builds the link to the engagement page by route name (never     #}
+  {# hard-code paths). engagement.pk is this booking's id. #}
+  <a href="{% url 'bookings:engagement-detail' engagement.pk %}">Cancel</a>
+</form>
+{% endblock %}

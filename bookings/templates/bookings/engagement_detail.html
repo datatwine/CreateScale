@@ -337,6 +337,21 @@
 
         {% endif %}
 
+        <!-- ===== REVIEW ACTIONS ===== -->
+        {% if can_review or already_reviewed %}
+            <div class="actions-section">
+                <div class="cancel-card" style="background:#f9f9f9;">
+                    {% if can_review %}
+                        <div class="cancel-card-title">Leave a review</div>
+                        <p class="cancel-hint">How did it go? Your feedback helps keep the community safe.</p>
+                        <a href="{% url 'bookings:leave-review' engagement.pk %}" class="btn-accept" style="display:block;text-align:center;text-decoration:none;margin-top:12px;">Leave a review</a>
+                    {% elif already_reviewed %}
+                        <div class="cancel-card-title" style="color:#1a7f2e;text-align:center;">✓ You’ve reviewed this booking.</div>
+                    {% endif %}
+                </div>
+            </div>
+        {% endif %}
+
     </div><!-- /detail-page -->
 
     <!-- BOTTOM NAV -->
