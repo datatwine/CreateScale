@@ -36,8 +36,31 @@
             </div>
             <div class="live-count">
                 <span class="live-dot"></span>
-                <span>{{ profiles.paginator.count }} artist{{ profiles.paginator.count|pluralize }} on stage</span>
+                <span id="feed-live-count">{{ profiles.paginator.count }} artist{{ profiles.paginator.count|pluralize }} on stage</span>
             </div>
+        </div>
+
+        <!-- Search bar — above profession pills, below header -->
+        <div class="search-bar-wrap">
+            <form method="get" action="{% url 'global-feed' %}" class="search-form">
+                {% if selected_profession %}
+                    <input type="hidden" name="professions" value="{{ selected_profession }}">
+                {% endif %}
+                <input
+                    type="text"
+                    name="search"
+                    class="search-input"
+                    placeholder="Search by name, profession, or city..."
+                    value="{{ search_query|default:'' }}"
+                    autocomplete="off"
+                    maxlength="100"
+                    aria-label="Search by name, profession, or city"
+                >
+                {% if search_query %}
+                    <a href="{% url 'global-feed' %}{% if selected_profession %}?professions={{ selected_profession }}{% endif %}"
+                       class="search-clear" aria-label="Clear search">&times;</a>
+                {% endif %}
+            </form>
         </div>
 
         <!-- Filter pill bar — expandable pill cloud -->
@@ -45,14 +68,14 @@
             <div class="filter-bar {% if selected_profession %}expanded{% endif %}"
                  id="filterBar" role="navigation" aria-label="Filter by profession">
 
-                {# "All" pill clears the filter #}
-                <a href="{% url 'global-feed' %}"
+                {# "All" pill clears the profession filter (keeps search) #}
+                <a href="{% url 'global-feed' %}{% if search_query %}?search={{ search_query|urlencode }}{% endif %}"
                    class="filter-pill {% if not selected_profession %}active{% endif %}">
                     All artists
                 </a>
 
                 {% for value, label in profession_filter_form.fields.professions.choices %}
-                    <a href="{% url 'global-feed' %}?professions={{ value|urlencode }}"
+                    <a href="{% url 'global-feed' %}?professions={{ value|urlencode }}{% if search_query %}&search={{ search_query|urlencode }}{% endif %}"
                        class="filter-pill {% if value == selected_profession %}active{% endif %}"
                        data-profession="{{ value }}">
                         <span class="pill-emoji" data-map="{{ value }}"></span>{{ label }}
@@ -70,11 +93,15 @@
         </div>
 
         <!-- Profile grid -->
-        <div class="profiles-grid">
+        <div class="profiles-grid" id="feed-grid">
             {% if not has_visible_profiles %}
                 <div class="feed-empty">
                     <strong>No artists found</strong>
-                    Try a different filter or check back soon.
+                    {% if search_query %}
+                        No results for "{{ search_query }}". Try a different search or clear filters.
+                    {% else %}
+                        Try a different filter or check back soon.
+                    {% endif %}
                 </div>
             {% else %}
                 {% for profile in profiles %}
@@ -111,11 +138,12 @@
             {% endif %}
         </div>
 
-        <!-- Pagination -->
+        <!-- Pagination (wrapper always present so live search can swap it) -->
+        <div id="feed-pagination">
         {% if profiles.paginator.num_pages > 1 %}
             <div class="pagination-row">
                 {% if profiles.has_previous %}
-                    <a href="?page={{ profiles.previous_page_number }}{% if selected_profession %}&professions={{ selected_profession }}{% endif %}"
+                    <a href="?page={{ profiles.previous_page_number }}{% if selected_profession %}&professions={{ selected_profession }}{% endif %}{% if search_query %}&search={{ search_query|urlencode }}{% endif %}"
                        class="page-btn">&larr; Previous</a>
                 {% endif %}
 
@@ -124,11 +152,12 @@
                 </span>
 
                 {% if profiles.has_next %}
-                    <a href="?page={{ profiles.next_page_number }}{% if selected_profession %}&professions={{ selected_profession }}{% endif %}"
+                    <a href="?page={{ profiles.next_page_number }}{% if selected_profession %}&professions={{ selected_profession }}{% endif %}{% if search_query %}&search={{ search_query|urlencode }}{% endif %}"
                        class="page-btn">Next &rarr;</a>
                 {% endif %}
             </div>
         {% endif %}
+        </div>
 
     </div>
 
@@ -168,16 +197,79 @@ function getEmoji(profession) {
     return '🎭';
 }
 
-// Inject emoji into every card badge
-document.querySelectorAll('.performer-card[data-profession]').forEach(function(card) {
-    var badge = card.querySelector('.prof-emoji-badge');
-    if (badge) badge.textContent = getEmoji(card.dataset.profession);
-});
+// Inject emoji into every card badge + pill (re-run after live-search swaps)
+function injectEmojis() {
+    document.querySelectorAll('.performer-card[data-profession]').forEach(function(card) {
+        var badge = card.querySelector('.prof-emoji-badge');
+        if (badge) badge.textContent = getEmoji(card.dataset.profession);
+    });
+    document.querySelectorAll('.pill-emoji[data-map]').forEach(function(span) {
+        span.textContent = getEmoji(span.dataset.map) + ' ';
+    });
+}
+injectEmojis();
 
-// Inject emoji into filter pill spans
-document.querySelectorAll('.pill-emoji[data-map]').forEach(function(span) {
-    span.textContent = getEmoji(span.dataset.map) + ' ';
-});
+// ---- Live search: refetch results on every keystroke (debounced) ----
+// The backend answers each ?search= via the GIN trigram indexes, so we
+// can afford a request ~300ms after the user stops typing. Only the results
+// region is swapped — no full page reload, the input keeps focus.
+(function() {
+    var input = document.querySelector('.search-input');
+    if (!input) return;
+
+    var profInput = document.querySelector('.search-form input[name="professions"]');
+    var clearBtn = document.querySelector('.search-clear');
+    var grid = document.getElementById('feed-grid');
+    var pagination = document.getElementById('feed-pagination');
+    var liveCount = document.getElementById('feed-live-count');
+
+    var searchTimer = null;
+    var searchSeq = 0;
+
+    function buildUrl(term) {
+        var profs = profInput ? profInput.value : '';
+        var params = [];
+        if (term) params.push('search=' + encodeURIComponent(term));
+        if (profs) params.push('professions=' + encodeURIComponent(profs));
+        return '/users/global-feed/' + (params.length ? '?' + params.join('&') : '');
+    }
+
+    function performSearch(term) {
+        var mySeq = ++searchSeq;
+        fetch(buildUrl(term), {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+            .then(function(res) { if (!res.ok) throw new Error(res.status); return res.text(); })
+            .then(function(html) {
+                if (mySeq !== searchSeq) return; // a newer search superseded us
+                var doc = new DOMParser().parseFromString(html, 'text/html');
+                if (grid) grid.innerHTML = doc.getElementById('feed-grid').innerHTML;
+                if (pagination) pagination.innerHTML = doc.getElementById('feed-pagination').innerHTML;
+                if (liveCount) liveCount.textContent = doc.getElementById('feed-live-count').textContent;
+                injectEmojis();
+                window.history.replaceState(null, '', buildUrl(term));
+            })
+            .catch(function() { /* keep previous results on transient errors */ });
+    }
+
+    input.addEventListener('input', function() {
+        if (clearBtn) clearBtn.style.display = input.value.length ? '' : 'none';
+        var term = input.value.trim();
+        if (searchTimer) clearTimeout(searchTimer);
+        searchTimer = setTimeout(function() { performSearch(term); }, 300);
+    });
+
+    if (clearBtn) {
+        clearBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            input.value = '';
+            this.style.display = 'none';
+            input.focus();
+            if (searchTimer) clearTimeout(searchTimer);
+            performSearch('');
+        });
+    }
+})();
 
 // ---- Expandable filter pill cloud ----
 (function() {

@@ -23,6 +23,7 @@ import {
     ScrollView,
     StyleSheet,
     Text,
+    TextInput,
     TouchableOpacity,
     View
 } from "react-native";
@@ -110,6 +111,38 @@ function FeedCard({ profile, onPress }) {
 }
 
 // ---------------------------------------------------------------------------
+// FeedSearchBar — search box above the profession pills
+// Matches the web feed's search bar (name / profession / city).
+// ---------------------------------------------------------------------------
+
+function FeedSearchBar({ value, focused, onChangeText, onClear, onFocus, onBlur }) {
+    return (
+        <View style={styles.searchWrap}>
+            <View style={[styles.searchInputWrap, focused && styles.searchInputWrapFocused]}>
+                <TextInput
+                    style={styles.searchInput}
+                    placeholder="Search by name, profession, or city..."
+                    placeholderTextColor={COLORS.textMuted}
+                    value={value}
+                    onChangeText={onChangeText}
+                    onFocus={onFocus}
+                    onBlur={onBlur}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    returnKeyType="search"
+                    maxLength={100}
+                />
+                {value.length > 0 && (
+                    <TouchableOpacity onPress={onClear} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                        <Text style={styles.searchClear}>×</Text>
+                    </TouchableOpacity>
+                )}
+            </View>
+        </View>
+    );
+}
+
+// ---------------------------------------------------------------------------
 // ProfessionFilter — horizontal row of pill chips
 // ---------------------------------------------------------------------------
 
@@ -160,6 +193,25 @@ export default function GlobalFeedScreen({ navigation }) {
     const [professions, setProfessions] = useState([]);
     const [selectedProfession, setSelectedProfession] = useState(null);
 
+    // Search — raw input + the debounced term actually applied to the fetch
+    const [searchQuery, setSearchQuery] = useState("");
+    const [searchActive, setSearchActive] = useState("");
+    const [searchFocused, setSearchFocused] = useState(false);
+
+    // Debounce the search box: refetch only ~300ms after the user stops typing.
+    useEffect(() => {
+        const t = setTimeout(() => {
+            setSearchActive(searchQuery.trim());
+        }, 300);
+        return () => clearTimeout(t);
+    }, [searchQuery]);
+
+    // Clear button → wipe the input and the applied term immediately.
+    const handleClearSearch = () => {
+        setSearchQuery("");
+        setSearchActive("");
+    };
+
     const [profiles, setProfiles] = useState([]);
     const [totalCount, setTotalCount] = useState(null);
     const [page, setPage] = useState(1);
@@ -197,6 +249,7 @@ export default function GlobalFeedScreen({ navigation }) {
             // Build query string
             let qs = `page=${pageNum}`;
             if (selectedProfession) qs += `&profession=${encodeURIComponent(selectedProfession)}`;
+            if (searchActive) qs += `&search=${encodeURIComponent(searchActive)}`;
 
             try {
                 const res = await fetch(buildApiUrl(`/users/feed/?${qs}`), {
@@ -219,7 +272,7 @@ export default function GlobalFeedScreen({ navigation }) {
                 Alert.alert("Error", "Couldn't load the feed. Please try again.");
             }
         },
-        [token, selectedProfession],
+        [token, selectedProfession, searchActive],
     );
 
     // --- Effects -------------------------------------------------------------
@@ -300,6 +353,16 @@ export default function GlobalFeedScreen({ navigation }) {
                 </View>
             </View>
 
+            {/* Search bar — above profession pills */}
+            <FeedSearchBar
+                value={searchQuery}
+                focused={searchFocused}
+                onChangeText={setSearchQuery}
+                onClear={handleClearSearch}
+                onFocus={() => setSearchFocused(true)}
+                onBlur={() => setSearchFocused(false)}
+            />
+
             {/* Profession filter pills */}
             {professions.length > 0 && (
                 <ProfessionFilter
@@ -335,6 +398,7 @@ export default function GlobalFeedScreen({ navigation }) {
                     )}
                     contentContainerStyle={styles.listContent}
                     showsVerticalScrollIndicator={false}
+                    keyboardShouldPersistTaps="handled"
                     // Pull-to-refresh
                     refreshing={refreshing}
                     onRefresh={handleRefresh}
@@ -346,7 +410,9 @@ export default function GlobalFeedScreen({ navigation }) {
                     ListEmptyComponent={
                         <View style={styles.emptyState}>
                             <Text style={styles.emptyText}>
-                                No performers found{selectedProfession ? ` for "${selectedProfession}"` : ""}.
+                                No performers found
+                                {selectedProfession ? ` for "${selectedProfession}"` : ""}
+                                {searchActive ? ` matching "${searchActive}"` : ""}.
                             </Text>
                         </View>
                     }
@@ -408,6 +474,37 @@ const styles = StyleSheet.create({
         fontSize: 13,
         color: COLORS.accent,
         fontWeight: "600",
+    },
+
+    // --- Search bar ---
+    searchWrap: {
+        paddingHorizontal: 16,
+        paddingBottom: 10,
+    },
+    searchInputWrap: {
+        flexDirection: "row",
+        alignItems: "center",
+        backgroundColor: COLORS.card,
+        borderRadius: 999,
+        borderWidth: 2,
+        borderColor: COLORS.divider,
+        paddingHorizontal: 16,
+    },
+    searchInputWrapFocused: {
+        borderColor: COLORS.accent,
+    },
+    searchInput: {
+        flex: 1,
+        fontSize: 14,
+        color: COLORS.textPrimary,
+        paddingVertical: 8,
+        paddingRight: 8,
+    },
+    searchClear: {
+        fontSize: 20,
+        lineHeight: 24,
+        color: COLORS.textMuted,
+        padding: 2,
     },
 
     // --- Filter pills ---

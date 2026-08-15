@@ -91,11 +91,13 @@ class GlobalFeedProfileSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Profile
-        # bio included so mobile feed cards can show the blurb
+        # bio included so mobile feed cards can show the blurb; location lets
+        # clients show which city a performer is from when searching by city.
         fields = [
             "user_id",
             "username",
             "profession",
+            "location",
             "profile_picture_url",
             "is_performer",
             "bio",
