@@ -16,8 +16,8 @@ from django.core.cache import cache
 from django.views.decorators.http import require_POST
 
 from users.models import Profile
-from .forms import EngagementRequestForm, CancelEngagementForm, DisputeForm
-from .models import Engagement, Payment
+from .forms import EngagementRequestForm, CancelEngagementForm, DisputeForm, ReviewForm
+from .models import Engagement, Payment, Review
 from .services.payments import PaymentService
 
 
@@ -259,6 +259,21 @@ def engagement_detail(request, pk):
     else:
         cancel_form = CancelEngagementForm()
 
+    # Has THIS user already reviewed THIS booking? (index-served by the unique
+    # constraint; one cheap query on a detail page — not a list, so no N+1.)
+    already_reviewed = Review.objects.filter(
+        engagement=engagement, author=request.user,
+    ).exists()
+    # Show the "Leave a review" button only when all four hold: the viewer is a
+    # party to the booking, it was accepted, the event is over, and they haven't
+    # reviewed yet. Same gates the model enforces — this just decides UI.
+    can_review = (
+        (is_client or is_performer)
+        and engagement.status == Engagement.STATUS_ACCEPTED
+        and engagement.is_past_event
+        and not already_reviewed
+    )
+
     return render(
         request,
         "bookings/engagement_detail.html",
@@ -267,6 +282,8 @@ def engagement_detail(request, pk):
             "is_client": is_client,
             "is_performer": is_performer,
             "form": cancel_form,
+            "can_review": can_review,
+            "already_reviewed": already_reviewed,
         },
     )
 
@@ -469,3 +486,54 @@ def client_payments(request):
         "bookings/client_payments.html",
         {"engagements": engagements},
     )
+
+
+@login_required
+def leave_review(request, pk):
+    # `pk` comes from the URL (see 4c). get_object_or_404 fetches that
+    # Engagement or raises a clean 404 if the id is bogus.
+    engagement = get_object_or_404(Engagement, pk=pk)
+
+    # AUTHORISATION: only the two people on this booking may review it.
+    # Comparing to the related User objects; anyone else gets a 403.
+    if request.user not in (engagement.client, engagement.performer):
+        raise PermissionDenied("You can only review your own bookings.")
+
+    # Already reviewed? Bounce back with a friendly note. The DB unique
+    # constraint would block a duplicate anyway, but checking here lets us show
+    # a nice message instead of a raw error. (This .exists() is index-served by
+    # the unique constraint from §3 — cheap.)
+    if Review.objects.filter(engagement=engagement, author=request.user).exists():
+        messages.info(request, "You have already reviewed this booking.")
+        return redirect("bookings:engagement-detail", pk=pk)
+
+    if request.method == "POST":
+        # Form was submitted → bind the posted data and validate it.
+        form = ReviewForm(request.POST)
+        if form.is_valid():
+            # commit=False → build the Review object in memory but DON'T save
+            # yet, so we can attach the fields the form deliberately omitted.
+            review = form.save(commit=False)
+            review.engagement = engagement
+            review.author = request.user
+            try:
+                # model.save() calls full_clean() (§3): this is where subject +
+                # direction get filled in and the accepted/past-event gates run.
+                review.save()
+                messages.success(request, "Thanks — your review has been submitted.")
+                return redirect("bookings:engagement-detail", pk=pk)
+            except ValidationError as e:
+                # Model-level failure (e.g. event not over yet, or two requests
+                # racing past the .exists() check above). Surface it on the form
+                # with add_error(None, …) → shown as a non-field error.
+                form.add_error(None, e)
+    else:
+        # First visit (GET) → show an empty form.
+        form = ReviewForm()
+
+    # Reached on GET, or on POST when the form was invalid (re-render with the
+    # user's input + error messages intact).
+    return render(request, "bookings/review_form.html", {
+        "form": form,
+        "engagement": engagement,
+    })
