@@ -47,7 +47,7 @@ def remove_feed_search_indexes(apps, schema_editor):
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("users", "0013_profile_razorpayx_contact_id_and_more"),
+        ("users", "0015_pushtoken"),
     ]
 
     operations = [

@@ -171,7 +171,7 @@ def global_feed(request):
     if profiles_page is None:
         profiles_qs = (
             Profile.objects.select_related("user")
-.only(
+            .only(
                 "user__id",
                 "user__username",
                 "profession",
