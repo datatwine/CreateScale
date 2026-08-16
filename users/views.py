@@ -8,6 +8,7 @@ from django.contrib.auth.models import User
 from django.shortcuts import render, redirect
 from django.contrib.auth import login
 from django.contrib import messages
+from django.utils.http import url_has_allowed_host_and_scheme
 from .forms import (
     CustomLoginForm,
     UserRegisterForm,
@@ -46,7 +47,13 @@ def signin(request):
         form = CustomLoginForm(request, data=request.POST)
         if form.is_valid():
             login(request, form.get_user())
-            if next_url:  # Redirect to the 'next' URL if available
+            # Only redirect to a next URL on our own host — an unvalidated
+            # redirect() is an open-redirect vector (phishing via //evil.com).
+            if next_url and url_has_allowed_host_and_scheme(
+                next_url,
+                allowed_hosts={request.get_host()},
+                require_https=request.is_secure(),
+            ):
                 return redirect(next_url)
             else:
                 return redirect("profile")  # Otherwise, redirect to profile
