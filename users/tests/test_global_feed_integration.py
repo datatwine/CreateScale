@@ -63,21 +63,26 @@ class TestGlobalFeedWebIntegration(TestCase):
         self.assertNotContains(resp, "viewer")
 
     def test_pagination_page1_20_page2_5(self):
-        for i in range(23):
+        # 25 profiles total (viewer + alice + bob + 22 musicians). The feed is
+        # cached under a shared key WITHOUT self-exclusion, so paginator.count
+        # includes the viewer; their own card is simply hidden in the template.
+        for i in range(22):
             self._create_artist(f"artist{i}", "Musician")
         p1 = self.client.get("/users/global-feed/")
         self.assertEqual(p1.status_code, 200)
-        self.assertEqual(self._card_count(p1), 20)
+        self.assertEqual(len(p1.context["profiles"].object_list), 20)
         self.assertContains(p1, "25 artists on stage")
+        self.assertNotContains(p1, "viewer")
         p2 = self.client.get("/users/global-feed/", {"page": "2"})
         self.assertEqual(p2.status_code, 200)
-        self.assertEqual(self._card_count(p2), 5)
+        self.assertEqual(len(p2.context["profiles"].object_list), 5)
 
     def test_page_999_clamps_to_last_page(self):
-        for i in range(23):
+        for i in range(22):
             self._create_artist(f"artist{i}", "Musician")
         resp = self.client.get("/users/global-feed/", {"page": "999"})
         self.assertEqual(resp.status_code, 200)
+        # Last page holds the 5 artists — the viewer sits on page 1.
         self.assertEqual(self._card_count(resp), 5)
         self.assertContains(resp, "Page 2 of 2")
 
