@@ -1,4 +1,5 @@
 import json
+import logging
 from datetime import timedelta
 from django.shortcuts import render
 
@@ -20,6 +21,8 @@ from users.notifications import send_push_notification
 from .forms import EngagementRequestForm, CancelEngagementForm, DisputeForm
 from .models import Engagement, Payment
 from .services.payments import PaymentService
+
+logger = logging.getLogger(__name__)
 
 
 @login_required
@@ -224,10 +227,24 @@ def engagement_detail(request, pk):
                     # a no-op when payment_status != PAID, so this is safe
                     # even though we just changed engagement.status above.
                     if engagement.payment_status == Engagement.PAYMENT_PAID:
-                        PaymentService.refund_to_client(engagement)
-                        messages.success(
-                            request, "Booking cancelled. Refund initiated."
-                        )
+                        try:
+                            PaymentService.refund_to_client(engagement)
+                            messages.success(
+                                request, "Booking cancelled. Refund initiated."
+                            )
+                        except Exception as exc:
+                            # Cancel already committed; don't 500 the page.
+                            # Money stays in escrow until admin reconciles.
+                            logger.exception(
+                                "Refund failed for cancelled engagement %s: %s",
+                                engagement.pk,
+                                exc,
+                            )
+                            messages.error(
+                                request,
+                                "Booking cancelled, but the refund could not be "
+                                "processed automatically. Our team will follow up.",
+                            )
                     else:
                         messages.success(request, "Booking cancelled.")
                 else:
@@ -241,10 +258,22 @@ def engagement_detail(request, pk):
                         reason=cancel_form.cleaned_data["cancellation_reason"]
                     )
                     if engagement.payment_status == Engagement.PAYMENT_PAID:
-                        PaymentService.refund_to_client(engagement)
-                        messages.success(
-                            request, "Booking cancelled. Client will be refunded."
-                        )
+                        try:
+                            PaymentService.refund_to_client(engagement)
+                            messages.success(
+                                request, "Booking cancelled. Client will be refunded."
+                            )
+                        except Exception as exc:
+                            logger.exception(
+                                "Refund failed for cancelled engagement %s: %s",
+                                engagement.pk,
+                                exc,
+                            )
+                            messages.error(
+                                request,
+                                "Booking cancelled, but the refund could not be "
+                                "processed automatically. Our team will follow up.",
+                            )
                     else:
                         messages.success(request, "Booking cancelled.")
                 else:
@@ -320,6 +349,8 @@ def verify_payment(request, pk):
             data["razorpay_signature"],
         )
         return JsonResponse({"status": "ok"})
+    except Payment.DoesNotExist:
+        return JsonResponse({"error": "Unknown order."}, status=400)
     except (ValueError, KeyError, json.JSONDecodeError) as e:
         return JsonResponse({"error": str(e)}, status=400)
 
