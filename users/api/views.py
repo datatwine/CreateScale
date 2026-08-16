@@ -546,7 +546,7 @@ class GlobalFeedAPIView(_LenientPaginatorMixin, generics.GenericAPIView):
 
             # Trigram-accelerated search across username, profession, location.
             # __icontains → SQL: WHERE col ILIKE '%term%'; on PostgreSQL the
-            # GIN trigram indexes (see migration 0014) make this an index scan.
+            # GIN trigram indexes (see migration 0016) make this an index scan.
             if search:
                 qs = qs.filter(
                     Q(user__username__icontains=search)
