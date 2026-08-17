@@ -45,7 +45,7 @@ services:
         -c max_connections=200
         -c wal_level=replica
         -c archive_mode=on
-        -c archive_command=/usr/local/bin/wal-g wal-push %p
+        -c archive_command='/usr/local/bin/wal-g wal-push %p'
         -c archive_timeout=60
     ports:
       - "5432:5432"
