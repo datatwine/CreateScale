@@ -1,3 +1,4 @@
+import logging
 from datetime import date
 
 from django.contrib.auth import authenticate
@@ -10,6 +11,8 @@ from django.views.decorators.cache import cache_control
 
 from django.conf import settings as django_settings
 
+logger = logging.getLogger(__name__)
+
 from users.forms import CustomPasswordResetForm
 
 from rest_framework import generics, serializers, status
@@ -19,7 +22,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.authtoken.models import Token
 
-from users.models import Profile, Upload
+from users.models import Profile, PushToken, Upload
 from bookings.models import Engagement
 
 from .presign import generate_upload_presign
@@ -32,6 +35,7 @@ from .serializers import (
     UploadSerializer,
     SignupSerializer,
     ForgotPasswordSerializer,
+    PaymentDetailsSerializer,
 )
 
 
@@ -237,6 +241,116 @@ class MeProfileAPIView(generics.RetrieveUpdateAPIView):
         cache.delete(f"profile:{request.user.id}")
         cache.delete(f"web:profile:{request.user.id}")
         return response
+
+
+class PaymentDetailsAPIView(APIView):
+    """
+    PATCH /api/users/me/payment/
+    Expo equivalent of users.views.update_payment_details — performer's
+    KYC + bank details, then spins up the payout destination in the
+    background. Always operates on request.user.profile.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    @method_decorator(cache_control(no_store=True))
+    def patch(self, request):
+        profile, _ = Profile.objects.select_related("user").get_or_create(
+            user=request.user
+        )
+
+        ser = PaymentDetailsSerializer(profile, data=request.data, partial=True)
+        ser.is_valid(raise_exception=True)
+        for field, value in ser.validated_data.items():
+            setattr(profile, field, value)
+        profile.save()
+
+        # Collected non-fatal onboarding failures. Details are already saved;
+        # a warning here just tells the app "payout setup will retry later"
+        # instead of silently pretending everything succeeded. Mirrors the
+        # messages.warning the web view (update_payment_details) surfaces.
+        warnings = []
+
+        if not django_settings.RAZORPAY_ROUTE_ENABLED:
+            # Payouts mode: complete bank details = payable. Pre-create the
+            # RazorpayX Contact + Fund Account now so the first real payout
+            # is a single call and bad bank details surface here, not weeks
+            # later at release time.
+            complete = (
+                profile.is_performer
+                and profile.bank_account_holder_name
+                and profile.bank_account_number
+                and profile.bank_ifsc
+            )
+            if complete and not profile.razorpayx_fund_account_id:
+                try:
+                    from bookings.services.payments import PaymentService
+
+                    PaymentService.ensure_payout_destination(profile)
+                except Exception:
+                    # Non-fatal: details are saved; release_to_performer will
+                    # create the destination lazily and retry.
+                    logger.exception(
+                        "ensure_payout_destination failed for user %s",
+                        request.user.id,
+                    )
+                    warnings.append(
+                        "Details saved; payout setup will finish automatically."
+                    )
+        else:
+            # Route mode: linked-account onboarding (verbatim from the web view).
+            should_onboard = (
+                profile.is_performer
+                and not profile.razorpay_account_id
+                and profile.pan_number
+                and profile.bank_account_number
+                and profile.bank_ifsc
+                and profile.phone_number
+            )
+            if should_onboard:
+                try:
+                    from bookings.services.razorpay_client import get_client
+
+                    client = get_client()
+                    account = client.account.create(
+                        {
+                            "type": "route",
+                            "reference_id": f"user_{profile.user.id}",
+                            "email": profile.user.email
+                            or f"user{profile.user.id}@artkhoj.local",
+                            "phone": profile.phone_number,
+                            "legal_business_name": profile.bank_account_holder_name,
+                            "business_type": "individual",
+                            "contact_name": profile.bank_account_holder_name,
+                            "profile": {
+                                "category": "ecommerce",
+                                "subcategory": "marketplace",
+                            },
+                            "legal_info": {"pan": profile.pan_number},
+                        }
+                    )
+                    profile.razorpay_account_id = account["id"]
+                    profile.razorpay_kyc_status = "pending"
+                    profile.save(
+                        update_fields=["razorpay_account_id", "razorpay_kyc_status"]
+                    )
+                except Exception:
+                    logger.exception(
+                        "Razorpay linked-account onboarding failed for user %s",
+                        request.user.id,
+                    )
+                    warnings.append(
+                        "Details saved; Razorpay onboarding will be retried."
+                    )
+
+        cache.delete(f"me:{request.user.id}")
+        cache.delete(f"profile:{request.user.id}")
+        cache.delete(f"web:profile:{request.user.id}")
+
+        data = MeProfileSerializer(profile, context={"request": request}).data
+        if warnings:
+            data = {**data, "warnings": warnings}
+        return Response(data)
 
 
 class PresignUploadAPIView(APIView):
@@ -454,6 +568,40 @@ class GlobalFeedAPIView(_LenientPaginatorMixin, generics.GenericAPIView):
                 "results": filtered,
             }
         )
+
+
+class RegisterPushTokenView(generics.CreateAPIView):
+    """
+    POST /api/users/push-token/
+    Body: {"token": "ExponentPushToken[abc123...]"}
+
+    Called by the Expo app on every launch to register the device's push token.
+    The app sends this token so Django knows WHERE to deliver notifications.
+
+    Uses update_or_create to handle two scenarios:
+    - New device: creates a new PushToken row.
+    - Same device, different user: updates the existing row's user (handles
+      the case where someone logs out and a different person logs into the
+      same phone).
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        token = request.data.get("token", "").strip()
+
+        if not token.startswith("ExponentPushToken["):
+            return Response(
+                {"error": "Invalid token format — expected ExponentPushToken[...]"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        PushToken.objects.update_or_create(
+            token=token,
+            defaults={"user": request.user},
+        )
+
+        return Response({"status": "ok"}, status=status.HTTP_201_CREATED)
 
 
 class ProfileDetailAPIView(generics.RetrieveAPIView):

@@ -36,7 +36,7 @@ import { COLORS, TAB_BAR_CLEARANCE } from "../config/theme";
 import PressableStamp from "../components/PressableStamp";
 import { injectAds } from "../ads/injectAds";
 import { MOCK_EVENT_AD } from "../ads/mockInventory";
-import { EVENTS_AD_INTERVAL, EVENTS_FIRST_AD_OFFSET } from "../ads/constants";
+import { EVENTS_AD_INTERVAL, EVENTS_FIRST_AD_OFFSET, ADMOB_NATIVE_AD_UNIT_ID } from "../ads/constants";
 import EventAdCard from "../ads/EventAdCard";
 
 // ---------------------------------------------------------------------------
@@ -345,10 +345,12 @@ export default function LiveEventsScreen({ navigation }) {
 
     const baseData = scope === "upcoming" ? upcomingData : pastData;
     const isPast = scope === "past";
-    const adReady = true; // simulation. Later: from useNativeAds().
+    const eventAd = __DEV__
+        ? MOCK_EVENT_AD
+        : { _isAd: true, id: "ad-event", adUnitId: ADMOB_NATIVE_AD_UNIT_ID };
     const data = injectAds(
         baseData,
-        adReady ? MOCK_EVENT_AD : null,
+        eventAd,
         EVENTS_AD_INTERVAL,
         EVENTS_FIRST_AD_OFFSET,
     );
@@ -359,7 +361,7 @@ export default function LiveEventsScreen({ navigation }) {
 
     const renderItem = ({ item }) =>
         item._isAd ? (
-            <EventAdCard ad={item} onPress={() => console.log("Ad tapped:", item.advertiser)} />
+            <EventAdCard ad={item} />
         ) : (
             <EventCard event={item} isPast={isPast} />
         );

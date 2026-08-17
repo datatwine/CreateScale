@@ -15,12 +15,25 @@
 
 services:
   db:
-    image: postgres:16-alpine
+    build:
+      context: .
+      dockerfile: Dockerfile.walg
+    image: createscale-postgres-walg:16
     restart: unless-stopped
     environment:
       POSTGRES_DB: ${DB_NAME}
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
+      # wal-g → Cloudflare R2 (issue #62). Creds scoped to the backup bucket only.
+      WALG_S3_PREFIX: ${R2_BACKUP_S3_PREFIX}
+      WALG_COMPRESSION_METHOD: lz4
+      PGHOST: /var/run/postgresql
+      PGSSLMODE: disable
+      AWS_REGION: auto
+      AWS_S3_FORCE_PATH_STYLE: "true"
+      AWS_ENDPOINT: ${R2_BACKUP_ENDPOINT}
+      AWS_ACCESS_KEY_ID: ${R2_BACKUP_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${R2_BACKUP_SECRET_ACCESS_KEY}
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./init-glitchtip-db.sh:/docker-entrypoint-initdb.d/init-glitchtip-db.sh:ro
@@ -30,6 +43,10 @@ services:
         -c pg_stat_statements.track=all
         -c listen_addresses='*'
         -c max_connections=200
+        -c wal_level=replica
+        -c archive_mode=on
+        -c archive_command=/usr/local/bin/wal-g wal-push %p
+        -c archive_timeout=60
     ports:
       - "5432:5432"
     healthcheck:

@@ -1,0 +1,31 @@
+# =============================================================================
+# postgres:16 + wal-g for Cloudflare R2 backups
+# =============================================================================
+# wal-g v3.0.8 ships glibc-only builds (no Alpine/musl), so the DB image is
+# based on the Debian postgres:16 image. The postgres_data named volume is
+# untouched by the image swap (same Postgres 16, same PGDATA layout).
+#
+# Assets follow the <distro>.<version> naming scheme, e.g.:
+#   wal-g-pg-22.04-amd64   (built on Ubuntu 22.04 / glibc 2.35 — runs on
+#                            Debian bookworm, the postgres:16 base)
+#   wal-g-pg-24.04-amd64   (needs glibc 2.39 — do NOT use on bookworm)
+#
+# Build (see docker-compose.data.yml):
+#   docker compose -f docker-compose.data.yml build db
+# =============================================================================
+
+FROM postgres:16
+
+ARG WALG_VERSION=v3.0.8
+ARG WALG_ARCH=amd64
+
+RUN set -eux; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends curl ca-certificates; \
+    curl -fSL \
+      "https://github.com/wal-g/wal-g/releases/download/${WALG_VERSION}/wal-g-pg-22.04-${WALG_ARCH}" \
+      -o /usr/local/bin/wal-g; \
+    chmod +x /usr/local/bin/wal-g; \
+    apt-get purge -y --no-install-recommends curl; \
+    rm -rf /var/lib/apt/lists/*; \
+    wal-g --version
