@@ -44,9 +44,18 @@
       ],
       "expo-web-browser",
       "@react-native-community/datetimepicker",
-      ["react-native-google-mobile-ads", {
-        "androidAppId": "ca-app-pub-3940256099942544~3347511713"
-      }]
+      ["expo-build-properties", {
+        "android": {
+          "kotlinVersion": "2.3.0"
+        }
+      }],
+      [
+        "react-native-google-mobile-ads",
+        {
+          "androidAppId": "ca-app-pub-3940256099942544~3347511713"
+        }
+      ],
+      "expo-build-properties"
     ],
     "experiments": {
       "typedRoutes": true,
