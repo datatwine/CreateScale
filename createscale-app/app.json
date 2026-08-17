@@ -44,11 +44,6 @@
       ],
       "expo-web-browser",
       "@react-native-community/datetimepicker",
-      ["expo-build-properties", {
-        "android": {
-          "kotlinVersion": "2.3.0"
-        }
-      }],
       [
         "react-native-google-mobile-ads",
         {

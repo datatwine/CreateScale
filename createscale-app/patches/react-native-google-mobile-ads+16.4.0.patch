@@ -1,0 +1,13 @@
+diff --git a/node_modules/react-native-google-mobile-ads/android/build.gradle b/node_modules/react-native-google-mobile-ads/android/build.gradle
+index 8a31e69..2483f19 100644
+--- a/node_modules/react-native-google-mobile-ads/android/build.gradle
++++ b/node_modules/react-native-google-mobile-ads/android/build.gradle
+@@ -35,7 +35,7 @@ plugins {
+ apply plugin: 'kotlin-android'
+ 
+ def packageJson = PackageJson.getForProject(project)
+-def googleMobileAdsVersion = packageJson['sdkVersions']['android']['googleMobileAds']
++def googleMobileAdsVersion = "23.6.0"
+ def googleUmpVersion = packageJson['sdkVersions']['android']['googleUmp']
+ def jsonMinSdk = packageJson['sdkVersions']['android']['minSdk']
+ def jsonTargetSdk = packageJson['sdkVersions']['android']['targetSdk']
