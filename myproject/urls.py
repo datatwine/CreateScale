@@ -42,7 +42,11 @@ urlpatterns = [
     ),
     path("accounts/", include("allauth.urls")),  # adds /accounts/google/login/ etc.
     path("bookings/", include("bookings.urls")),
-    path("privacy/", TemplateView.as_view(template_name="legal/privacy_policy.html"), name="privacy-policy"),
+    path(
+        "privacy/",
+        TemplateView.as_view(template_name="legal/privacy_policy.html"),
+        name="privacy-policy",
+    ),
     path("", include("django_prometheus.urls")),
     path("api/", include("users.api.urls")),
 ]
