@@ -17,6 +17,7 @@ Including another URLconf
 
 from django.contrib import admin
 from django.urls import path, include
+from django.views.generic import TemplateView
 
 from django.conf import settings
 from django.conf.urls.static import static
@@ -41,6 +42,7 @@ urlpatterns = [
     ),
     path("accounts/", include("allauth.urls")),  # adds /accounts/google/login/ etc.
     path("bookings/", include("bookings.urls")),
+    path("privacy/", TemplateView.as_view(template_name="legal/privacy_policy.html"), name="privacy-policy"),
     path("", include("django_prometheus.urls")),
     path("api/", include("users.api.urls")),
 ]
