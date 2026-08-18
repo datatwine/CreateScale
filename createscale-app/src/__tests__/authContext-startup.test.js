@@ -59,7 +59,7 @@ describe("AuthProvider startup", () => {
     test("no stored token → token stays null, initializing becomes false", async () => {
         AsyncStorage.getItem.mockResolvedValueOnce(null);
 
-        render(<AuthProvider><TestConsumer /></AuthProvider>);
+        await render(<AuthProvider><TestConsumer /></AuthProvider>);
 
         await waitFor(() => {
             expect(screen.getByTestId("initializing").props.children).toBe("false");
@@ -72,7 +72,7 @@ describe("AuthProvider startup", () => {
         AsyncStorage.getItem.mockResolvedValueOnce("good-token");
         fetchAuthMe.mockResolvedValueOnce({ user_id: 1, username: "anish" });
 
-        render(<AuthProvider><TestConsumer /></AuthProvider>);
+        await render(<AuthProvider><TestConsumer /></AuthProvider>);
 
         await waitFor(() => {
             expect(screen.getByTestId("initializing").props.children).toBe("false");
@@ -87,7 +87,7 @@ describe("AuthProvider startup", () => {
         err.status = 401;
         fetchAuthMe.mockRejectedValueOnce(err);
 
-        render(<AuthProvider><TestConsumer /></AuthProvider>);
+        await render(<AuthProvider><TestConsumer /></AuthProvider>);
 
         await waitFor(() => {
             expect(screen.getByTestId("initializing").props.children).toBe("false");
@@ -101,7 +101,7 @@ describe("AuthProvider startup", () => {
         const err = new Error("Network request failed");
         fetchAuthMe.mockRejectedValueOnce(err);
 
-        render(<AuthProvider><TestConsumer /></AuthProvider>);
+        await render(<AuthProvider><TestConsumer /></AuthProvider>);
 
         await waitFor(() => {
             expect(screen.getByTestId("initializing").props.children).toBe("false");
@@ -126,7 +126,7 @@ describe("AuthProvider login and logout", () => {
         loginWithUsernamePassword.mockResolvedValueOnce({ token: "new-tok" });
         fetchAuthMe.mockResolvedValueOnce({ user_id: 2, username: "harsh" });
 
-        render(<AuthProvider><TestConsumer /></AuthProvider>);
+        await render(<AuthProvider><TestConsumer /></AuthProvider>);
 
         await waitFor(() => expect(capturedCtx.initializing).toBe(false));
 
@@ -144,7 +144,7 @@ describe("AuthProvider login and logout", () => {
         AsyncStorage.getItem.mockResolvedValueOnce("existing-tok");
         fetchAuthMe.mockResolvedValueOnce({ user_id: 1, username: "anish" });
 
-        render(<AuthProvider><TestConsumer /></AuthProvider>);
+        await render(<AuthProvider><TestConsumer /></AuthProvider>);
 
         await waitFor(() => expect(capturedCtx.initializing).toBe(false));
         expect(capturedCtx.token).toBe("existing-tok");
