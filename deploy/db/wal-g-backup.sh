@@ -10,16 +10,24 @@
 #   ./wal-g-backup.sh freshness   # 0 if latest backup < 8 days old (cron check)
 #
 # Run from deploy/db/ on the box (compose project dir), so compose picks up
-# the local .env. All env (R2 creds, PGUSER/PGPASSWORD for wal-g's side
-# connection) already live in the container from docker-compose.data.yml.
+# the local .env. R2 creds live in the container env (from
+# docker-compose.data.yml). DB creds (PGUSER/PGPASSWORD) are read from .env
+# and passed into the exec, because `docker compose exec` runs as OS user
+# root, which is not a valid Postgres role.
 # =============================================================================
 set -euo pipefail
 
 COMPOSE_FILE="docker-compose.data.yml"
 LOG_DIR="/var/log/wal-g"
 
+if [ ! -f .env ]; then
+    echo "ERROR: .env not found — run this from deploy/db/" >&2
+    exit 1
+fi
+set -a; . ./.env; set +a
+
 usage() {
-    echo "Usage: $0 {backup|cleanup|list|verify}" >&2
+    echo "Usage: $0 {backup|cleanup|list|verify|freshness}" >&2
     exit 1
 }
 
@@ -27,7 +35,9 @@ usage() {
 CMD="$1"
 
 walg() {
-    docker compose -f "$COMPOSE_FILE" exec -T db wal-g "$@"
+    docker compose -f "$COMPOSE_FILE" exec -T \
+        -e PGUSER="$DB_USER" -e PGPASSWORD="$DB_PASSWORD" \
+        db wal-g "$@"
 }
 
 case "$CMD" in
