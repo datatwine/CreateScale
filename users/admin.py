@@ -4,7 +4,7 @@ from django.urls import reverse
 from django.utils.html import format_html
 
 # Register your models here.
-from .models import Profile, Upload, Performer, Client
+from .models import Upload, Performer, Client
 from .notifications import send_push_notification
 
 
@@ -14,8 +14,9 @@ class _RoleConsole(admin.ModelAdmin):
     underscore is a convention meaning "internal base class, not registered on
     its own" — only its two subclasses below get @admin.register.
     """
+
     search_fields = ("user__username",)
-    role_filter = {}   # subclasses set this, e.g. {"is_performer": True}
+    role_filter = {}  # subclasses set this, e.g. {"is_performer": True}
 
     def get_queryset(self, request):
         # This defines the rows + columns of DATA the list page runs on. We
@@ -48,7 +49,9 @@ class _RoleConsole(admin.ModelAdmin):
         # Clickable username → the person's public profile. obj.user_id is the
         # raw FK integer (no query); obj.user.username is already joined in.
         url = reverse("profile-detail", args=[obj.user_id])
-        return format_html('<a href="{}" target="_blank">{}</a>', url, obj.user.username)
+        return format_html(
+            '<a href="{}" target="_blank">{}</a>', url, obj.user.username
+        )
 
     # ordering="_avg" makes this column SORTABLE by clicking its header — Django
     # sorts on the annotated DB value, so "worst-rated first" is one click.
@@ -65,10 +68,13 @@ class _RoleConsole(admin.ModelAdmin):
 
 @admin.register(Performer)
 class PerformerAdmin(_RoleConsole):
-    role_filter = {"is_performer": True}     # this screen = performers only
+    role_filter = {"is_performer": True}  # this screen = performers only
     list_display = (
-        "profile_link", "avg_rating", "review_count",
-        "performer_blacklisted", "performer_fee",
+        "profile_link",
+        "avg_rating",
+        "review_count",
+        "performer_blacklisted",
+        "performer_fee",
     )
     list_filter = ("performer_blacklisted",)
     # `actions` = the dropdown above the checkboxes. Tick rows → pick an action
@@ -93,16 +99,21 @@ class PerformerAdmin(_RoleConsole):
 
 @admin.register(Client)
 class ClientAdmin(_RoleConsole):
-    role_filter = {"is_potential_client": True}   # this screen = clients only
+    role_filter = {"is_potential_client": True}  # this screen = clients only
     list_display = (
-        "profile_link", "client_approved", "client_blacklisted",
-        "avg_rating", "review_count",
+        "profile_link",
+        "client_approved",
+        "client_blacklisted",
+        "avg_rating",
+        "review_count",
     )
     list_filter = ("client_approved", "client_blacklisted")
     # Clients get two more actions than performers: approve/revoke hire access.
     actions = [
-        "approve_clients", "unapprove_clients",
-        "blacklist_clients", "unblacklist_clients",
+        "approve_clients",
+        "unapprove_clients",
+        "blacklist_clients",
+        "unblacklist_clients",
     ]
 
     # Bulk APPROVE — flips client_approved on every ticked row in one UPDATE.
