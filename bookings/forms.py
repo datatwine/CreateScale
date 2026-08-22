@@ -1,6 +1,6 @@
 # appointment/forms.py
 from django import forms
-from .models import Engagement
+from .models import Engagement, Review
 
 
 class EngagementRequestForm(forms.ModelForm):
@@ -61,3 +61,19 @@ class DisputeForm(forms.Form):
         ),
         label="Issue description",
     )
+
+
+class ReviewForm(forms.ModelForm):
+    class Meta:
+        model = Review
+        fields = ["rating", "comment"]
+        labels = {"rating": "Score (out of 10)"}
+        widgets = {
+            "rating": forms.NumberInput(attrs={"min": 0, "max": 10}),
+            "comment": forms.Textarea(
+                attrs={
+                    "rows": 4,
+                    "placeholder": "How did it go? (optional)",
+                }
+            ),
+        }
