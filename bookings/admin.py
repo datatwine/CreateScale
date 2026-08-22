@@ -153,16 +153,22 @@ class PaymentAdmin(admin.ModelAdmin):
                 )
 
 
-@admin.register(Review)                 # registers this screen at /admin/…/review/
+@admin.register(Review)  # registers this screen at /admin/…/review/
 class ReviewAdmin(admin.ModelAdmin):
     # list_display = the columns in the table. Plain strings are model fields;
     # the others (author_link, event_summary, …) are METHODS defined below —
     # Django calls them once per row to compute that cell.
     list_display = (
-        "id", "rating", "author_link", "subject_link",
-        "direction", "event_summary", "short_comment", "created_at",
+        "id",
+        "rating",
+        "author_link",
+        "subject_link",
+        "direction",
+        "event_summary",
+        "short_comment",
+        "created_at",
     )
-    list_filter = ("direction", "rating", "created_at")   # right-hand filter sidebar
+    list_filter = ("direction", "rating", "created_at")  # right-hand filter sidebar
     search_fields = ("author__username", "subject__username", "comment")  # search box
 
     # PERFORMANCE (important — don't remove): the list renders author.username,
@@ -177,12 +183,17 @@ class ReviewAdmin(admin.ModelAdmin):
     # Marking every field read-only means an admin can open a review but not
     # rewrite someone's rating/comment.
     readonly_fields = (
-        "engagement", "author", "subject", "direction",
-        "rating", "comment", "created_at",
+        "engagement",
+        "author",
+        "subject",
+        "direction",
+        "rating",
+        "comment",
+        "created_at",
     )
 
     def has_add_permission(self, request):
-        return False        # hides the "Add review" button — reviews are user-created only
+        return False  # hides the "Add review" button — reviews are user-created only
 
     # --- computed columns --------------------------------------------------
     # @admin.display(description=…) sets the column header. Each method receives
@@ -198,12 +209,16 @@ class ReviewAdmin(admin.ModelAdmin):
         # username can't inject HTML). target="_blank" opens in a new tab so the
         # admin never loses their place in the list.
         url = reverse("profile-detail", args=[obj.author_id])
-        return format_html('<a href="{}" target="_blank">{}</a>', url, obj.author.username)
+        return format_html(
+            '<a href="{}" target="_blank">{}</a>', url, obj.author.username
+        )
 
     @admin.display(description="Reviewed")
     def subject_link(self, obj):
         url = reverse("profile-detail", args=[obj.subject_id])
-        return format_html('<a href="{}" target="_blank">{}</a>', url, obj.subject.username)
+        return format_html(
+            '<a href="{}" target="_blank">{}</a>', url, obj.subject.username
+        )
 
     @admin.display(description="Event")
     def event_summary(self, obj):
