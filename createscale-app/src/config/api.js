@@ -20,7 +20,7 @@ const DEV_WEB_API_URL = "http://localhost/api";
 
 // Later, when you deploy Django+NGINX on AWS/EC2 behind a domain,
 // just change this one line:
-const PROD_API_URL = "https://your-production-domain.com/api";
+const PROD_API_URL = "https://stagefreedom.org/api";
 
 // Decide which dev URL to use based on platform.
 const DEV_API_URL =

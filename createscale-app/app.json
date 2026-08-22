@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "createscale-app",
+    "name": "ArtKhoj",
     "slug": "createscale-app",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -10,7 +10,7 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.anishravikiran0610.createscale-app"
+      "bundleIdentifier": "com.stagefreedom.alphaQ"
     },
     "android": {
       "adaptiveIcon": {
@@ -19,6 +19,8 @@
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
+      "package": "com.stagefreedom.alphaQ",
+      "versionCode": 1,
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false
     },
@@ -41,11 +43,25 @@
         }
       ],
       "expo-web-browser",
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      [
+        "react-native-google-mobile-ads",
+        {
+          "androidAppId": "ca-app-pub-3940256099942544~3347511713"
+        }
+      ],
+      "expo-build-properties"
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "ce624dc2-554f-47bb-b733-64397cd8d1bf"
+      }
+    },
+    "owner": "harshverma2099"
   }
 }
