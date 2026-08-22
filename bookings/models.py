@@ -489,7 +489,9 @@ class Review(models.Model):
     # a b-tree index for free — you won't see them in Meta, but they exist and
     # make the joins/lookups below fast.
     engagement = models.ForeignKey(
-        Engagement, on_delete=models.CASCADE, related_name="reviews",
+        Engagement,
+        on_delete=models.CASCADE,
+        related_name="reviews",
     )
     # `author`  = who wrote the review.   author.reviews_written  → what they wrote.
     # `subject` = who the review is about. subject.reviews_received → what they got.
@@ -500,10 +502,14 @@ class Review(models.Model):
     # reverse relation `user__reviews_received` — that powers the avg-score
     # column in §6.
     author = models.ForeignKey(
-        User, on_delete=models.CASCADE, related_name="reviews_written",
+        User,
+        on_delete=models.CASCADE,
+        related_name="reviews_written",
     )
     subject = models.ForeignKey(
-        User, on_delete=models.CASCADE, related_name="reviews_received",
+        User,
+        on_delete=models.CASCADE,
+        related_name="reviews_received",
     )
     direction = models.CharField(max_length=20, choices=DIRECTION_CHOICES)
 
@@ -571,10 +577,10 @@ class Review(models.Model):
         #    (Comparing `author_id` to `client_id`/`performer_id` uses the raw
         #    FK integers — no extra queries just to compare identities.)
         if self.author_id == eng.client_id:
-            self.subject = eng.performer          # a client reviews the performer
+            self.subject = eng.performer  # a client reviews the performer
             self.direction = self.CLIENT_TO_PERFORMER
         elif self.author_id == eng.performer_id:
-            self.subject = eng.client             # a performer reviews the client
+            self.subject = eng.client  # a performer reviews the client
             self.direction = self.PERFORMER_TO_CLIENT
         else:
             raise ValidationError("You can only review an engagement you were part of.")
