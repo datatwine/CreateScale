@@ -1,0 +1,55 @@
+diff --git a/node_modules/react-native-google-mobile-ads/android/build.gradle b/node_modules/react-native-google-mobile-ads/android/build.gradle
+index 8a31e69..2483f19 100644
+--- a/node_modules/react-native-google-mobile-ads/android/build.gradle
++++ b/node_modules/react-native-google-mobile-ads/android/build.gradle
+@@ -35,7 +35,7 @@ plugins {
+ apply plugin: 'kotlin-android'
+ 
+ def packageJson = PackageJson.getForProject(project)
+-def googleMobileAdsVersion = packageJson['sdkVersions']['android']['googleMobileAds']
++def googleMobileAdsVersion = "23.6.0"
+ def googleUmpVersion = packageJson['sdkVersions']['android']['googleUmp']
+ def jsonMinSdk = packageJson['sdkVersions']['android']['minSdk']
+ def jsonTargetSdk = packageJson['sdkVersions']['android']['targetSdk']
+diff --git a/node_modules/react-native-google-mobile-ads/android/src/main/java/io/invertase/googlemobileads/ReactNativeGoogleMobileAdsCommon.java b/node_modules/react-native-google-mobile-ads/android/src/main/java/io/invertase/googlemobileads/ReactNativeGoogleMobileAdsCommon.java
+index 825a76f..a444b49 100644
+--- a/node_modules/react-native-google-mobile-ads/android/src/main/java/io/invertase/googlemobileads/ReactNativeGoogleMobileAdsCommon.java
++++ b/node_modules/react-native-google-mobile-ads/android/src/main/java/io/invertase/googlemobileads/ReactNativeGoogleMobileAdsCommon.java
+@@ -69,7 +69,7 @@ public class ReactNativeGoogleMobileAdsCommon {
+             reactViewGroup.getContext(), adWidth);
+       }
+       if ("LARGE_ANCHORED_ADAPTIVE_BANNER".equals(preDefinedAdSize)) {
+-        return AdSize.getLargeAnchoredAdaptiveBannerAdSize(reactViewGroup.getContext(), adWidth);
++        return AdSize.getCurrentOrientationAnchoredAdaptiveBannerAdSize(reactViewGroup.getContext(), adWidth);
+       }
+       return AdSize.getCurrentOrientationAnchoredAdaptiveBannerAdSize(
+           reactViewGroup.getContext(), adWidth);
+diff --git a/node_modules/react-native-google-mobile-ads/android/src/main/java/io/invertase/googlemobileads/ReactNativeGoogleMobileAdsModule.kt b/node_modules/react-native-google-mobile-ads/android/src/main/java/io/invertase/googlemobileads/ReactNativeGoogleMobileAdsModule.kt
+index bcaf487..f4095f1 100644
+--- a/node_modules/react-native-google-mobile-ads/android/src/main/java/io/invertase/googlemobileads/ReactNativeGoogleMobileAdsModule.kt
++++ b/node_modules/react-native-google-mobile-ads/android/src/main/java/io/invertase/googlemobileads/ReactNativeGoogleMobileAdsModule.kt
+@@ -25,7 +25,6 @@ import com.google.android.gms.ads.AdInspectorError
+ import com.google.android.gms.ads.AdRequest
+ import com.google.android.gms.ads.AdValue;
+ import com.google.android.gms.ads.OnAdInspectorClosedListener
+-import com.google.android.gms.ads.AgeRestrictedTreatment
+ 
+ class ReactNativeGoogleMobileAdsModule(
+   reactContext: ReactApplicationContext
+@@ -63,16 +62,6 @@ class ReactNativeGoogleMobileAdsModule(
+       }
+     }
+ 
+-    if (requestConfiguration.hasKey("ageRestrictedTreatment")) {
+-      val ageRestrictedTreatment = requestConfiguration.getString("ageRestrictedTreatment")
+-
+-      when (ageRestrictedTreatment) {
+-        "CHILD" -> builder.setAgeRestrictedTreatment(AgeRestrictedTreatment.CHILD)
+-        "TEEN" -> builder.setAgeRestrictedTreatment(AgeRestrictedTreatment.TEEN)
+-        "UNSPECIFIED" -> builder.setAgeRestrictedTreatment(AgeRestrictedTreatment.UNSPECIFIED)
+-      }
+-    }
+-
+     if (requestConfiguration.hasKey("tagForChildDirectedTreatment")) {
+       val tagForChildDirectedTreatment = requestConfiguration.getBoolean("tagForChildDirectedTreatment")
+       builder.setTagForChildDirectedTreatment(

@@ -360,7 +360,16 @@ jobs:
             set -eu
             cd /root/AK && git fetch origin main && git reset --hard origin/main
             cd /root/AK/deploy/db
-            docker compose -f docker-compose.data.yml build docker_stats_exporter
+            # Ensure wal-g R2 creds are in .env (idempotent — replaces only R2_BACKUP_* lines)
+            grep -v '^R2_BACKUP_' .env > .env.tmp || true
+            printf '%s\n' \
+              R2_BACKUP_ENDPOINT='${{ secrets.R2_BACKUP_ENDPOINT }}' \
+              R2_BACKUP_ACCESS_KEY_ID='${{ secrets.R2_BACKUP_ACCESS_KEY_ID }}' \
+              R2_BACKUP_SECRET_ACCESS_KEY='${{ secrets.R2_BACKUP_SECRET_ACCESS_KEY }}' \
+              R2_BACKUP_S3_PREFIX='s3://artkhoj-db-backup/wal-g' \
+              >> .env.tmp
+            mv .env.tmp .env
+            docker compose -f docker-compose.data.yml build db docker_stats_exporter
             docker compose -f docker-compose.data.yml up -d --remove-orphans
             echo "DB_DEPLOY_COMPLETE"
           EOF

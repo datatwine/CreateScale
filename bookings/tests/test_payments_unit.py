@@ -677,3 +677,42 @@ class TestDuplicateCaptureGuard:
         p = Payment.objects.get(razorpay_order_id="order_b")
         assert p.status == "captured"
         assert p.razorpay_payment_id == "pay_b"
+
+
+# ─────────────────────────────────────────────────────────────────────────
+class TestRazorpayXTimeout:
+    """Every raw RazorpayX request must carry an explicit timeout (30s)."""
+
+    def test_payout_request_sends_timeout(self, monkeypatch, settings):
+        import bookings.services.razorpayx as razorpayx
+
+        settings.RAZORPAY_KEY_ID = "rzp_test_key"
+        settings.RAZORPAY_KEY_SECRET = "test_secret"
+        settings.RAZORPAYX_ACCOUNT_NUMBER = "acc_123"
+        settings.RAZORPAYX_PAYOUT_MODE = "IMPS"
+
+        fake_resp = type(
+            "Resp",
+            (),
+            {
+                "status_code": 200,
+                "json": lambda self: {},
+                "raise_for_status": lambda self: None,
+            },
+        )()
+        called = {}
+        monkeypatch.setattr(
+            razorpayx.requests,
+            "post",
+            lambda *a, **kw: called.update(kw) or fake_resp,
+        )
+
+        razorpayx.create_payout(
+            fund_account_id="fa_test",
+            amount_paise=190000,
+            reference_id="eng_1",
+            narration="ArtKhoj payout 1",
+            idempotency_key="key_test",
+        )
+
+        assert called["timeout"] == 30
