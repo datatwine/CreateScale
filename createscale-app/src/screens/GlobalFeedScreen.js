@@ -34,7 +34,7 @@ import { COLORS, TAB_BAR_CLEARANCE } from "../config/theme";
 import PressableStamp from "../components/PressableStamp";
 import { injectAds } from "../ads/injectAds";
 import { MOCK_FEED_AD } from "../ads/mockInventory";
-import { FEED_AD_INTERVAL, FEED_FIRST_AD_OFFSET } from "../ads/constants";
+import { FEED_AD_INTERVAL, FEED_FIRST_AD_OFFSET, ADMOB_NATIVE_AD_UNIT_ID } from "../ads/constants";
 import FeedAdCard from "../ads/FeedAdCard";
 
 // ---------------------------------------------------------------------------
@@ -257,13 +257,6 @@ export default function GlobalFeedScreen({ navigation }) {
         navigation.navigate("ProfileDetail", { userId: profile.user_id });
     };
 
-    // Simulation: no-op. Real AdMob handles the click + destination itself,
-    // so this handler goes away (or logs) once real ads land.
-    const handleAdPress = (ad) => {
-        console.log("Ad tapped:", ad.advertiser);
-    };
-
-
     // --- Render --------------------------------------------------------------
 
     const renderFooter = () => {
@@ -275,10 +268,12 @@ export default function GlobalFeedScreen({ navigation }) {
         );
     };
 
-    const adReady = true; // simulation: mock is always ready. Later: from useNativeAds().
+    const feedAd = __DEV__
+        ? MOCK_FEED_AD
+        : { _isAd: true, id: "ad-feed", adUnitId: ADMOB_NATIVE_AD_UNIT_ID };
     const feedData = injectAds(
         profiles,
-        adReady ? MOCK_FEED_AD : null,
+        feedAd,
         FEED_AD_INTERVAL,
         FEED_FIRST_AD_OFFSET,
     );
@@ -329,7 +324,7 @@ export default function GlobalFeedScreen({ navigation }) {
                     renderItem={({ item }) => (
                         <View style={{ flex: 1, marginBottom: 12 }}>
                             {item._isAd ? (
-                                <FeedAdCard ad={item} onPress={() => handleAdPress(item)} />
+                                <FeedAdCard ad={item} />
                             ) : (
                                 <FeedCard
                                     profile={item}
