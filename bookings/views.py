@@ -297,7 +297,8 @@ def engagement_detail(request, pk):
     # Has THIS user already reviewed THIS booking? (index-served by the unique
     # constraint; one cheap query on a detail page — not a list, so no N+1.)
     already_reviewed = Review.objects.filter(
-        engagement=engagement, author=request.user,
+        engagement=engagement,
+        author=request.user,
     ).exists()
     # Show the "Leave a review" button only when all four hold: the viewer is a
     # party to the booking, it was accepted, the event is over, and they haven't
@@ -570,7 +571,11 @@ def leave_review(request, pk):
 
     # Reached on GET, or on POST when the form was invalid (re-render with the
     # user's input + error messages intact).
-    return render(request, "bookings/review_form.html", {
-        "form": form,
-        "engagement": engagement,
-    })
+    return render(
+        request,
+        "bookings/review_form.html",
+        {
+            "form": form,
+            "engagement": engagement,
+        },
+    )
