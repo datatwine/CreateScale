@@ -12,6 +12,8 @@ urlpatterns = [
     path("performer/", views.performer_engagement_list, name="performer-engagements"),
     # 9, 10, 11) Accept / decline / cancel
     path("engagement/<int:pk>/", views.engagement_detail, name="engagement-detail"),
+    # Post-event review (either party rates the other).
+    path("engagement/<int:pk>/review/", views.leave_review, name="leave-review"),
     # Payment flow (Phase 4)
     # /pay/    → JS asks backend to create a Razorpay Order
     # /verify/ → JS forwards Razorpay's signed callback for HMAC validation
