@@ -43,8 +43,9 @@ class ReviewCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Review
         fields = ["rating", "comment"]
-        
 
+
+class EngagementCreateSerializer(serializers.Serializer):
     date = serializers.DateField()
     time = serializers.TimeField()
     venue = serializers.CharField(max_length=255)
