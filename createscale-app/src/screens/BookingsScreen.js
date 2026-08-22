@@ -87,7 +87,7 @@ function isActive(status) {
 // EngagementCard — a single booking row with expandable actions
 // ---------------------------------------------------------------------------
 
-function EngagementCard({ engagement, myUserId, token, onActionDone }) {
+function EngagementCard({ engagement, myUserId, token, onActionDone, navigation }) {
     const [expanded, setExpanded] = useState(false);
     const [actionLoading, setActionLoading] = useState(false);
     const [emergencyReason, setEmergencyReason] = useState("");
@@ -118,7 +118,9 @@ function EngagementCard({ engagement, myUserId, token, onActionDone }) {
     const canDecline = isPerformer && engagement.status === "pending";
     const canCancelPerformer = isPerformer && isActive(engagement.status);
     const canCancelClient = isClient && isActive(engagement.status);
-    const hasActions = canAccept || canDecline || canCancelPerformer || canCancelClient;
+    const canReview = engagement.status === "accepted" && engagement.is_past_event === true && engagement.already_reviewed === false;
+    const hasReviewed = engagement.status === "accepted" && engagement.is_past_event === true && engagement.already_reviewed === true;
+    const hasActions = canAccept || canDecline || canCancelPerformer || canCancelClient || canReview;
 
     // --- Action handler ---
     // Posts to /api/bookings/engagements/<pk>/action/
@@ -309,6 +311,21 @@ function EngagementCard({ engagement, myUserId, token, onActionDone }) {
                                     </TouchableOpacity>
                                 </View>
                             )}
+
+                            {/* Review Section */}
+                            {canReview && (
+                                <TouchableOpacity
+                                    style={[styles.actionBtn, { backgroundColor: COLORS.successButton, marginTop: 4 }]}
+                                    onPress={() => navigation.navigate("LeaveReview", { 
+                                        engagementId: engagement.id, 
+                                        otherPartyName, 
+                                        occasion: engagement.occasion 
+                                    })}
+                                >
+                                    <Ionicons name="star" size={16} color={COLORS.white} />
+                                    <Text style={styles.actionBtnText}>Leave a Review</Text>
+                                </TouchableOpacity>
+                            )}
                         </View>
                     )}
 
@@ -322,9 +339,15 @@ function EngagementCard({ engagement, myUserId, token, onActionDone }) {
                     )}
 
                     {/* Terminal state — no actions available */}
-                    {!hasActions && (
+                    {!hasActions && !hasReviewed && (
                         <Text style={styles.terminalNote}>
                             This booking is {statusLabel.toLowerCase()} — no further actions.
+                        </Text>
+                    )}
+                    
+                    {hasReviewed && (
+                        <Text style={[styles.terminalNote, { color: COLORS.success, fontWeight: '500' }]}>
+                            ✓ You've reviewed this booking.
                         </Text>
                     )}
                 </View>
@@ -512,6 +535,7 @@ export default function BookingsScreen({ navigation }) {
                             myUserId={myUserId}
                             token={token}
                             onActionDone={handleActionDone}
+                            navigation={navigation}
                         />
                     )}
                     contentContainerStyle={styles.listContent}
