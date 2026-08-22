@@ -1,10 +1,11 @@
 from rest_framework import serializers
-from bookings.models import Engagement
+from bookings.models import Engagement, Review
 
 
 class EngagementSerializer(serializers.ModelSerializer):
     client = serializers.SerializerMethodField()
     performer = serializers.SerializerMethodField()
+    already_reviewed = serializers.SerializerMethodField()
 
     class Meta:
         model = Engagement
@@ -19,6 +20,8 @@ class EngagementSerializer(serializers.ModelSerializer):
             "status",
             "client_emergency_reason",
             "performer_emergency_reason",
+            "is_past_event",
+            "already_reviewed",
             "created_at",
             "updated_at",
         ]
@@ -29,8 +32,19 @@ class EngagementSerializer(serializers.ModelSerializer):
     def get_performer(self, obj):
         return {"id": obj.performer_id, "username": obj.performer.username}
 
+    def get_already_reviewed(self, obj):
+        request = self.context.get('request')
+        if not request or not request.user.is_authenticated:
+            return False
+        return Review.objects.filter(engagement=obj, author=request.user).exists()
 
-class EngagementCreateSerializer(serializers.Serializer):
+
+class ReviewCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Review
+        fields = ["rating", "comment"]
+        
+
     date = serializers.DateField()
     time = serializers.TimeField()
     venue = serializers.CharField(max_length=255)
