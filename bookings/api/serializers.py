@@ -33,7 +33,7 @@ class EngagementSerializer(serializers.ModelSerializer):
         return {"id": obj.performer_id, "username": obj.performer.username}
 
     def get_already_reviewed(self, obj):
-        request = self.context.get('request')
+        request = self.context.get("request")
         if not request or not request.user.is_authenticated:
             return False
         return Review.objects.filter(engagement=obj, author=request.user).exists()

@@ -439,41 +439,43 @@ class EngagementViewSet(viewsets.ViewSet):
         )
         if not self._is_participant(request, engagement):
             raise PermissionDenied("You are not part of this booking.")
-            
+
         if engagement.status != Engagement.STATUS_ACCEPTED:
             return Response(
                 {"detail": "You can only review accepted bookings."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-            
+
         if not engagement.is_past_event:
             return Response(
                 {"detail": "You can only review bookings that have already happened."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-            
+
         if Review.objects.filter(engagement=engagement, author=request.user).exists():
             return Response(
                 {"detail": "You have already reviewed this booking."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-            
+
         ser = ReviewCreateSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
-        
+
         review_instance = Review(engagement=engagement, author=request.user)
         # Apply the validated data manually so that clean() can validate everything
         review_instance.rating = ser.validated_data["rating"]
         review_instance.comment = ser.validated_data["comment"]
-        
+
         try:
             review_instance.full_clean()
         except ValidationError as e:
             # Format validation errors for DRF
             return Response(
-                {"detail": " ".join(e.messages) if hasattr(e, 'messages') else str(e)}, 
-                status=status.HTTP_400_BAD_REQUEST
+                {"detail": " ".join(e.messages) if hasattr(e, "messages") else str(e)},
+                status=status.HTTP_400_BAD_REQUEST,
             )
-            
+
         review_instance.save()
-        return Response({"detail": "Review submitted successfully."}, status=status.HTTP_201_CREATED)
+        return Response(
+            {"detail": "Review submitted successfully."}, status=status.HTTP_201_CREATED
+        )
