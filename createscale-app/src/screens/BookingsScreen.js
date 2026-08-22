@@ -318,7 +318,7 @@ function EngagementCard({ engagement, myUserId, token, onActionDone, navigation 
                                     style={[styles.actionBtn, { backgroundColor: COLORS.successButton, marginTop: 4 }]}
                                     onPress={() => navigation.navigate("LeaveReview", { 
                                         engagementId: engagement.id, 
-                                        otherPartyName, 
+                                        otherPartyName: otherName, 
                                         occasion: engagement.occasion 
                                     })}
                                 >
@@ -347,7 +347,7 @@ function EngagementCard({ engagement, myUserId, token, onActionDone, navigation 
                     
                     {hasReviewed && (
                         <Text style={[styles.terminalNote, { color: COLORS.success, fontWeight: '500' }]}>
-                            ✓ You've reviewed this booking.
+                            ✓ You&apos;ve reviewed this booking.
                         </Text>
                     )}
                 </View>
