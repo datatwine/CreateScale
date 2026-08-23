@@ -136,6 +136,24 @@ a { color: inherit; text-decoration: none; }
   font-size: 28px;
   letter-spacing: -0.025em;
   margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.profile-likes {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: "Outfit", sans-serif;
+  font-weight: 700;
+  font-size: 14px;
+  color: #e0245e;
+  background: var(--card);
+  border: 2px solid var(--ink);
+  border-radius: var(--radius-pill);
+  padding: 4px 12px;
 }
 
 .profile-tags {

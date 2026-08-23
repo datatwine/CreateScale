@@ -77,7 +77,12 @@
                 {# Hidden cover photo file input — triggered by clicking the cover banner #}
                 <input type="file" id="cover-photo-upload" name="cover_photo" style="display:none;" accept="image/*">
 
-                <div class="profile-username">{{ user.username }}</div>
+                <div class="profile-username">
+                    {{ user.username }}
+                    <span class="profile-likes" title="Total likes on your profile">
+                        <span aria-hidden="true">&#9829;</span> {{ likes_count|default:0 }}
+                    </span>
+                </div>
 
                 <!-- Inline-editable profession + location tags -->
                 <div class="profile-tags">

@@ -19,6 +19,8 @@
 
 {% block content_wrap %}
 
+    {% csrf_token %}
+
     <!-- ====== TOPBAR ====== -->
     <header class="topbar">
         <a href="{% url 'global-feed' %}" class="back-btn" aria-label="Back to feed">&larr; Feed</a>
@@ -42,6 +44,21 @@
 
         <!-- Large decorative emoji watermark — JS injected -->
         <div class="hero-emoji-watermark" id="hero-watermark" aria-hidden="true"></div>
+
+        {% if request.user != profile.user %}
+            <button
+                type="button"
+                class="like-heart-btn{% if liked_by_me %} liked{% endif %}"
+                id="like-heart-btn"
+                data-user-id="{{ profile.user.id }}"
+                data-liked="{{ liked_by_me|yesno:'true,false' }}"
+                aria-label="{% if liked_by_me %}Unlike{% else %}Like{% endif %} {{ profile.user.username }}'s profile"
+                aria-pressed="{{ liked_by_me|yesno:'true,false' }}"
+            >
+                <span class="like-heart-icon" id="like-heart-icon" aria-hidden="true">{% if liked_by_me %}&#9829;{% else %}&#9825;{% endif %}</span>
+                <span class="like-heart-count" id="like-heart-count">{{ likes_count|default:0 }}</span>
+            </button>
+        {% endif %}
 
         <div class="hero-content">
 
@@ -258,5 +275,52 @@ if (hireEmoji) hireEmoji.textContent = getEmoji(profession);
 // Profession stat emoji
 var emojiStat = document.querySelector('.stat-num[data-emoji]');
 if (emojiStat) emojiStat.textContent = getEmoji(profession);
+
+// Like heart — POSTs to the same toggle endpoint the mobile app uses
+// (session auth + CSRF works there too). Optimistic UI update with
+// rollback on failure, since a like should feel instant.
+var likeBtn = document.getElementById('like-heart-btn');
+if (likeBtn) {
+    likeBtn.addEventListener('click', async function () {
+        var icon = document.getElementById('like-heart-icon');
+        var countEl = document.getElementById('like-heart-count');
+        var wasLiked = likeBtn.dataset.liked === 'true';
+        var prevCount = parseInt(countEl.textContent, 10) || 0;
+
+        // Optimistic update
+        var nextLiked = !wasLiked;
+        likeBtn.dataset.liked = nextLiked ? 'true' : 'false';
+        likeBtn.classList.toggle('liked', nextLiked);
+        likeBtn.setAttribute('aria-pressed', nextLiked ? 'true' : 'false');
+        icon.innerHTML = nextLiked ? '&#9829;' : '&#9825;';
+        countEl.textContent = prevCount + (nextLiked ? 1 : -1);
+        likeBtn.classList.remove('like-heart-pulse');
+        void likeBtn.offsetWidth; // restart the pop animation
+        likeBtn.classList.add('like-heart-pulse');
+
+        var csrf = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        try {
+            var resp = await fetch('/api/users/profiles/' + likeBtn.dataset.userId + '/like/', {
+                method: 'POST',
+                headers: { 'X-CSRFToken': csrf },
+            });
+            if (!resp.ok) throw new Error('Request failed');
+            var data = await resp.json();
+            // Reconcile with the server's authoritative count (handles races).
+            likeBtn.dataset.liked = data.liked_by_me ? 'true' : 'false';
+            likeBtn.classList.toggle('liked', data.liked_by_me);
+            likeBtn.setAttribute('aria-pressed', data.liked_by_me ? 'true' : 'false');
+            icon.innerHTML = data.liked_by_me ? '&#9829;' : '&#9825;';
+            countEl.textContent = data.likes_count;
+        } catch (e) {
+            // Roll back the optimistic update.
+            likeBtn.dataset.liked = wasLiked ? 'true' : 'false';
+            likeBtn.classList.toggle('liked', wasLiked);
+            likeBtn.setAttribute('aria-pressed', wasLiked ? 'true' : 'false');
+            icon.innerHTML = wasLiked ? '&#9829;' : '&#9825;';
+            countEl.textContent = prevCount;
+        }
+    });
+}
 </script>
 {% endblock %}

@@ -188,6 +188,40 @@ class Profile(models.Model):
         super().save(*args, **kwargs)
 
 
+class Like(models.Model):
+    """
+    A user liking another user's profile. Toggleable at the API layer
+    (create the row to like, delete it to unlike) — unique_together is
+    both the "no double-liking" guard and the natural existence check
+    the toggle view queries against.
+    """
+
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="profile_likes_given",
+    )
+    profile = models.ForeignKey(
+        Profile,
+        on_delete=models.CASCADE,
+        related_name="likes",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("user", "profile")
+        indexes = [
+            models.Index(fields=["profile"]),
+        ]
+
+    def clean(self):
+        if self.user_id and self.profile_id and self.user_id == self.profile.user_id:
+            raise ValidationError("You cannot like your own profile.")
+
+    def __str__(self):
+        return f"{self.user.username} likes {self.profile.user.username}"
+
+
 class PushToken(models.Model):
     """
     Stores Expo push notification tokens — one per device per user.

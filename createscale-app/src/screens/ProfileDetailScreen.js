@@ -41,6 +41,7 @@ import { AuthContext } from "../context/AuthContext";
 import { COLORS } from "../config/theme";
 import PressableStamp from "../components/PressableStamp";
 import DateTimePicker from "@react-native-community/datetimepicker";
+import { toggleLike } from "../utils/likes";
 
 const EMOJI_MAP = {
     "DJ": "🎧",
@@ -443,6 +444,31 @@ export default function ProfileDetailScreen({ route, navigation }) {
         load();
     }, [fetchProfile, fetchMyProfile]);
 
+    // --- Like toggle (optimistic, reconciled with the server's response) ---
+    const handleToggleLike = async () => {
+        if (!token || !profile) return;
+        const prevLiked = profile.liked_by_me;
+        const prevCount = profile.likes_count;
+        // Optimistic flip — the heart should feel instant.
+        setProfile((p) => ({
+            ...p,
+            liked_by_me: !prevLiked,
+            likes_count: prevCount + (prevLiked ? -1 : 1),
+        }));
+        try {
+            const data = await toggleLike(token, userId);
+            setProfile((p) => ({
+                ...p,
+                liked_by_me: data.liked_by_me,
+                likes_count: data.likes_count,
+            }));
+        } catch (err) {
+            // Roll back on failure.
+            setProfile((p) => ({ ...p, liked_by_me: prevLiked, likes_count: prevCount }));
+            Alert.alert("Error", err.message || "Could not update like.");
+        }
+    };
+
     // --- Loading state ---
     if (loading || !profile) {
         return (
@@ -516,6 +542,28 @@ export default function ProfileDetailScreen({ route, navigation }) {
                                     </View>
                                 ) : null}
                             </View>
+
+                            {/* Like heart — top-right of the header row */}
+                            <PressableStamp
+                                onPress={handleToggleLike}
+                                stampOffset={2}
+                                borderRadius={999}
+                                style={styles.likeHeartBtn}
+                                accessibilityRole="button"
+                                accessibilityLabel={`${profile.liked_by_me ? "Unlike" : "Like"} ${profile.username}'s profile`}
+                                accessibilityState={{ selected: !!profile.liked_by_me }}
+                            >
+                                <View style={styles.likeHeartInner}>
+                                    <Ionicons
+                                        name={profile.liked_by_me ? "heart" : "heart-outline"}
+                                        size={18}
+                                        color={profile.liked_by_me ? "#e0245e" : COLORS.textMuted}
+                                    />
+                                    <Text style={styles.likeHeartCount}>
+                                        {profile.likes_count || 0}
+                                    </Text>
+                                </View>
+                            </PressableStamp>
                         </View>
 
                         {/* Performer badge */}
@@ -685,6 +733,21 @@ const styles = StyleSheet.create({
     profileHeader: {
         flexDirection: "row",
         alignItems: "center",
+    },
+    likeHeartBtn: {
+        alignSelf: "flex-start",
+    },
+    likeHeartInner: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 4,
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+    },
+    likeHeartCount: {
+        fontSize: 13,
+        fontWeight: "700",
+        color: COLORS.textPrimary,
     },
     profileInfo: {
         flex: 1,

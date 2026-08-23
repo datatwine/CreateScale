@@ -23,6 +23,7 @@ from .views import (
     PresignUploadAPIView,
     GlobalFeedAPIView,
     ProfileDetailAPIView,
+    LikeToggleAPIView,
     RegisterPushTokenView,
     ProfessionsAPIView,
     LiveEventsAPIView,
@@ -73,6 +74,11 @@ urlpatterns = [
         "users/profiles/<int:user_id>/",
         ProfileDetailAPIView.as_view(),
         name="api-users-profile-detail",
+    ),
+    path(
+        "users/profiles/<int:user_id>/like/",
+        LikeToggleAPIView.as_view(),
+        name="api-users-profile-like",
     ),
     path(
         "users/professions/", ProfessionsAPIView.as_view(), name="api-users-professions"

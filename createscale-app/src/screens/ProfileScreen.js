@@ -667,7 +667,13 @@ export default function ProfileScreen() {
             </Text>
           </View>
           <View style={styles.profileInfo}>
-            <Text style={styles.profileName} numberOfLines={1}>{profile.username}</Text>
+            <View style={styles.profileNameRow}>
+              <Text style={styles.profileName} numberOfLines={1}>{profile.username}</Text>
+              <View style={styles.likesBadge}>
+                <Ionicons name="heart" size={13} color="#e0245e" />
+                <Text style={styles.likesBadgeText}>{profile.likes_count || 0}</Text>
+              </View>
+            </View>
             {profile.profession ? (
               <Text style={styles.profileProfession} numberOfLines={1}>{profile.profession}</Text>
             ) : null}
@@ -992,8 +998,30 @@ const styles = StyleSheet.create({
     flex: 1,
     marginLeft: 14,
   },
+  profileNameRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
   profileName: {
     fontSize: 20,
+    fontWeight: "700",
+    color: COLORS.textPrimary,
+    flexShrink: 1,
+  },
+  likesBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    backgroundColor: COLORS.card,
+    borderWidth: 2,
+    borderColor: COLORS.ink,
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  likesBadgeText: {
+    fontSize: 12,
     fontWeight: "700",
     color: COLORS.textPrimary,
   },

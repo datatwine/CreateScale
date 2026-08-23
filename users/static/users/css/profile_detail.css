@@ -133,6 +133,50 @@ a { color: inherit; text-decoration: none; }
   z-index: 0;
 }
 
+/* Like heart — top-right of the hero band, stamp aesthetic to match
+   the rest of the page (thick ink border, offset shadow, pill shape). */
+.like-heart-btn {
+  position: absolute;
+  top: 20px; right: 20px;
+  z-index: 3;
+  display: flex; align-items: center; gap: 6px;
+  background: var(--card);
+  border: 2px solid var(--ink);
+  border-radius: var(--radius-pill);
+  padding: 8px 14px;
+  box-shadow: var(--shadow-stamp);
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+.like-heart-btn:active {
+  transform: translate(2px, 2px);
+  box-shadow: none;
+}
+.like-heart-btn.like-heart-pulse {
+  animation: like-heart-pop 0.35s ease;
+}
+@keyframes like-heart-pop {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.35); }
+  100% { transform: scale(1); }
+}
+.like-heart-icon {
+  font-size: 20px;
+  line-height: 1;
+  color: var(--ink-mute);
+}
+.like-heart-btn.liked .like-heart-icon {
+  color: #e0245e;
+}
+.like-heart-count {
+  font-family: "Bricolage Grotesque", sans-serif;
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--ink);
+  min-width: 12px;
+  text-align: left;
+}
+
 .hero-content {
   position: relative; z-index: 2;
   display: flex; flex-direction: column; align-items: center;
