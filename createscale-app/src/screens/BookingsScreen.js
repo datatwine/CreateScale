@@ -37,6 +37,7 @@ import {
     View
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { API_BASE_URL } from "../config/api";
 import { AuthContext } from "../context/AuthContext";
@@ -116,8 +117,8 @@ function EngagementCard({ engagement, myUserId, token, onActionDone, navigation 
     //   Client + (pending|accepted) → cancel_client
     const canAccept = isPerformer && engagement.status === "pending";
     const canDecline = isPerformer && engagement.status === "pending";
-    const canCancelPerformer = isPerformer && isActive(engagement.status);
-    const canCancelClient = isClient && isActive(engagement.status);
+    const canCancelPerformer = isPerformer && isActive(engagement.status) && !engagement.is_past_event;
+    const canCancelClient = isClient && isActive(engagement.status) && !engagement.is_past_event;
     const canReview = engagement.status === "accepted" && engagement.is_past_event === true && engagement.already_reviewed === false;
     const hasReviewed = engagement.status === "accepted" && engagement.is_past_event === true && engagement.already_reviewed === true;
     const hasActions = canAccept || canDecline || canCancelPerformer || canCancelClient || canReview;
@@ -409,19 +410,21 @@ export default function BookingsScreen({ navigation }) {
             const clientData = await clientRes.json();
             const performerData = await performerRes.json();
 
-            setClientEngagements(clientData);
-            setPerformerEngagements(performerData);
+            // Extract 'results' array if the API is paginated, else fallback to raw array
+            setClientEngagements(clientData.results || clientData);
+            setPerformerEngagements(performerData.results || performerData);
         } catch (err) {
             console.error("Error loading bookings:", err);
             Alert.alert("Error", "Couldn't load bookings. Please try again.");
         }
     }, [token]);
 
-    // Initial load
-    useEffect(() => {
-        setLoading(true);
-        fetchBookings().finally(() => setLoading(false));
-    }, [fetchBookings]);
+    // Fetch on focus (handles initial load AND returning from LeaveReview screen)
+    useFocusEffect(
+        useCallback(() => {
+            fetchBookings().finally(() => setLoading(false));
+        }, [fetchBookings])
+    );
 
     // Pull-to-refresh
     const handleRefresh = async () => {

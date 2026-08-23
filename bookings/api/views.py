@@ -1,7 +1,7 @@
 import logging
 
 from django.core.exceptions import ValidationError, PermissionDenied
-from django.db.models import Q
+from django.db.models import Q, Exists, OuterRef
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 
@@ -33,7 +33,7 @@ from .serializers import (
 logger = logging.getLogger(__name__)
 
 
-class ClientEngagementsAPIView(APIView):
+class ClientEngagementsAPIView(_LenientPaginatorMixin, APIView):
     """GET /api/bookings/engagements/client/"""
 
     permission_classes = [IsAuthenticated]
@@ -42,12 +42,25 @@ class ClientEngagementsAPIView(APIView):
         qs = (
             Engagement.objects.filter(client=request.user)
             .select_related("client", "performer")
+            .annotate(
+                is_already_reviewed=Exists(
+                    Review.objects.filter(engagement=OuterRef("pk"), author=request.user)
+                )
+            )
             .order_by("date", "time")
         )
-        return Response(EngagementSerializer(qs, many=True).data)
+        paginator, page_obj = self.paginate_lenient(qs, request)
+        return Response({
+            "count": paginator.count,
+            "num_pages": paginator.num_pages,
+            "page": page_obj.number,
+            "has_next": page_obj.has_next(),
+            "has_previous": page_obj.has_previous(),
+            "results": EngagementSerializer(page_obj.object_list, many=True, context={"request": request}).data,
+        })
 
 
-class PerformerEngagementsAPIView(APIView):
+class PerformerEngagementsAPIView(_LenientPaginatorMixin, APIView):
     """GET /api/bookings/engagements/performer/"""
 
     permission_classes = [IsAuthenticated]
@@ -56,9 +69,22 @@ class PerformerEngagementsAPIView(APIView):
         qs = (
             Engagement.objects.filter(performer=request.user)
             .select_related("client", "performer")
+            .annotate(
+                is_already_reviewed=Exists(
+                    Review.objects.filter(engagement=OuterRef("pk"), author=request.user)
+                )
+            )
             .order_by("date", "time")
         )
-        return Response(EngagementSerializer(qs, many=True).data)
+        paginator, page_obj = self.paginate_lenient(qs, request)
+        return Response({
+            "count": paginator.count,
+            "num_pages": paginator.num_pages,
+            "page": page_obj.number,
+            "has_next": page_obj.has_next(),
+            "has_previous": page_obj.has_previous(),
+            "results": EngagementSerializer(page_obj.object_list, many=True, context={"request": request}).data,
+        })
 
 
 class CreateHireRequestAPIView(APIView):
@@ -248,10 +274,17 @@ class EngagementViewSet(viewsets.ViewSet):
 
     def _get_visible_qs(self, request):
         if self._is_admin(request):
-            return Engagement.objects.all().select_related("client", "performer")
-        return Engagement.objects.filter(
-            Q(client=request.user) | Q(performer=request.user)
-        ).select_related("client", "performer")
+            qs = Engagement.objects.all()
+        else:
+            qs = Engagement.objects.filter(
+                Q(client=request.user) | Q(performer=request.user)
+            )
+        
+        return qs.select_related("client", "performer").annotate(
+            is_already_reviewed=Exists(
+                Review.objects.filter(engagement=OuterRef("pk"), author=request.user)
+            )
+        )
 
     def list(self, request):
         """
@@ -259,7 +292,9 @@ class EngagementViewSet(viewsets.ViewSet):
         Returns union of engagements where user is client OR performer.
         """
         qs = self._get_visible_qs(request).order_by("date", "time")
-        return Response(EngagementSerializer(qs, many=True).data)
+        # Ensure pagination here if needed, but if it is just a plain ViewSet, DRF handles it if pagination is configured globally. 
+        # But we'll leave it returning a raw list since mobile doesn't currently call this directly.
+        return Response(EngagementSerializer(qs, many=True, context={"request": request}).data)
 
     def retrieve(self, request, pk=None):
         """
@@ -467,6 +502,7 @@ class EngagementViewSet(viewsets.ViewSet):
         review_instance.comment = ser.validated_data["comment"]
 
         try:
+            review_instance.clean() # populate subject and direction
             review_instance.full_clean()
         except ValidationError as e:
             # Format validation errors for DRF
