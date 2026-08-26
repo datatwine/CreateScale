@@ -83,8 +83,11 @@ class TestDisputeIntegration(TestCase):
 
     # ── Window rules ──────────────────────────────────────────────────
     def test_dispute_within_window_marks_disputed(self):
+        # M5: window opens at midnight after the event date. For a 12:00
+        # event that midnight is event_end + 12h, so offset 12 is the exact
+        # (inclusive) open edge.
         self.client.force_login(self.meera)
-        with patch("bookings.views.timezone.now", return_value=self._now(12)):
+        with patch("bookings.models.timezone.now", return_value=self._now(12)):
             resp = self._dispute()
 
         self.assertEqual(resp.status_code, 302)
@@ -99,7 +102,7 @@ class TestDisputeIntegration(TestCase):
 
     def test_dispute_before_event_rejected(self):
         self.client.force_login(self.meera)
-        with patch("bookings.views.timezone.now", return_value=self._now(-1)):
+        with patch("bookings.models.timezone.now", return_value=self._now(-1)):
             resp = self._dispute()
 
         self.assertEqual(resp.status_code, 302)
@@ -107,29 +110,32 @@ class TestDisputeIntegration(TestCase):
         self.assertIsNone(self.engagement.disputed_at)
         self.assertEqual(self.engagement.dispute_reason, "")
 
-    def test_dispute_after_24h_window_rejected(self):
+    def test_dispute_after_window_rejected(self):
+        # Past the far edge: window closes at midnight after event date + 24h
+        # (event_end + 36h for a 12:00 event), so offset 37 is closed.
         self.client.force_login(self.meera)
-        with patch("bookings.views.timezone.now", return_value=self._now(25)):
+        with patch("bookings.models.timezone.now", return_value=self._now(37)):
             resp = self._dispute()
 
         self.assertEqual(resp.status_code, 302)
         self.engagement.refresh_from_db()
         self.assertIsNone(self.engagement.disputed_at)
 
-    def test_dispute_at_exact_window_end_accepted(self):
-        # Window is [event_end, event_end + 24h] inclusive on the far side.
+    def test_dispute_at_window_close_rejected(self):
+        # M5: window is [midnight-after-event, +24h) — the far edge is
+        # exclusive. For a 12:00 event that edge is event_end + 36h.
         self.client.force_login(self.meera)
-        with patch("bookings.views.timezone.now", return_value=self._now(24)):
+        with patch("bookings.models.timezone.now", return_value=self._now(36)):
             resp = self._dispute()
 
         self.assertEqual(resp.status_code, 302)
         self.engagement.refresh_from_db()
-        self.assertIsNotNone(self.engagement.disputed_at)
+        self.assertIsNone(self.engagement.disputed_at)
 
     # ── Reason boundaries ────────────────────────────────────────────
     def test_dispute_reason_too_short_rejected(self):
         self.client.force_login(self.meera)
-        with patch("bookings.views.timezone.now", return_value=self._now(12)):
+        with patch("bookings.models.timezone.now", return_value=self._now(12)):
             resp = self._dispute(reason="Too short")
 
         self.assertEqual(resp.status_code, 302)
@@ -138,7 +144,7 @@ class TestDisputeIntegration(TestCase):
 
     def test_dispute_reason_exactly_10_chars_accepted(self):
         self.client.force_login(self.meera)
-        with patch("bookings.views.timezone.now", return_value=self._now(12)):
+        with patch("bookings.models.timezone.now", return_value=self._now(12)):
             resp = self._dispute(reason="a" * 10)
 
         self.assertEqual(resp.status_code, 302)
@@ -147,7 +153,7 @@ class TestDisputeIntegration(TestCase):
 
     def test_dispute_reason_too_long_rejected(self):
         self.client.force_login(self.meera)
-        with patch("bookings.views.timezone.now", return_value=self._now(12)):
+        with patch("bookings.models.timezone.now", return_value=self._now(12)):
             resp = self._dispute(reason="x" * 1001)
 
         self.assertEqual(resp.status_code, 302)
@@ -160,7 +166,7 @@ class TestDisputeIntegration(TestCase):
         self.engagement.save(update_fields=["payment_status"])
 
         self.client.force_login(self.meera)
-        with patch("bookings.views.timezone.now", return_value=self._now(12)):
+        with patch("bookings.models.timezone.now", return_value=self._now(12)):
             resp = self._dispute()
 
         self.assertEqual(resp.status_code, 302)
@@ -174,7 +180,7 @@ class TestDisputeIntegration(TestCase):
         self.engagement.save(update_fields=["payment_status", "released_at"])
 
         self.client.force_login(self.meera)
-        with patch("bookings.views.timezone.now", return_value=self._now(12)):
+        with patch("bookings.models.timezone.now", return_value=self._now(12)):
             resp = self._dispute()
 
         self.assertEqual(resp.status_code, 302)
@@ -183,12 +189,12 @@ class TestDisputeIntegration(TestCase):
 
     def test_second_dispute_is_noop(self):
         self.client.force_login(self.meera)
-        with patch("bookings.views.timezone.now", return_value=self._now(12)):
+        with patch("bookings.models.timezone.now", return_value=self._now(12)):
             self._dispute(reason="First issue: equipment was broken.")
         self.engagement.refresh_from_db()
         first = self.engagement.disputed_at
 
-        with patch("bookings.views.timezone.now", return_value=self._now(12)):
+        with patch("bookings.models.timezone.now", return_value=self._now(12)):
             resp = self._dispute(reason="Second issue raised again.")
 
         self.assertEqual(resp.status_code, 302)
@@ -201,7 +207,7 @@ class TestDisputeIntegration(TestCase):
     # ── Role gates ───────────────────────────────────────────────────
     def test_performer_cannot_dispute(self):
         self.client.force_login(self.ravi)
-        with patch("bookings.views.timezone.now", return_value=self._now(12)):
+        with patch("bookings.models.timezone.now", return_value=self._now(12)):
             resp = self._dispute()
 
         self.assertEqual(resp.status_code, 403)

@@ -1,6 +1,5 @@
 import json
 import logging
-from datetime import timedelta
 from django.shortcuts import render
 
 # Create your views here.
@@ -368,14 +367,10 @@ def raise_dispute(request, pk):
     if engagement.client != request.user:
         raise PermissionDenied
 
-    # Window check: event must have ended, but no more than 24h ago.
-    now = timezone.now()
-    event_end = engagement.event_datetime()
-    dispute_window_end = event_end + timedelta(hours=24)
-    if not (event_end <= now <= dispute_window_end):
-        messages.error(request, "Dispute window is not open for this booking.")
-        return redirect("bookings:engagement-detail", pk=pk)
-
+    # Paid + not-already-disputed are checked first so each gets its own
+    # message; the window itself is gated by Engagement.can_dispute — the
+    # single source of truth the API view uses too (opens midnight after
+    # the event date, per M5), so web and API can't drift apart.
     if engagement.payment_status != Engagement.PAYMENT_PAID:
         messages.error(
             request,
@@ -387,6 +382,10 @@ def raise_dispute(request, pk):
         messages.info(request, "You have already raised an issue on this booking.")
         return redirect("bookings:engagement-detail", pk=pk)
 
+    if not engagement.can_dispute:
+        messages.error(request, "Dispute window is not open for this booking.")
+        return redirect("bookings:engagement-detail", pk=pk)
+
     form = DisputeForm(request.POST)
     if not form.is_valid():
         messages.error(
@@ -395,7 +394,7 @@ def raise_dispute(request, pk):
         )
         return redirect("bookings:engagement-detail", pk=pk)
 
-    engagement.disputed_at = now
+    engagement.disputed_at = timezone.now()
     engagement.dispute_reason = form.cleaned_data["dispute_reason"]
     engagement.save(update_fields=["disputed_at", "dispute_reason"])
     messages.success(
