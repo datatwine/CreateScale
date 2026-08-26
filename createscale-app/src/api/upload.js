@@ -39,11 +39,23 @@ export async function uploadMedia({ token, fileUri, fileName, contentType, capti
     if (!presignRes.ok) throw new Error(`Presign failed: ${presignRes.status}`);
     const { url, key, content_type } = await presignRes.json();
 
-    // Step 2: PUT file directly to R2
+    // Step 2: PUT file directly to R2.
+    // The { uri, name, type } shorthand is only valid inside FormData.append()
+    // (see legacyMultipartUpload below) — as a raw PUT body it can't be turned
+    // into file bytes on a standalone Android build, so the signed PUT fails.
+    // Read the file URI into a Blob and send that (actual binary) instead.
+    let blob;
+    try {
+        const fileRes = await fetch(fileUri);
+        blob = await fileRes.blob();
+    } catch (_err) {
+        throw new Error("Could not read file for upload");
+    }
+
     const r2Res = await fetch(url, {
         method: "PUT",
         headers: { "Content-Type": content_type },
-        body: { uri: fileUri, name: fileName, type: content_type },
+        body: blob,
     });
     if (!r2Res.ok && r2Res.status !== 204) {
         throw new Error(`R2 upload failed: ${r2Res.status}`);
