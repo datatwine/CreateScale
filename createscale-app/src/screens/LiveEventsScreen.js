@@ -78,6 +78,7 @@ function EventCard({ event, isPast }) {
     return (
         <PressableStamp
             stampOffset={4}
+            stampOffsetY={2}
             borderRadius={16}
             borderColor={COLORS.ink}
             borderWidth={2}

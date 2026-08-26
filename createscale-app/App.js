@@ -57,7 +57,7 @@ function MainTabs() {
         headerShown: false,
         tabBarActiveTintColor: COLORS.accent,
         tabBarInactiveTintColor: COLORS.textMuted,
-        tabBarItemStyle: { paddingVertical: 6 },
+        tabBarItemStyle: { paddingVertical: 6, paddingHorizontal: 12 },
         tabBarStyle: {
           // True floating overlay: absolutely positioned over screen content
           // (instead of sitting in normal layout flow and pushing it up), so

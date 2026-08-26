@@ -32,7 +32,7 @@ async function shrinkImage(uri, maxWidth) {
 
 export default function EditProfileScreen() {
   const navigation = useNavigation();
-  const { token, logout } = useContext(AuthContext);
+  const { token } = useContext(AuthContext);
 
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -315,10 +315,6 @@ export default function EditProfileScreen() {
             </Text>
           </TouchableOpacity>
         </View>
-
-        <TouchableOpacity style={styles.logoutButton} onPress={logout}>
-          <Text style={styles.logoutText}>Log out</Text>
-        </TouchableOpacity>
       </ScrollView>
       </View>
     </SafeAreaView>
@@ -438,21 +434,6 @@ const styles = StyleSheet.create({
   },
   toggleTextActive: {
     color: COLORS.card,
-  },
-  logoutButton: {
-    marginTop: 32,
-    marginBottom: 16,
-    borderRadius: 999,
-    borderWidth: 2,
-    borderColor: COLORS.dangerBright,
-    backgroundColor: COLORS.card,
-    paddingVertical: 12,
-    alignItems: "center",
-  },
-  logoutText: {
-    color: COLORS.dangerBright,
-    fontSize: 14,
-    fontWeight: "600",
   },
   loadingFullScreen: {
     flex: 1,

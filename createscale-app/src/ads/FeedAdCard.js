@@ -60,7 +60,7 @@ function RealFeedAd({ adUnitId }) {
   }
 
   return (
-    <NativeAdView nativeAd={nativeAd} style={[styles.card, styles.realCard]}>
+    <NativeAdView nativeAd={nativeAd} style={styles.card}>
       <AdBadge style={styles.badge} />
 
       {nativeAd.icon?.url ? (
@@ -128,13 +128,13 @@ const styles = StyleSheet.create({
   card: {
     borderRadius: 14,
     backgroundColor: COLORS.card,
+    // Ink border on every ad state (real / loading / error) so ad cards stay
+    // visually distinct from feed content — matches the mock ad's stamp border.
+    borderWidth: 2,
+    borderColor: COLORS.ink,
     alignItems: "center",
     padding: 16,
     height: 150,
-  },
-  realCard: {
-    borderWidth: 2,
-    borderColor: COLORS.ink,
   },
   loadingCard: {
     justifyContent: "center",
