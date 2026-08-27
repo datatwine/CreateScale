@@ -219,10 +219,12 @@ class TestDisputeAction:
         self.api = APIClient()
 
     def _make_disputable(self, engagement):
-        """Paid engagement whose event just ended (inside the 24h window)."""
-        soon_past = timezone.now() - timedelta(hours=1)
-        engagement.date = soon_past.date()
-        engagement.time = soon_past.time().replace(microsecond=0)
+        """Paid engagement dated yesterday — inside the dispute window, which
+        opens at midnight after the event date (M5), so it's disputable all
+        of today regardless of the time this test runs."""
+        yesterday = timezone.now() - timedelta(days=1)
+        engagement.date = yesterday.date()
+        engagement.time = yesterday.time().replace(microsecond=0)
         engagement.status = Engagement.STATUS_ACCEPTED
         engagement.payment_status = Engagement.PAYMENT_PAID
         engagement.save()
