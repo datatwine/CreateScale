@@ -109,12 +109,10 @@ services:
       SECRET_KEY: "${GLITCHTIP_SECRET_KEY}"
       PORT: 8000
       GLITCHTIP_DOMAIN: "https://errors.stagefreedom.org"
-      FORWARDED_ALLOW_IPS: "*"
       EMAIL_URL: "consolemail://"
       DEFAULT_FROM_EMAIL: "[email protected]"
     ports:
       - "8000:8000"
-      - "80:8000"
     restart: unless-stopped
     logging:
       driver: json-file
@@ -137,6 +135,20 @@ services:
       DEFAULT_FROM_EMAIL: "[email protected]"
     command: ./bin/run-celery-with-beat.sh
     restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: "${CLOUDFLARE_TUNNEL_TOKEN}"
+    depends_on:
+      - glitchtip-web
     logging:
       driver: json-file
       options:
