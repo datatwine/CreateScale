@@ -109,6 +109,7 @@ services:
       SECRET_KEY: "${GLITCHTIP_SECRET_KEY}"
       PORT: 8000
       GLITCHTIP_DOMAIN: "https://errors.stagefreedom.org"
+      FORWARDED_ALLOW_IPS: "*"
       EMAIL_URL: "consolemail://"
       DEFAULT_FROM_EMAIL: "[email protected]"
     ports:
