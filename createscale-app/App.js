@@ -1,5 +1,6 @@
 // App.js
 
+import * as Sentry from "@sentry/react-native";
 import React, { useContext, useEffect, useRef } from "react";
 import { NavigationContainer, DefaultTheme } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
@@ -27,6 +28,13 @@ import EditProfileScreen from "./src/screens/EditProfileScreen";
 
 import { View, Text, StatusBar, StyleSheet } from "react-native";
 import { COLORS } from "./src/config/theme";
+
+Sentry.init({
+  dsn: "https://37e666dac4e34dd585b5e5f2889a8b3a@errors.stagefreedom.org/2",
+  environment: __DEV__ ? "development" : "production",
+  enableNative: true,
+  tracesSampleRate: 0,
+});
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -195,7 +203,7 @@ function RootNavigator() {
   );
 }
 
-export default function App() {
+export default Sentry.wrap(function App() {
   return (
     <SafeAreaProvider>
       <AuthProvider>
@@ -206,7 +214,7 @@ export default function App() {
       </AuthProvider>
     </SafeAreaProvider>
   );
-}
+});
 
 const styles = StyleSheet.create({
   loadingContainer: {

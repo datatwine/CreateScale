@@ -51,7 +51,15 @@
         }
       ],
       "expo-build-properties",
-      "expo-video"
+      "expo-video",
+      [
+        "@sentry/react-native/expo",
+        {
+          "url": "https://errors.stagefreedom.org",
+          "organization": "stagefreedom",
+          "project": "createscale-mobile"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
