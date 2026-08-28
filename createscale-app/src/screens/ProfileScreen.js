@@ -1,4 +1,4 @@
-import React, { useCallback, useContext, useEffect, useRef, useState } from "react";
+import React, { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -8,7 +8,6 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   useWindowDimensions,
   View,
@@ -25,6 +24,8 @@ import { kycLabel, kycColor, shouldShowPayoutsLink, shouldShowPaymentsLink } fro
 import { isUnauthorized } from "../utils/session";
 import { COLORS, TAB_BAR_CLEARANCE } from "../config/theme";
 import PressableStamp from "../components/PressableStamp";
+import MediaViewer from "../components/MediaViewer";
+import { buildMediaSource } from "../utils/mediaViewer";
 
 // ---------------------------------------------------------------------------
 // Client-side media compression helpers
@@ -131,113 +132,6 @@ function UploadGridItem({ upload, onPress }) {
   );
 }
 
-function PreviewModal({ visible, upload, onClose, onEdit, onDelete }) {
-  const { width: screenWidth, height: screenHeight } = useWindowDimensions();
-  const [editCaption, setEditCaption] = useState("");
-  const [showOptions, setShowOptions] = useState(false);
-  const [editing, setEditing] = useState(false);
-  const mediaHeight = screenHeight * 0.7;
-
-  useEffect(() => {
-    if (upload) {
-      setEditCaption(upload.caption || "");
-      setEditing(false);
-      setShowOptions(false);
-    }
-  }, [upload]);
-
-  if (!upload) return null;
-
-  const imageUri = makeMediaUrl(upload.image_url || upload.image);
-  const videoUri = !imageUri ? makeMediaUrl(upload.video_url || upload.video) : null;
-  const hasImage = !!imageUri;
-  const hasVideo = !hasImage && !!videoUri;
-
-  const handleSaveCaption = () => {
-    setEditing(false);
-    onClose();
-    onEdit(upload.id, editCaption);
-  };
-
-  return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <TouchableOpacity style={styles.previewOverlay} activeOpacity={1} onPress={onClose}>
-        <TouchableOpacity activeOpacity={1} onPress={() => {}} style={styles.previewContent}>
-          {hasImage ? (
-            <Image
-              source={{ uri: imageUri }}
-              style={[styles.previewMedia, { width: screenWidth, height: mediaHeight }]}
-              resizeMode="contain"
-            />
-          ) : hasVideo ? (
-            <View style={[styles.previewVideoFallback, { width: screenWidth - 32 }]}>
-              <Ionicons name="videocam" size={48} color={COLORS.textMuted} />
-              <Text style={styles.previewVideoText}>Video</Text>
-            </View>
-          ) : null}
-
-          {editing ? (
-            <View style={styles.previewEditWrap}>
-              <TextInput
-                style={styles.previewEditInput}
-                value={editCaption}
-                onChangeText={setEditCaption}
-                multiline
-                autoFocus
-                placeholder="Write a caption..."
-                placeholderTextColor={COLORS.placeholder}
-              />
-              <View style={styles.previewEditBtns}>
-                <TouchableOpacity onPress={handleSaveCaption}>
-                  <Text style={{ color: COLORS.accent, fontWeight: "600", fontSize: 14 }}>Save</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => { setEditing(false); setEditCaption(upload.caption || ""); }}>
-                  <Text style={{ color: COLORS.textMuted, fontSize: 14 }}>Cancel</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          ) : editCaption ? (
-            <Text style={styles.previewCaption}>{editCaption}</Text>
-          ) : null}
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.previewClose} onPress={onClose}>
-          <Ionicons name="close" size={24} color={COLORS.ink} />
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.previewMenu} onPress={() => setShowOptions(v => !v)}>
-          <Ionicons name="ellipsis-vertical" size={20} color={COLORS.ink} />
-        </TouchableOpacity>
-
-        {showOptions && (
-          <View style={styles.previewOptionsCard}>
-            <TouchableOpacity
-              style={styles.previewOption}
-              onPress={() => { setShowOptions(false); setEditing(true); }}
-            >
-              <Text style={styles.previewOptionText}>Edit caption</Text>
-            </TouchableOpacity>
-            <View style={styles.previewOptionDivider} />
-            <TouchableOpacity
-              style={styles.previewOption}
-              onPress={() => { setShowOptions(false); onClose(); onDelete(upload.id); }}
-            >
-              <Text style={[styles.previewOptionText, { color: COLORS.dangerBright }]}>Delete</Text>
-            </TouchableOpacity>
-            <View style={styles.previewOptionDivider} />
-            <TouchableOpacity
-              style={styles.previewOption}
-              onPress={() => setShowOptions(false)}
-            >
-              <Text style={[styles.previewOptionText, { color: COLORS.textMuted }]}>Cancel</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-      </TouchableOpacity>
-    </Modal>
-  );
-}
-
 export default function ProfileScreen() {
   const navigation = useNavigation();
   const { token, logout } = useContext(AuthContext);
@@ -283,6 +177,12 @@ export default function ProfileScreen() {
   const [loadingUploads, setLoadingUploads] = useState(true);
   const [uploadingMedia, setUploadingMedia] = useState(false);
   const [previewUpload, setPreviewUpload] = useState(null);
+  // Memoized so MediaViewer gets a stable `media` reference across re-renders
+  // (a fresh object each render would reset its internal edit state).
+  const previewMedia = useMemo(
+    () => buildMediaSource(previewUpload, makeMediaUrl),
+    [previewUpload]
+  );
   const initialLoadDone = useRef(false);
 
   const avatarUrl = makeMediaUrl(
@@ -732,9 +632,9 @@ export default function ProfileScreen() {
         </View>
       </ScrollView>
 
-      <PreviewModal
+      <MediaViewer
         visible={!!previewUpload}
-        upload={previewUpload}
+        media={previewMedia}
         onClose={() => setPreviewUpload(null)}
         onEdit={handleEditCaption}
         onDelete={handleDeleteUpload}
@@ -1296,31 +1196,6 @@ const styles = StyleSheet.create({
     marginTop: 8,
     color: COLORS.textSecondary,
   },
-  previewOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(255,248,238,0.85)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-previewClose: {
-    position: "absolute",
-    top: 54,
-    left: 16,
-    zIndex: 10,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: COLORS.card,
-    borderWidth: 2,
-    borderColor: COLORS.ink,
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: COLORS.ink,
-    shadowOffset: { width: 2, height: 2 },
-    shadowOpacity: 1,
-    shadowRadius: 0,
-    elevation: 4,
-  },
   uploadFallbackText: {
     color: COLORS.textMuted,
     fontSize: 13,
@@ -1351,102 +1226,5 @@ previewClose: {
     shadowOpacity: 1,
     shadowRadius: 0,
     elevation: 4,
-  },
-  previewMenu: {
-    position: "absolute",
-    top: 54,
-    right: 16,
-    zIndex: 10,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: COLORS.card,
-    borderWidth: 2,
-    borderColor: COLORS.ink,
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: COLORS.ink,
-    shadowOffset: { width: 2, height: 2 },
-    shadowOpacity: 1,
-    shadowRadius: 0,
-    elevation: 4,
-  },
-  previewContent: {
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  previewMedia: {},
-  previewVideoFallback: {
-    width: "100%",
-    aspectRatio: 16 / 9,
-    backgroundColor: COLORS.cream,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    borderRadius: 8,
-  },
-  previewVideoText: {
-    color: COLORS.textMuted,
-    fontSize: 14,
-  },
-  previewCaption: {
-    color: COLORS.textPrimary,
-    fontSize: 14,
-    marginTop: 12,
-    textAlign: "center",
-    paddingHorizontal: 24,
-    lineHeight: 20,
-  },
-  previewEditWrap: {
-    paddingHorizontal: 24,
-    marginTop: 12,
-  },
-  previewEditInput: {
-    backgroundColor: COLORS.cream,
-    color: COLORS.textPrimary,
-    borderRadius: 10,
-    padding: 12,
-    fontSize: 14,
-    minHeight: 60,
-    textAlignVertical: "top",
-    borderWidth: 1.5,
-    borderColor: COLORS.peach,
-  },
-  previewEditBtns: {
-    flexDirection: "row",
-    justifyContent: "flex-end",
-    gap: 16,
-    marginTop: 8,
-  },
-  previewOptionsCard: {
-    position: "absolute",
-    top: 92,
-    right: 16,
-    backgroundColor: COLORS.card,
-    borderRadius: 12,
-    paddingVertical: 4,
-    minWidth: 160,
-    borderWidth: 2,
-    borderColor: COLORS.ink,
-    shadowColor: COLORS.ink,
-    shadowOffset: { width: 4, height: 4 },
-    shadowOpacity: 1,
-    shadowRadius: 0,
-    elevation: 8,
-  },
-  previewOption: {
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-  },
-  previewOptionText: {
-    color: COLORS.textPrimary,
-    fontSize: 15,
-    fontWeight: "500",
-    textAlign: "center",
-  },
-  previewOptionDivider: {
-    height: 1,
-    backgroundColor: COLORS.divider,
-    marginHorizontal: 8,
   },
 });

@@ -189,8 +189,9 @@ class TestDisputeView:
     def test_client_can_raise_dispute_in_window(self, client, engagement, client_user):
         engagement.status = Engagement.STATUS_ACCEPTED
         engagement.payment_status = Engagement.PAYMENT_PAID
-        # Event was 6 hours ago
-        recent = timezone.now() - timedelta(hours=6)
+        # Event was yesterday — dispute window opens at midnight after the
+        # event date (M5), so it's open all of today.
+        recent = timezone.now() - timedelta(days=1)
         engagement.date = recent.date()
         engagement.time = recent.time().replace(microsecond=0)
         engagement.save()
@@ -208,7 +209,8 @@ class TestDisputeView:
     def test_only_client_can_dispute(self, client, engagement, performer_user):
         engagement.status = Engagement.STATUS_ACCEPTED
         engagement.payment_status = Engagement.PAYMENT_PAID
-        recent = timezone.now() - timedelta(hours=6)
+        # Event was yesterday — inside the M5 dispute window.
+        recent = timezone.now() - timedelta(days=1)
         engagement.date = recent.date()
         engagement.time = recent.time().replace(microsecond=0)
         engagement.save()

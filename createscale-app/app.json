@@ -50,7 +50,8 @@
           "androidAppId": "ca-app-pub-3940256099942544~3347511713"
         }
       ],
-      "expo-build-properties"
+      "expo-build-properties",
+      "expo-video"
     ],
     "experiments": {
       "typedRoutes": true,

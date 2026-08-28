@@ -20,6 +20,7 @@ import React, {
     useCallback,
     useContext,
     useEffect,
+    useMemo,
     useState,
 } from "react";
 import {
@@ -40,6 +41,8 @@ import { API_BASE_URL } from "../config/api";
 import { AuthContext } from "../context/AuthContext";
 import { COLORS } from "../config/theme";
 import PressableStamp from "../components/PressableStamp";
+import MediaViewer from "../components/MediaViewer";
+import { buildMediaSource } from "../utils/mediaViewer";
 import DateTimePicker from "@react-native-community/datetimepicker";
 
 const EMOJI_MAP = {
@@ -99,13 +102,17 @@ function makeMediaUrl(pathOrUrl) {
 // UploadGridItem — square thumbnail for 3-column grid
 // ---------------------------------------------------------------------------
 
-function UploadGridItem({ upload }) {
+function UploadGridItem({ upload, onPress }) {
     const imageUrl = makeMediaUrl(upload.image_url);
     const videoUrl = makeMediaUrl(upload.video_url);
 
     return (
         <View style={styles.gridItem}>
-            <View style={styles.gridItemInner}>
+            <TouchableOpacity
+                style={styles.gridItemInner}
+                onPress={onPress}
+                activeOpacity={0.8}
+            >
                 {imageUrl ? (
                     <Image source={{ uri: imageUrl }} style={styles.gridImage} resizeMode="cover" />
                 ) : videoUrl ? (
@@ -117,7 +124,7 @@ function UploadGridItem({ upload }) {
                         <Ionicons name="image-outline" size={20} color={COLORS.textMuted} />
                     </View>
                 )}
-            </View>
+            </TouchableOpacity>
         </View>
     );
 }
@@ -391,6 +398,13 @@ export default function ProfileDetailScreen({ route, navigation }) {
     // Current user's profile (for hire-button gating)
     const [myProfile, setMyProfile] = useState(null);
 
+    // Upload tapped for full-screen viewing (read-only — no edit/delete here)
+    const [previewUpload, setPreviewUpload] = useState(null);
+    const previewMedia = useMemo(
+        () => buildMediaSource(previewUpload, makeMediaUrl),
+        [previewUpload]
+    );
+
     // --- Fetch the target user's profile ---
     const fetchProfile = useCallback(async () => {
         if (!token || !userId) return;
@@ -621,7 +635,11 @@ export default function ProfileDetailScreen({ route, navigation }) {
                     {uploads.length > 0 ? (
                         <View style={styles.gridContainer}>
                             {uploads.map((u) => (
-                                <UploadGridItem key={u.id} upload={u} />
+                                <UploadGridItem
+                                    key={u.id}
+                                    upload={u}
+                                    onPress={() => setPreviewUpload(u)}
+                                />
                             ))}
                         </View>
                     ) : (
@@ -630,6 +648,12 @@ export default function ProfileDetailScreen({ route, navigation }) {
                 </View>
             </ScrollView>
             </View>
+
+            <MediaViewer
+                visible={!!previewUpload}
+                media={previewMedia}
+                onClose={() => setPreviewUpload(null)}
+            />
         </SafeAreaView>
     );
 }

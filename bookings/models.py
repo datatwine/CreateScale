@@ -271,17 +271,26 @@ class Engagement(models.Model):
         True only when the client may still raise an issue:
           - Payment is currently held in escrow (paid, not yet released).
           - No prior dispute on this engagement.
-          - Now is between event end and event end + 24h.
+          - Now is inside the dispute window, which opens at midnight
+            following the event date and lasts RAZORPAY_DISPUTE_WINDOW_HOURS.
+
+        Anchoring to midnight after the event date (M5) rather than the
+        event's start time keeps the window well-defined for long or
+        full-day events — whose old start-time window could close before
+        the event even ended — and makes it independent of the time of day
+        the check runs. See TestCanDispute in test_cancel_logic.py.
         """
         if self.payment_status != self.PAYMENT_PAID or self.disputed_at:
             return False
-        now = timezone.now()
-        event_end = self.event_datetime()
-        return (
-            event_end
-            <= now
-            <= event_end + timedelta(hours=settings.RAZORPAY_DISPUTE_WINDOW_HOURS)
+        tz = timezone.get_current_timezone()
+        window_open = timezone.make_aware(
+            datetime.combine(self.date + timedelta(days=1), datetime.min.time()), tz
         )
+        window_close = window_open + timedelta(
+            hours=settings.RAZORPAY_DISPUTE_WINDOW_HOURS
+        )
+        now = timezone.now()
+        return window_open <= now < window_close
 
     def accept(self):
         """
