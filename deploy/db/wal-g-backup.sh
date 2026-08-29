@@ -61,12 +61,24 @@ case "$CMD" in
         ;;
     freshness)
         # Exit nonzero if the newest base backup is older than 8 days.
-        LAST=$(walg backup-list --pretty --json 2>/dev/null | tail -1 || true)
-        if [ -z "$LAST" ]; then
-            echo "ERROR: no backups found (R2 empty or creds bad)" >&2
+        LAST=$(walg backup-list --pretty --json 2>/dev/null | python3 -c "
+import sys, json
+from datetime import datetime
+try:
+    data = json.load(sys.stdin)
+    if not data:
+        print('ERROR: no backups found')
+        sys.exit(1)
+    print(max(datetime.fromisoformat(b['time'].rstrip('Z')) for b in data).isoformat() + 'Z')
+except Exception as e:
+    print('ERROR: failed to parse backup list: %s' % e)
+    sys.exit(1)
+")
+        if [ -z "$LAST" ] || [[ "$LAST" == ERROR:* ]]; then
+            echo "$LAST" >&2
             exit 1
         fi
-        TS=$(echo "$LAST" | python3 -c "import sys,json; b=json.load(sys.stdin); print(b['time'].rstrip('Z') + 'Z')")
+        TS=$LAST
         NOW=$(python3 -c "import datetime; print(datetime.datetime.now(datetime.timezone.utc).isoformat())")
         python3 -c "
 import datetime
