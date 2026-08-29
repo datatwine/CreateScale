@@ -159,16 +159,34 @@ def global_feed(request):
     profession_filter_form = ProfessionFilterForm(request.GET or None)
     page_number = request.GET.get("page", "1")
     selected_profession = request.GET.get("professions", "")
+
+    # Search term from the search bar — same cleanup as the API view.
+    search = request.GET.get("search", "").strip()[:100]
+
     professions_key = selected_profession or "all"
-    cache_key = f"web:feed:{page_number}:{professions_key}"
+    # Cache key includes the search term so different searches don't collide.
+    cache_key = f"web:feed:{page_number}:{professions_key}:{search.lower()}"
 
     profiles_page = cache.get(cache_key)
     if profiles_page is None:
         profiles_qs = (
             Profile.objects.select_related("user")
-            .only("user__id", "user__username", "profession", "profile_picture")
+            .only(
+                "user__id",
+                "user__username",
+                "profession",
+                "location",
+                "profile_picture",
+            )
             .order_by("id")
         )
+        # Trigram search — same logic as the API view.
+        if search:
+            profiles_qs = profiles_qs.filter(
+                Q(user__username__icontains=search)
+                | Q(profession__icontains=search)
+                | Q(location__icontains=search)
+            )
         if profession_filter_form.is_valid():
             professions = profession_filter_form.cleaned_data.get("professions")
             if professions:
@@ -190,6 +208,7 @@ def global_feed(request):
             "profiles": profiles_page,
             "profession_filter_form": profession_filter_form,
             "selected_profession": selected_profession,
+            "search_query": search,
             "current_user_id": request.user.id,
             "has_visible_profiles": has_visible_profiles,
         },

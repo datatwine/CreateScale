@@ -13,7 +13,7 @@ from django.conf import settings as django_settings
 
 logger = logging.getLogger(__name__)
 
-from users.forms import CustomPasswordResetForm
+from django.db.models import Q
 
 from rest_framework import generics, serializers, status
 from rest_framework.permissions import IsAuthenticated, AllowAny
@@ -24,6 +24,7 @@ from rest_framework.authtoken.models import Token
 
 from users.models import Profile, PushToken, Upload
 from bookings.models import Engagement
+from users.forms import CustomPasswordResetForm
 
 from .presign import generate_upload_presign
 from .throttles import AuthRateThrottle
@@ -520,7 +521,13 @@ class GlobalFeedAPIView(_LenientPaginatorMixin, generics.GenericAPIView):
     def get(self, request):
         profs = ",".join(sorted(request.query_params.getlist("profession", [])))
         page = request.query_params.get("page", "1")
-        key = f"feed:{page}:{profs}"
+        # Search term — strip whitespace, cap length to prevent abuse.
+        # Empty string = no search filter applied.
+        search = request.query_params.get("search", "").strip()[:100]
+        # Cache key includes the search term so different searches don't
+        # return each other's results. .lower() = "Harsh" and "harsh" hit
+        # the same entry (icontains is case-insensitive).
+        key = f"feed:{page}:{profs}:{search.lower()}"
 
         def compute():
             qs = (
@@ -529,12 +536,25 @@ class GlobalFeedAPIView(_LenientPaginatorMixin, generics.GenericAPIView):
                     "user__id",
                     "user__username",
                     "profession",
+                    "location",
                     "profile_picture",
                     "is_performer",
+                    "bio",
                 )
                 .order_by("id")
             )
 
+            # Trigram-accelerated search across username, profession, location.
+            # __icontains → SQL: WHERE col ILIKE '%term%'; on PostgreSQL the
+            # GIN trigram indexes (see migration 0016) make this an index scan.
+            if search:
+                qs = qs.filter(
+                    Q(user__username__icontains=search)
+                    | Q(profession__icontains=search)
+                    | Q(location__icontains=search)
+                )
+
+            # Existing profession filter stacks on top of search.
             professions = [p for p in request.query_params.getlist("profession") if p]
             if professions:
                 qs = qs.filter(profession__in=professions)
