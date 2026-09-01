@@ -312,9 +312,13 @@ def engagement_detail(request, pk):
 
     counterpart_review = None
     if already_reviewed:
-        counterpart_review = Review.objects.filter(
-            engagement=engagement,
-        ).exclude(author=request.user).first()
+        counterpart_review = (
+            Review.objects.filter(
+                engagement=engagement,
+            )
+            .exclude(author=request.user)
+            .first()
+        )
 
     return render(
         request,
