@@ -752,6 +752,32 @@ const styles = StyleSheet.create({
         fontStyle: "italic",
         marginTop: 8,
     },
+    
+    // --- Counterpart Review ---
+    counterpartReviewBox: {
+        marginTop: 12,
+        padding: 12,
+        backgroundColor: COLORS.cream,
+        borderWidth: 1,
+        borderColor: COLORS.divider,
+        borderRadius: 10,
+    },
+    counterpartReviewTitle: {
+        fontSize: 13,
+        fontWeight: "600",
+        color: COLORS.textPrimary,
+        marginBottom: 4,
+    },
+    counterpartReviewRating: {
+        fontSize: 13,
+        fontWeight: "700",
+        color: COLORS.accent,
+    },
+    counterpartReviewComment: {
+        fontSize: 14,
+        color: COLORS.textSecondary,
+        lineHeight: 20,
+    },
 
     // --- Expand hint chevron ---
     expandHint: {

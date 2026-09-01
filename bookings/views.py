@@ -310,6 +310,12 @@ def engagement_detail(request, pk):
         and not already_reviewed
     )
 
+    counterpart_review = None
+    if already_reviewed:
+        counterpart_review = Review.objects.filter(
+            engagement=engagement,
+        ).exclude(author=request.user).first()
+
     return render(
         request,
         "bookings/engagement_detail.html",
@@ -320,6 +326,7 @@ def engagement_detail(request, pk):
             "form": cancel_form,
             "can_review": can_review,
             "already_reviewed": already_reviewed,
+            "counterpart_review": counterpart_review,
         },
     )
 

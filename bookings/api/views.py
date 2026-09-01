@@ -519,9 +519,16 @@ class EngagementViewSet(viewsets.ViewSet):
         ser.is_valid(raise_exception=True)
 
         review_instance = Review(engagement=engagement, author=request.user)
+        if request.user == engagement.client:
+            review_instance.subject = engagement.performer
+            review_instance.direction = Review.CLIENT_TO_PERFORMER
+        else:
+            review_instance.subject = engagement.client
+            review_instance.direction = Review.PERFORMER_TO_CLIENT
+
         # Apply the validated data manually so that clean() can validate everything
         review_instance.rating = ser.validated_data["rating"]
-        review_instance.comment = ser.validated_data["comment"]
+        review_instance.comment = ser.validated_data.get("comment", "")
 
         try:
             review_instance.save()
