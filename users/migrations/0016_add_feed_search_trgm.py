@@ -1,4 +1,5 @@
 from django.db import migrations
+from django.db.utils import IntegrityError
 
 
 def _is_postgres(schema_editor):
@@ -21,7 +22,11 @@ def add_feed_search_indexes(apps, schema_editor):
     if not _is_postgres(schema_editor):
         return
 
-    schema_editor.execute("CREATE EXTENSION IF NOT EXISTS pg_trgm")
+    try:
+        schema_editor.execute("CREATE EXTENSION IF NOT EXISTS pg_trgm")
+    except IntegrityError:
+        # Postgres can throw a unique violation on IF NOT EXISTS if run concurrently (e.g. by CI workers)
+        pass
     schema_editor.execute(
         "CREATE INDEX IF NOT EXISTS user_username_trgm "
         "ON auth_user USING gin (username gin_trgm_ops);"
@@ -46,6 +51,7 @@ def remove_feed_search_indexes(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
+    atomic = False
     dependencies = [
         ("users", "0015_pushtoken"),
     ]
