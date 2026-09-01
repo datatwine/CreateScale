@@ -42,6 +42,7 @@ class ClientEngagementsAPIView(_LenientPaginatorMixin, APIView):
         qs = (
             Engagement.objects.filter(client=request.user)
             .select_related("client", "performer")
+            .prefetch_related("reviews")
             .annotate(
                 is_already_reviewed=Exists(
                     Review.objects.filter(
@@ -75,6 +76,7 @@ class PerformerEngagementsAPIView(_LenientPaginatorMixin, APIView):
         qs = (
             Engagement.objects.filter(performer=request.user)
             .select_related("client", "performer")
+            .prefetch_related("reviews")
             .annotate(
                 is_already_reviewed=Exists(
                     Review.objects.filter(
@@ -292,9 +294,15 @@ class EngagementViewSet(viewsets.ViewSet):
                 Q(client=request.user) | Q(performer=request.user)
             )
 
-        return qs.select_related("client", "performer").annotate(
-            is_already_reviewed=Exists(
-                Review.objects.filter(engagement=OuterRef("pk"), author=request.user)
+        return (
+            qs.select_related("client", "performer")
+            .prefetch_related("reviews")
+            .annotate(
+                is_already_reviewed=Exists(
+                    Review.objects.filter(
+                        engagement=OuterRef("pk"), author=request.user
+                    )
+                )
             )
         )
 
@@ -516,8 +524,7 @@ class EngagementViewSet(viewsets.ViewSet):
         review_instance.comment = ser.validated_data["comment"]
 
         try:
-            review_instance.clean()  # populate subject and direction
-            review_instance.full_clean()
+            review_instance.save()
         except ValidationError as e:
             # Format validation errors for DRF
             return Response(
@@ -525,7 +532,6 @@ class EngagementViewSet(viewsets.ViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        review_instance.save()
         return Response(
             {"detail": "Review submitted successfully."}, status=status.HTTP_201_CREATED
         )

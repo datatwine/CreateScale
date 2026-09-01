@@ -42,10 +42,7 @@ export default function LeaveReviewScreen({ route, navigation }) {
             return;
         }
 
-        if (!comment.trim()) {
-            Alert.alert("Missing Comment", "Please write a short review comment.");
-            return;
-        }
+
 
         setLoading(true);
         try {

@@ -347,6 +347,14 @@
                         <a href="{% url 'bookings:leave-review' engagement.pk %}" class="btn-accept" style="display:block;text-align:center;text-decoration:none;margin-top:12px;">Leave a review</a>
                     {% elif already_reviewed %}
                         <div class="cancel-card-title" style="color:#1a7f2e;text-align:center;">✓ You’ve reviewed this booking.</div>
+                        {% if counterpart_review %}
+                            <div style="margin-top: 16px; padding: 12px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px;">
+                                <strong>{{ counterpart_review.author.username }}'s Review:</strong> {{ counterpart_review.rating }}/10
+                                {% if counterpart_review.comment %}
+                                    <p style="margin-top: 8px; margin-bottom: 0;">{{ counterpart_review.comment }}</p>
+                                {% endif %}
+                            </div>
+                        {% endif %}
                     {% endif %}
                 </div>
             </div>

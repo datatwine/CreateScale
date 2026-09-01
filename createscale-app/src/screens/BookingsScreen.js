@@ -347,9 +347,21 @@ function EngagementCard({ engagement, myUserId, token, onActionDone, navigation 
                     )}
                     
                     {hasReviewed && (
-                        <Text style={[styles.terminalNote, { color: COLORS.success, fontWeight: '500' }]}>
-                            ✓ You&apos;ve reviewed this booking.
-                        </Text>
+                        <View>
+                            <Text style={[styles.terminalNote, { color: COLORS.success, fontWeight: '500' }]}>
+                                ✓ You&apos;ve reviewed this booking.
+                            </Text>
+                            {engagement.counterpart_review && (
+                                <View style={styles.counterpartReviewBox}>
+                                    <Text style={styles.counterpartReviewTitle}>
+                                        {otherName}&apos;s Review: <Text style={styles.counterpartReviewRating}>{engagement.counterpart_review.rating}/10</Text>
+                                    </Text>
+                                    {engagement.counterpart_review.comment ? (
+                                        <Text style={styles.counterpartReviewComment}>{engagement.counterpart_review.comment}</Text>
+                                    ) : null}
+                                </View>
+                            )}
+                        </View>
                     )}
                 </View>
             )}

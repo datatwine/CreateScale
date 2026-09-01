@@ -6,6 +6,7 @@ class EngagementSerializer(serializers.ModelSerializer):
     client = serializers.SerializerMethodField()
     performer = serializers.SerializerMethodField()
     already_reviewed = serializers.SerializerMethodField()
+    counterpart_review = serializers.SerializerMethodField()
 
     class Meta:
         model = Engagement
@@ -22,6 +23,7 @@ class EngagementSerializer(serializers.ModelSerializer):
             "performer_emergency_reason",
             "is_past_event",
             "already_reviewed",
+            "counterpart_review",
             "created_at",
             "updated_at",
         ]
@@ -33,10 +35,46 @@ class EngagementSerializer(serializers.ModelSerializer):
         return {"id": obj.performer_id, "username": obj.performer.username}
 
     def get_already_reviewed(self, obj):
+        if hasattr(obj, "is_already_reviewed"):
+            return obj.is_already_reviewed
+
         request = self.context.get("request")
         if not request or not request.user.is_authenticated:
             return False
         return Review.objects.filter(engagement=obj, author=request.user).exists()
+
+    def get_counterpart_review(self, obj):
+        already_reviewed = self.get_already_reviewed(obj)
+        if not already_reviewed:
+            return None
+
+        request = self.context.get("request")
+        if not request or not request.user.is_authenticated:
+            return None
+
+        # Use prefetched reviews if available to prevent N+1 queries
+        if (
+            hasattr(obj, "_prefetched_objects_cache")
+            and "reviews" in obj._prefetched_objects_cache
+        ):
+            for review in obj.reviews.all():
+                if review.author_id != request.user.id:
+                    return {
+                        "rating": review.rating,
+                        "comment": review.comment,
+                    }
+        else:
+            counterpart_review = (
+                Review.objects.filter(engagement=obj)
+                .exclude(author=request.user)
+                .first()
+            )
+            if counterpart_review:
+                return {
+                    "rating": counterpart_review.rating,
+                    "comment": counterpart_review.comment,
+                }
+        return None
 
 
 class ReviewCreateSerializer(serializers.ModelSerializer):
