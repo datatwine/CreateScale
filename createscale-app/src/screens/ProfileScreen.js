@@ -763,6 +763,17 @@ export default function ProfileScreen() {
               )}
             </View>
           )}
+
+          {/* Sign out — moved here from Edit profile (standard drawer spot) */}
+          <TouchableOpacity
+            style={styles.logoutButton}
+            onPress={() => {
+              closeDrawer();
+              logout();
+            }}
+          >
+            <Text style={styles.logoutButtonText}>Log out</Text>
+          </TouchableOpacity>
         </Animated.View>
       </Modal>
     </SafeAreaView>
