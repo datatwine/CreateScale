@@ -144,6 +144,7 @@ def profile(request):
             "uploads": uploads_qs,
             "profile": user_profile,
             "unread_count": unread_count,
+            "likes_count": user_profile.likes.count(),
         },
     )
 
@@ -245,6 +246,7 @@ def profile_detail(request, user_id):
             "uploads": uploads,
             "gigs_count": gig_qs.count(),
             "last_engagement": gig_qs.order_by("-date").first(),
+            "likes_count": user_profile.likes.count(),
         }
         cache.set(cache_key, cached, 60)
 
@@ -261,12 +263,19 @@ def profile_detail(request, user_id):
         else:
             hire_state = "ready"
 
+    # Computed per-viewer, OUTSIDE the shared cache above: the cache key is
+    # profile-only (not viewer-scoped), so caching liked_by_me inside it
+    # would leak one viewer's like state onto every other viewer who hits
+    # the same cached page. Same reasoning as hire_state above.
+    liked_by_me = viewer.is_authenticated and profile.likes.filter(user=viewer).exists()
+
     return render(
         request,
         "users/profile_detail.html",
         {
             **cached,
             "hire_state": hire_state,
+            "liked_by_me": liked_by_me,
         },
     )
 

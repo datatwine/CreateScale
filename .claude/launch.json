@@ -6,6 +6,12 @@
       "runtimeExecutable": "python",
       "runtimeArgs": ["manage.py", "runserver", "0.0.0.0:8000"],
       "port": 8000
+    },
+    {
+      "name": "expo-dev",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": ["-c", "cd createscale-app && npx expo start --web"],
+      "port": 8082
     }
   ]
 }

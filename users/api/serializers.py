@@ -119,6 +119,7 @@ class MeProfileSerializer(serializers.ModelSerializer):
     cover_photo_url = serializers.SerializerMethodField()
     bank_account_last4 = serializers.SerializerMethodField()
     can_receive_payments = serializers.BooleanField(read_only=True)
+    likes_count = serializers.SerializerMethodField()
 
     class Meta:
         model = Profile
@@ -144,6 +145,7 @@ class MeProfileSerializer(serializers.ModelSerializer):
             "bank_ifsc",
             "razorpay_account_id",
             "can_receive_payments",
+            "likes_count",
         ]
         extra_kwargs = {
             "profile_picture": {"write_only": True, "required": False},
@@ -168,6 +170,9 @@ class MeProfileSerializer(serializers.ModelSerializer):
             return ""
         return obj.bank_account_number[-4:]
 
+    def get_likes_count(self, obj):
+        return obj.likes.count()
+
     def validate_profession(self, value):
         validate_no_profanity(value)
         return value
@@ -187,6 +192,8 @@ class PublicProfileDetailSerializer(serializers.ModelSerializer):
     gigs_count = serializers.SerializerMethodField()
     last_engagement = serializers.SerializerMethodField()
     can_receive_payments = serializers.BooleanField(read_only=True)
+    likes_count = serializers.SerializerMethodField()
+    liked_by_me = serializers.SerializerMethodField()
 
     class Meta:
         model = Profile
@@ -203,6 +210,8 @@ class PublicProfileDetailSerializer(serializers.ModelSerializer):
             "gigs_count",
             "last_engagement",
             "can_receive_payments",
+            "likes_count",
+            "liked_by_me",
         ]
 
     def get_profile_picture_url(self, obj):
@@ -251,6 +260,15 @@ class PublicProfileDetailSerializer(serializers.ModelSerializer):
         Used for the stats strip 'Last performed' display.
         """
         return self._get_gig_data(obj)["last_engagement"]
+
+    def get_likes_count(self, obj):
+        return obj.likes.count()
+
+    def get_liked_by_me(self, obj):
+        request = self.context.get("request")
+        if not request or not request.user.is_authenticated:
+            return False
+        return obj.likes.filter(user=request.user).exists()
 
 
 class PaymentDetailsSerializer(serializers.ModelSerializer):

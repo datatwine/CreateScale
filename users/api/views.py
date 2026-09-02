@@ -22,7 +22,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.authtoken.models import Token
 
-from users.models import Profile, PushToken, Upload
+from users.models import Like, Profile, PushToken, Upload
 from bookings.models import Engagement
 from users.forms import CustomPasswordResetForm
 
@@ -649,6 +649,52 @@ class ProfileDetailAPIView(generics.RetrieveAPIView):
             return serializer.data
 
         return Response(_cached(key, 300, compute))
+
+
+class LikeToggleAPIView(APIView):
+    """
+    POST /api/users/profiles/<user_id>/like/
+
+    Toggles the requesting user's like on the target profile — one endpoint
+    for both directions. Creating the Like row is the like; if it already
+    exists, deleting it is the unlike. Session auth works here too (not
+    just Token), so the same endpoint serves the website's heart button.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, user_id):
+        target_profile = get_object_or_404(
+            Profile.objects.select_related("user"), user__id=user_id
+        )
+
+        if request.user.id == target_profile.user_id:
+            return Response(
+                {"detail": "You cannot like your own profile."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        existing = Like.objects.filter(user=request.user, profile=target_profile)
+        if existing.exists():
+            existing.delete()
+            liked = False
+        else:
+            Like.objects.create(user=request.user, profile=target_profile)
+            liked = True
+
+        # Both the API's own cache (ProfileDetailAPIView) and the web
+        # view's cache (users.views.profile_detail) key off this profile's
+        # user_id — invalidate both so the new count shows immediately
+        # instead of waiting out their TTLs.
+        cache.delete(f"profile:{user_id}")
+        cache.delete(f"web:profile:{user_id}")
+
+        return Response(
+            {
+                "liked_by_me": liked,
+                "likes_count": target_profile.likes.count(),
+            }
+        )
 
 
 class ProfessionsAPIView(APIView):
