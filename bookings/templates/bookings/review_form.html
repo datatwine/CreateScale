@@ -1,0 +1,126 @@
+{% extends "users/base.html" %}
+{% load static %}
+
+{% block title %}Leave a Review · {{ engagement.occasion }} · ArtKhoj{% endblock %}
+
+{% block extra_css %}
+    <link rel="stylesheet" href="{% static 'users/css/engagement_detail.css' %}">
+    <style>
+        .review-card {
+            background: #fff;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+            margin-top: 24px;
+        }
+        .review-title {
+            font-family: 'Bricolage Grotesque', sans-serif;
+            font-size: 24px;
+            font-weight: 700;
+            color: #1c1c1c;
+            margin-bottom: 8px;
+        }
+        .review-subtitle {
+            font-size: 15px;
+            color: #666;
+            margin-bottom: 24px;
+            line-height: 1.5;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #333;
+        }
+        .form-control {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1.5px solid #e0e0e0;
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 15px;
+            transition: all 0.2s ease;
+            box-sizing: border-box;
+        }
+        .form-control:focus {
+            border-color: #1a7f2e;
+            outline: none;
+            box-shadow: 0 0 0 4px rgba(26,127,46,0.1);
+        }
+        .btn-submit {
+            background: #1a7f2e;
+            color: white;
+            border: none;
+            padding: 14px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 16px;
+            cursor: pointer;
+            width: 100%;
+            transition: all 0.2s ease;
+        }
+        .btn-submit:hover {
+            background: #156625;
+            transform: translateY(-1px);
+        }
+        .btn-cancel-link {
+            display: block;
+            text-align: center;
+            margin-top: 16px;
+            color: #666;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        .btn-cancel-link:hover {
+            color: #333;
+            text-decoration: underline;
+        }
+    </style>
+{% endblock %}
+
+{% block content_wrap %}
+    <!-- TOPBAR -->
+    <header class="topbar">
+        <a href="{% url 'bookings:engagement-detail' engagement.pk %}" class="back-btn">← Back</a>
+        <a href="{% url 'global-feed' %}" class="brandmark">
+            <img src="{% static 'users/images/artkhojlogo.png' %}" alt="ArtKhoj" class="brandmark-img">
+        </a>
+    </header>
+
+    <div class="detail-page">
+        <div class="review-card">
+            <h2 class="review-title">Leave a review</h2>
+            <p class="review-subtitle">
+                How was the <strong>{{ engagement.occasion }}</strong> at <strong>{{ engagement.venue }}</strong> on <strong>{{ engagement.date|date:"d M Y" }}</strong>? Your feedback helps keep the community safe and accountable.
+            </p>
+
+            <form method="post">
+                {% csrf_token %}
+                
+                {% if form.non_field_errors %}
+                    <div style="background:#fef2f2; border:1px solid #fca5a5; border-radius:8px; padding:12px; margin-bottom:16px; color:#991b1b;">
+                        {% for error in form.non_field_errors %}
+                            <p style="margin:0;">{{ error }}</p>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+
+                <div class="form-group">
+                    <label class="form-label" for="id_rating">Score (out of 10)</label>
+                    <input type="number" name="rating" min="0" max="10" required id="id_rating" class="form-control" placeholder="Rate from 0 to 10">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" for="id_comment">Comments (Optional)</label>
+                    <textarea name="comment" rows="4" id="id_comment" class="form-control" placeholder="How did it go? Share your experience..."></textarea>
+                </div>
+
+                <button type="submit" class="btn-submit">Submit Review</button>
+                <a href="{% url 'bookings:engagement-detail' engagement.pk %}" class="btn-cancel-link">Cancel</a>
+            </form>
+        </div>
+    </div>
+{% endblock %}

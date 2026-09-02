@@ -337,6 +337,29 @@
 
         {% endif %}
 
+        <!-- ===== REVIEW ACTIONS ===== -->
+        {% if can_review or already_reviewed %}
+            <div class="actions-section">
+                <div class="cancel-card" style="background:#f9f9f9;">
+                    {% if can_review %}
+                        <div class="cancel-card-title">Leave a review</div>
+                        <p class="cancel-hint">How did it go? Your feedback helps keep the community safe.</p>
+                        <a href="{% url 'bookings:leave-review' engagement.pk %}" class="btn-accept" style="display:block;text-align:center;text-decoration:none;margin-top:12px;">Leave a review</a>
+                    {% elif already_reviewed %}
+                        <div class="cancel-card-title" style="color:#1a7f2e;text-align:center;">✓ You’ve reviewed this booking.</div>
+                        {% if counterpart_review %}
+                            <div style="margin-top: 16px; padding: 16px; background: #FFFFFF; border: 1px solid #e5e7eb; border-left: 4px solid #E68A00; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
+                                <strong style="color: #1f2937; font-size: 15px;">{{ counterpart_review.author.username }}'s Review:</strong> <span style="font-weight: 700; color: #E68A00; font-size: 15px; margin-left: 4px;">{{ counterpart_review.rating }}/10</span>
+                                {% if counterpart_review.comment %}
+                                    <p style="margin-top: 8px; margin-bottom: 0; color: #4b5563; line-height: 1.5; font-style: italic;">"{{ counterpart_review.comment }}"</p>
+                                {% endif %}
+                            </div>
+                        {% endif %}
+                    {% endif %}
+                </div>
+            </div>
+        {% endif %}
+
     </div><!-- /detail-page -->
 
     <!-- BOTTOM NAV -->

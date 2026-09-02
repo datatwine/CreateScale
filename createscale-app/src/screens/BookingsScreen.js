@@ -37,6 +37,7 @@ import {
     View
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { API_BASE_URL } from "../config/api";
 import { AuthContext } from "../context/AuthContext";
@@ -87,7 +88,7 @@ function isActive(status) {
 // EngagementCard — a single booking row with expandable actions
 // ---------------------------------------------------------------------------
 
-function EngagementCard({ engagement, myUserId, token, onActionDone }) {
+function EngagementCard({ engagement, myUserId, token, onActionDone, navigation }) {
     const [expanded, setExpanded] = useState(false);
     const [actionLoading, setActionLoading] = useState(false);
     const [emergencyReason, setEmergencyReason] = useState("");
@@ -116,9 +117,11 @@ function EngagementCard({ engagement, myUserId, token, onActionDone }) {
     //   Client + (pending|accepted) → cancel_client
     const canAccept = isPerformer && engagement.status === "pending";
     const canDecline = isPerformer && engagement.status === "pending";
-    const canCancelPerformer = isPerformer && isActive(engagement.status);
-    const canCancelClient = isClient && isActive(engagement.status);
-    const hasActions = canAccept || canDecline || canCancelPerformer || canCancelClient;
+    const canCancelPerformer = isPerformer && isActive(engagement.status) && !engagement.is_past_event;
+    const canCancelClient = isClient && isActive(engagement.status) && !engagement.is_past_event;
+    const canReview = engagement.status === "accepted" && engagement.is_past_event === true && engagement.already_reviewed === false;
+    const hasReviewed = engagement.status === "accepted" && engagement.is_past_event === true && engagement.already_reviewed === true;
+    const hasActions = canAccept || canDecline || canCancelPerformer || canCancelClient || canReview;
 
     // --- Action handler ---
     // Posts to /api/bookings/engagements/<pk>/action/
@@ -309,6 +312,21 @@ function EngagementCard({ engagement, myUserId, token, onActionDone }) {
                                     </TouchableOpacity>
                                 </View>
                             )}
+
+                            {/* Review Section */}
+                            {canReview && (
+                                <TouchableOpacity
+                                    style={[styles.actionBtn, { backgroundColor: COLORS.successButton, marginTop: 4 }]}
+                                    onPress={() => navigation.navigate("LeaveReview", { 
+                                        engagementId: engagement.id, 
+                                        otherPartyName: otherName, 
+                                        occasion: engagement.occasion 
+                                    })}
+                                >
+                                    <Ionicons name="star" size={16} color={COLORS.white} />
+                                    <Text style={styles.actionBtnText}>Leave a Review</Text>
+                                </TouchableOpacity>
+                            )}
                         </View>
                     )}
 
@@ -322,10 +340,28 @@ function EngagementCard({ engagement, myUserId, token, onActionDone }) {
                     )}
 
                     {/* Terminal state — no actions available */}
-                    {!hasActions && (
+                    {!hasActions && !hasReviewed && (
                         <Text style={styles.terminalNote}>
                             This booking is {statusLabel.toLowerCase()} — no further actions.
                         </Text>
+                    )}
+                    
+                    {hasReviewed && (
+                        <View>
+                            <Text style={[styles.terminalNote, { color: COLORS.success, fontWeight: '500' }]}>
+                                ✓ You&apos;ve reviewed this booking.
+                            </Text>
+                            {engagement.counterpart_review && (
+                                <View style={styles.counterpartReviewBox}>
+                                    <Text style={styles.counterpartReviewTitle}>
+                                        {otherName}&apos;s Review: <Text style={styles.counterpartReviewRating}>{engagement.counterpart_review.rating}/10</Text>
+                                    </Text>
+                                    {engagement.counterpart_review.comment ? (
+                                        <Text style={styles.counterpartReviewComment}>{engagement.counterpart_review.comment}</Text>
+                                    ) : null}
+                                </View>
+                            )}
+                        </View>
                     )}
                 </View>
             )}
@@ -386,19 +422,21 @@ export default function BookingsScreen({ navigation }) {
             const clientData = await clientRes.json();
             const performerData = await performerRes.json();
 
-            setClientEngagements(clientData);
-            setPerformerEngagements(performerData);
+            // Extract 'results' array if the API is paginated, else fallback to raw array
+            setClientEngagements(clientData.results || clientData);
+            setPerformerEngagements(performerData.results || performerData);
         } catch (err) {
             console.error("Error loading bookings:", err);
             Alert.alert("Error", "Couldn't load bookings. Please try again.");
         }
     }, [token]);
 
-    // Initial load
-    useEffect(() => {
-        setLoading(true);
-        fetchBookings().finally(() => setLoading(false));
-    }, [fetchBookings]);
+    // Fetch on focus (handles initial load AND returning from LeaveReview screen)
+    useFocusEffect(
+        useCallback(() => {
+            fetchBookings().finally(() => setLoading(false));
+        }, [fetchBookings])
+    );
 
     // Pull-to-refresh
     const handleRefresh = async () => {
@@ -512,6 +550,7 @@ export default function BookingsScreen({ navigation }) {
                             myUserId={myUserId}
                             token={token}
                             onActionDone={handleActionDone}
+                            navigation={navigation}
                         />
                     )}
                     contentContainerStyle={styles.listContent}
@@ -712,6 +751,32 @@ const styles = StyleSheet.create({
         color: COLORS.textMuted,
         fontStyle: "italic",
         marginTop: 8,
+    },
+    
+    // --- Counterpart Review ---
+    counterpartReviewBox: {
+        marginTop: 12,
+        padding: 12,
+        backgroundColor: COLORS.cream,
+        borderWidth: 1,
+        borderColor: COLORS.divider,
+        borderRadius: 10,
+    },
+    counterpartReviewTitle: {
+        fontSize: 13,
+        fontWeight: "600",
+        color: COLORS.textPrimary,
+        marginBottom: 4,
+    },
+    counterpartReviewRating: {
+        fontSize: 13,
+        fontWeight: "700",
+        color: COLORS.accent,
+    },
+    counterpartReviewComment: {
+        fontSize: 14,
+        color: COLORS.textSecondary,
+        lineHeight: 20,
     },
 
     // --- Expand hint chevron ---

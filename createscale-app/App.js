@@ -25,6 +25,7 @@ import LiveEventsScreen from "./src/screens/LiveEventsScreen";
 import PerformerPayoutsScreen from "./src/screens/PerformerPayoutsScreen";
 import ClientPaymentsScreen from "./src/screens/ClientPaymentsScreen";
 import EditProfileScreen from "./src/screens/EditProfileScreen";
+import LeaveReviewScreen from "./src/screens/LeaveReviewScreen";
 
 import { View, Text, StatusBar, StyleSheet } from "react-native";
 import { COLORS } from "./src/config/theme";
@@ -191,6 +192,7 @@ function RootNavigator() {
           <Stack.Screen name="PerformerPayouts" component={PerformerPayoutsScreen} />
           <Stack.Screen name="ClientPayments" component={ClientPaymentsScreen} />
           <Stack.Screen name="EditProfile" component={EditProfileScreen} />
+          <Stack.Screen name="LeaveReview" component={LeaveReviewScreen} />
         </Stack.Navigator>
       ) : (
         <Stack.Navigator screenOptions={{ headerShown: false }}>

@@ -1,7 +1,7 @@
 import logging
 
 from django.core.exceptions import ValidationError, PermissionDenied
-from django.db.models import Q
+from django.db.models import Q, Exists, OuterRef
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 
@@ -18,11 +18,12 @@ from rest_framework.views import APIView
 from users.models import Profile
 from users.api.views import _LenientPaginatorMixin
 from users.notifications import send_push_notification
-from bookings.models import Engagement, Payment
+from bookings.models import Engagement, Payment, Review
 from bookings.services.payments import PaymentService
 from .serializers import (
     EngagementSerializer,
     EngagementCreateSerializer,
+    ReviewCreateSerializer,
     EngagementActionSerializer,
     PaymentHistorySerializer,
     VerifyPaymentSerializer,
@@ -32,7 +33,7 @@ from .serializers import (
 logger = logging.getLogger(__name__)
 
 
-class ClientEngagementsAPIView(APIView):
+class ClientEngagementsAPIView(_LenientPaginatorMixin, APIView):
     """GET /api/bookings/engagements/client/"""
 
     permission_classes = [IsAuthenticated]
@@ -41,12 +42,32 @@ class ClientEngagementsAPIView(APIView):
         qs = (
             Engagement.objects.filter(client=request.user)
             .select_related("client", "performer")
+            .prefetch_related("reviews")
+            .annotate(
+                is_already_reviewed=Exists(
+                    Review.objects.filter(
+                        engagement=OuterRef("pk"), author=request.user
+                    )
+                )
+            )
             .order_by("date", "time")
         )
-        return Response(EngagementSerializer(qs, many=True).data)
+        paginator, page_obj = self.paginate_lenient(qs, request)
+        return Response(
+            {
+                "count": paginator.count,
+                "num_pages": paginator.num_pages,
+                "page": page_obj.number,
+                "has_next": page_obj.has_next(),
+                "has_previous": page_obj.has_previous(),
+                "results": EngagementSerializer(
+                    page_obj.object_list, many=True, context={"request": request}
+                ).data,
+            }
+        )
 
 
-class PerformerEngagementsAPIView(APIView):
+class PerformerEngagementsAPIView(_LenientPaginatorMixin, APIView):
     """GET /api/bookings/engagements/performer/"""
 
     permission_classes = [IsAuthenticated]
@@ -55,9 +76,29 @@ class PerformerEngagementsAPIView(APIView):
         qs = (
             Engagement.objects.filter(performer=request.user)
             .select_related("client", "performer")
+            .prefetch_related("reviews")
+            .annotate(
+                is_already_reviewed=Exists(
+                    Review.objects.filter(
+                        engagement=OuterRef("pk"), author=request.user
+                    )
+                )
+            )
             .order_by("date", "time")
         )
-        return Response(EngagementSerializer(qs, many=True).data)
+        paginator, page_obj = self.paginate_lenient(qs, request)
+        return Response(
+            {
+                "count": paginator.count,
+                "num_pages": paginator.num_pages,
+                "page": page_obj.number,
+                "has_next": page_obj.has_next(),
+                "has_previous": page_obj.has_previous(),
+                "results": EngagementSerializer(
+                    page_obj.object_list, many=True, context={"request": request}
+                ).data,
+            }
+        )
 
 
 class CreateHireRequestAPIView(APIView):
@@ -247,10 +288,23 @@ class EngagementViewSet(viewsets.ViewSet):
 
     def _get_visible_qs(self, request):
         if self._is_admin(request):
-            return Engagement.objects.all().select_related("client", "performer")
-        return Engagement.objects.filter(
-            Q(client=request.user) | Q(performer=request.user)
-        ).select_related("client", "performer")
+            qs = Engagement.objects.all()
+        else:
+            qs = Engagement.objects.filter(
+                Q(client=request.user) | Q(performer=request.user)
+            )
+
+        return (
+            qs.select_related("client", "performer")
+            .prefetch_related("reviews")
+            .annotate(
+                is_already_reviewed=Exists(
+                    Review.objects.filter(
+                        engagement=OuterRef("pk"), author=request.user
+                    )
+                )
+            )
+        )
 
     def list(self, request):
         """
@@ -258,7 +312,11 @@ class EngagementViewSet(viewsets.ViewSet):
         Returns union of engagements where user is client OR performer.
         """
         qs = self._get_visible_qs(request).order_by("date", "time")
-        return Response(EngagementSerializer(qs, many=True).data)
+        # Ensure pagination here if needed, but if it is just a plain ViewSet, DRF handles it if pagination is configured globally.
+        # But we'll leave it returning a raw list since mobile doesn't currently call this directly.
+        return Response(
+            EngagementSerializer(qs, many=True, context={"request": request}).data
+        )
 
     def retrieve(self, request, pk=None):
         """
@@ -425,4 +483,62 @@ class EngagementViewSet(viewsets.ViewSet):
             {
                 "detail": "Issue raised. An admin will review and contact you within 24-48 hours."
             }
+        )
+
+    @drf_action(detail=True, methods=["post"], url_path="review")
+    def review(self, request, pk=None):
+        """
+        POST /api/bookings/engagements/<pk>/review/
+        Allows client or performer to review the other party for a past, accepted event.
+        """
+        engagement = get_object_or_404(
+            Engagement.objects.select_related("client", "performer"), pk=pk
+        )
+        if not self._is_participant(request, engagement):
+            raise PermissionDenied("You are not part of this booking.")
+
+        if engagement.status != Engagement.STATUS_ACCEPTED:
+            return Response(
+                {"detail": "You can only review accepted bookings."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if not engagement.is_past_event:
+            return Response(
+                {"detail": "You can only review bookings that have already happened."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if Review.objects.filter(engagement=engagement, author=request.user).exists():
+            return Response(
+                {"detail": "You have already reviewed this booking."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        ser = ReviewCreateSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+
+        review_instance = Review(engagement=engagement, author=request.user)
+        if request.user == engagement.client:
+            review_instance.subject = engagement.performer
+            review_instance.direction = Review.CLIENT_TO_PERFORMER
+        else:
+            review_instance.subject = engagement.client
+            review_instance.direction = Review.PERFORMER_TO_CLIENT
+
+        # Apply the validated data manually so that clean() can validate everything
+        review_instance.rating = ser.validated_data["rating"]
+        review_instance.comment = ser.validated_data.get("comment", "")
+
+        try:
+            review_instance.save()
+        except ValidationError as e:
+            # Format validation errors for DRF
+            return Response(
+                {"detail": " ".join(e.messages) if hasattr(e, "messages") else str(e)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        return Response(
+            {"detail": "Review submitted successfully."}, status=status.HTTP_201_CREATED
         )

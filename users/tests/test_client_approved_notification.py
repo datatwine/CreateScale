@@ -16,8 +16,8 @@ import pytest
 from django.contrib.admin.sites import AdminSite
 from django.contrib.auth.models import User
 
-from users.admin import ProfileAdmin
-from users.models import Profile
+from users.admin import ClientAdmin
+from users.models import Profile, Client
 
 
 @pytest.fixture
@@ -29,7 +29,7 @@ def mock_send(monkeypatch):
 
 @pytest.fixture
 def profile_admin():
-    return ProfileAdmin(Profile, AdminSite())
+    return ClientAdmin(Client, AdminSite())
 
 
 @pytest.mark.django_db
