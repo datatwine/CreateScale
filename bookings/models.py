@@ -462,3 +462,150 @@ class Payment(models.Model):
 
     def __str__(self) -> str:
         return f"Payment #{self.pk} for Eng #{self.engagement_id} — ₹{self.amount} ({self.status})"
+
+
+class Review(models.Model):
+    """
+    A post-event rating. Both parties to an accepted, finished engagement can
+    leave exactly one review of each other. Admin reads these to decide who to
+    approve/blacklist — reviews are never created or edited in the admin.
+    """
+
+    # ---- choices ------------------------------------------------------------
+    # `choices` locks a field to a fixed menu of values. Each entry is a tuple:
+    #   (value_stored_in_the_database, human_readable_label_shown_in_forms/admin)
+    # So the DB column holds the short string "client_to_performer", but the
+    # admin dropdown displays "Client reviewed performer". We also get a free
+    # helper method: review.get_direction_display() returns that label.
+    # (The same pattern already exists on Engagement.status — worth a look.)
+    CLIENT_TO_PERFORMER = "client_to_performer"
+    PERFORMER_TO_CLIENT = "performer_to_client"
+    DIRECTION_CHOICES = [
+        (CLIENT_TO_PERFORMER, "Client reviewed performer"),
+        (PERFORMER_TO_CLIENT, "Performer reviewed client"),
+    ]
+
+    # ---- foreign keys -------------------------------------------------------
+    # A ForeignKey stores the *primary key* of a row in another table. On disk
+    # this column is literally `engagement_id` (an integer pointing at one
+    # Engagement row); the database refuses to save a value that doesn't exist
+    # there. `related_name="reviews"` is the reverse handle: given an
+    # engagement, `engagement.reviews.all()` lists its reviews.
+    # `on_delete=CASCADE` = if the engagement is deleted, its reviews go too.
+    #
+    # NOTE for later (indexing): every ForeignKey is automatically indexed by
+    # Django (db_index=True by default). So engagement/author/subject each get
+    # a b-tree index for free — you won't see them in Meta, but they exist and
+    # make the joins/lookups below fast.
+    engagement = models.ForeignKey(
+        Engagement,
+        on_delete=models.CASCADE,
+        related_name="reviews",
+    )
+    # `author`  = who wrote the review.   author.reviews_written  → what they wrote.
+    # `subject` = who the review is about. subject.reviews_received → what they got.
+    # We do NOT trust the browser to tell us `subject`/`direction`; both are
+    # derived server-side in clean() below from author + engagement. Storing
+    # `subject` as its own column (rather than computing it every time) is what
+    # lets the admin cheaply ask "all reviews received by user X" via the
+    # reverse relation `user__reviews_received` — that powers the avg-score
+    # column in §6.
+    author = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="reviews_written",
+    )
+    subject = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="reviews_received",
+    )
+    direction = models.CharField(max_length=20, choices=DIRECTION_CHOICES)
+
+    # ---- the actual review payload -----------------------------------------
+    # PositiveSmallIntegerField = a small non-negative integer (0..32767). We
+    # further clamp it to 0..10 in clean(). "Same field for both directions"
+    # means clients and performers are scored on one identical 0–10 scale.
+    rating = models.PositiveSmallIntegerField(help_text="Score out of 10 (0–10).")
+    # blank=True → the written comment is optional (a score alone is allowed).
+    comment = models.TextField(max_length=1000, blank=True)
+    # auto_now_add=True → set once, automatically, at creation. Never changes.
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            # ONE review per person per engagement. This says the *combination*
+            # (engagement_id, author_id) must be unique across the whole table:
+            # author #7 can review many engagements, and engagement #42 can hold
+            # two reviews (one per party) — but the same author reviewing the
+            # same engagement twice is a hard database error.
+            #
+            # Bonus: a UniqueConstraint is backed by a unique INDEX on those two
+            # columns, so the duplicate-check query in the view
+            # (filter(engagement=…, author=…).exists()) is an index probe, not a
+            # table scan. One line enforces the rule AND makes the check fast.
+            #
+            # `name=` is just the label Postgres uses in the error — keep it
+            # readable so you recognise it when it fires.
+            models.UniqueConstraint(
+                fields=["engagement", "author"],
+                name="one_review_per_author_per_engagement",
+            ),
+        ]
+        indexes = [
+            # A composite index on (subject, created_at DESC). Picture a phone
+            # book sorted first by subject, then newest-first within each
+            # subject. It serves exactly one access pattern: "all reviews
+            # RECEIVED by this user, newest first" — which is what the admin's
+            # avg-score annotation and any future "reviews about X" page walk.
+            # The leading `subject` column also helps that aggregation join.
+            # (Every index speeds reads but costs a little on each write, so we
+            # add only the ones the feature actually queries.)
+            models.Index(fields=["subject", "-created_at"]),
+        ]
+
+    def __str__(self):
+        # Shown wherever Django prints a Review (admin dropdowns, shell, logs).
+        # `self.engagement_id` reads the raw FK integer WITHOUT a database hit;
+        # writing `self.engagement.id` would fetch the whole Engagement row.
+        return f"{self.author} → {self.subject} ({self.rating}/10) on Eng #{self.engagement_id}"
+
+    def clean(self):
+        # clean() is Django's model-level validation hook. Everything here runs
+        # before a save (via full_clean() in save() below), so these rules hold
+        # no matter who creates the review — form, shell, or future code.
+        super().clean()
+
+        # 1) Score must be in range.
+        if self.rating is None or not (0 <= self.rating <= 10):
+            raise ValidationError({"rating": "Score must be between 0 and 10."})
+
+        eng = self.engagement
+        # 2) The author must be a party to this engagement — and from *which*
+        #    side they're on, we DERIVE who they're reviewing and the direction.
+        #    (Comparing `author_id` to `client_id`/`performer_id` uses the raw
+        #    FK integers — no extra queries just to compare identities.)
+        if self.author_id == eng.client_id:
+            self.subject = eng.performer  # a client reviews the performer
+            self.direction = self.CLIENT_TO_PERFORMER
+        elif self.author_id == eng.performer_id:
+            self.subject = eng.client  # a performer reviews the client
+            self.direction = self.PERFORMER_TO_CLIENT
+        else:
+            raise ValidationError("You can only review an engagement you were part of.")
+
+        # 3) The event must actually have happened: accepted AND in the past.
+        #    Both already exist on Engagement — no new date logic needed.
+        if eng.status != Engagement.STATUS_ACCEPTED:
+            raise ValidationError("Only accepted bookings can be reviewed.")
+        if not eng.is_past_event:
+            raise ValidationError("You can review only after the event is over.")
+
+    def save(self, *args, **kwargs):
+        # We override save() to force validation on EVERY write. full_clean()
+        # runs clean() above (filling subject/direction and enforcing the three
+        # gates) AND re-checks the unique constraint — so a bad or duplicate
+        # review can never reach the database even if some future code path
+        # forgets to go through the form. Belt-and-braces.
+        self.full_clean()
+        super().save(*args, **kwargs)
